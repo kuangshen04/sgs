@@ -10,6 +10,8 @@ export type {
   RecoverEventData,
   DrawEventData,
   DieEventData,
-  TurnStartEventData,
-  TurnEndEventData,
+  TurnEventData,
+  RoundEventData,
+  GameEventData,
+  PhaseEventData,
 } from './types.js';
