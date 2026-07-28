@@ -186,6 +186,9 @@ export async function die(
       state.gameOver = true;
       state.winner = state.players.find((p) => p !== event.data.player)!;
       console.log(`\n💀 ${event.data.player.name} 阵亡！`);
+
+      // 胜负判定：阻止游戏继续，沿事件栈向上传播
+      event.getParent(EventType.Game)?.prevent();
     });
 }
 
@@ -198,13 +201,10 @@ export async function die(
 export async function turn(
   data: TurnEventData,
 ): Promise<GameEvent<TurnEventData>> {
-  const state = gs();
   return new GameEvent<TurnEventData>(EventType.Turn, data)
     .execute(async () => {
       await drawPhase({ player: data.player, round: data.round });
-      if (state.gameOver) return;
       await playPhase({ player: data.player, round: data.round });
-      if (state.gameOver) return;
       await discardPhase({ player: data.player, round: data.round });
     });
 }
@@ -292,8 +292,6 @@ export async function round(
 
         console.log(`\n━━━ 第 ${data.round} 轮 · ${player.name} 的回合 ━━━`);
         await playerTurn(state);
-
-        if (state.gameOver) return;
         printState(state);
       }
     });
