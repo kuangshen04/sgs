@@ -1,9 +1,20 @@
 // ============================================================
 // 三国杀最小原型 — 核心游戏逻辑
-// 纯面向过程，所有数据写死，无事件系统
+// 纯面向过程，所有数据写死
+// 伤害/回复/摸牌通过事件系统执行
 // ============================================================
 
 import { Card, CardType, GameState, Hero, Player } from './types.js';
+import {
+  EventType,
+  GameEvent,
+} from './events/index.js';
+import type {
+  DamageEventData,
+  DrawEventData,
+  RecoverEventData,
+  DieEventData,
+} from './events/index.js';
 
 // ============================================================
 // 牌堆
@@ -87,7 +98,7 @@ export function createGame(): GameState {
   const deck = shuffle(createDeck());
   const discardPile: Card[] = [];
 
-  // 各摸4张起始手牌
+  // 各摸4张起始手牌（游戏初始化不走事件）
   drawCardsFromDeck(player1, deck, discardPile, 4);
   drawCardsFromDeck(player2, deck, discardPile, 4);
 
@@ -131,10 +142,22 @@ function drawCardsFromDeck(
 }
 
 /** 摸牌阶段：当前玩家摸2张牌 */
-export function drawPhase(state: GameState): void {
+export async function drawPhase(state: GameState): Promise<void> {
   const player = state.players[state.currentIndex];
   const before = player.hand.length;
-  drawCardsFromDeck(player, state.deck, state.discardPile, 2);
+
+  await new GameEvent<DrawEventData>(EventType.Draw, {
+    target: player,
+    count: 2,
+  }).execute(async (event) => {
+    drawCardsFromDeck(
+      event.data.target,
+      state.deck,
+      state.discardPile,
+      event.data.count,
+    );
+  });
+
   const after = player.hand.length;
   console.log(`[摸牌阶段] ${player.name} 摸了 ${after - before} 张牌`);
 }
@@ -144,7 +167,7 @@ export function drawPhase(state: GameState): void {
 // ============================================================
 
 /** AI 出牌阶段 */
-export function playPhase(state: GameState): void {
+export async function playPhase(state: GameState): Promise<void> {
   const player = state.players[state.currentIndex];
   const enemy = state.players[1 - state.currentIndex];
 
@@ -153,14 +176,13 @@ export function playPhase(state: GameState): void {
   let shaUsed = false; // 每回合限出1张杀（无技能加成）
 
   // 按顺序尝试：先吃桃，再出杀
-  // 遍历手牌，跳过已处理的
   let i = 0;
   while (i < player.hand.length) {
     const card = player.hand[i];
 
     if (card.type === CardType.Tao && player.hp < player.maxHp) {
       // 受伤时吃桃
-      useTao(state, player, i);
+      await useTao(state, player, i);
       // 使用后索引不变（数组已缩短）
       continue;
     }
@@ -168,7 +190,7 @@ export function playPhase(state: GameState): void {
     if (card.type === CardType.Sha && !shaUsed) {
       // 出杀
       shaUsed = true;
-      useSha(state, player, enemy, i);
+      await useSha(state, player, enemy, i);
       continue;
     }
 
@@ -177,37 +199,51 @@ export function playPhase(state: GameState): void {
 }
 
 /** 使用桃 */
-function useTao(
+async function useTao(
   state: GameState,
   player: Player,
   handIndex: number,
-): void {
+): Promise<void> {
   const card = player.hand.splice(handIndex, 1)[0];
   state.discardPile.push(card);
-  player.hp = Math.min(player.hp + 1, player.maxHp);
-  console.log(
-    `  ${player.name} 使用了 🍑桃 (${card.suit}${displayNumber(card.number)})，` +
-    `体力恢复到 ${player.hp}/${player.maxHp}`,
-  );
+
+  await new GameEvent<RecoverEventData>(EventType.Recover, {
+    target: player,
+    amount: 1,
+  }).execute(async (event) => {
+    const before = event.data.target.hp;
+    event.data.target.hp = Math.min(
+      event.data.target.hp + event.data.amount,
+      event.data.target.maxHp,
+    );
+    console.log(
+      `  ${player.name} 使用了 🍑桃 (${card.suit}${displayNumber(card.number)})，` +
+        `体力恢复到 ${before}→${event.data.target.hp}/${event.data.target.maxHp}`,
+    );
+  });
 }
 
 /** 使用杀 */
-function useSha(
+async function useSha(
   state: GameState,
   attacker: Player,
   defender: Player,
   handIndex: number,
-): void {
+): Promise<void> {
   const card = attacker.hand.splice(handIndex, 1)[0];
   state.discardPile.push(card);
   console.log(
     `  ${attacker.name} 对 ${defender.name} 使用了 🗡️杀 (${card.suit}${displayNumber(card.number)})`,
   );
-  resolveSha(state, defender);
+  await resolveSha(state, attacker, defender);
 }
 
-/** 结算杀：检查闪 → 伤害 */
-function resolveSha(state: GameState, defender: Player): void {
+/** 结算杀：检查闪 → 伤害事件 */
+async function resolveSha(
+  state: GameState,
+  attacker: Player,
+  defender: Player,
+): Promise<void> {
   // 检查防御方是否有闪
   const shanIndex = defender.hand.findIndex((c) => c.type === CardType.Shan);
 
@@ -219,17 +255,23 @@ function resolveSha(state: GameState, defender: Player): void {
       `  ${defender.name} 使用了 🛡️闪 (${shanCard.suit}${displayNumber(shanCard.number)})，抵消了攻击`,
     );
   } else {
-    // 无闪 → 受到伤害
-    defender.hp -= 1;
-    console.log(
-      `  💥 ${defender.name} 没有闪，受到1点伤害！` +
-      `体力: ${defender.hp}/${defender.maxHp}`,
-    );
+    // 无闪 → 通过事件系统造成伤害
+    await new GameEvent<DamageEventData>(EventType.Damage, {
+      target: defender,
+      source: attacker,
+      amount: 1,
+    }).execute(async (event) => {
+      event.data.target.hp -= event.data.amount;
+      console.log(
+        `  💥 ${defender.name} 没有闪，受到${event.data.amount}点伤害！` +
+          `体力: ${event.data.target.hp}/${event.data.target.maxHp}`,
+      );
 
-    // 检查死亡
-    if (defender.hp <= 0) {
-      dieCheck(state, defender);
-    }
+      // 检查死亡
+      if (event.data.target.hp <= 0) {
+        await dieCheck(state, event.data.target);
+      }
+    });
   }
 }
 
@@ -279,14 +321,18 @@ export function discardPhase(state: GameState): void {
 // 死亡 & 胜利
 // ============================================================
 
-/** 检查玩家是否死亡 */
-function dieCheck(state: GameState, player: Player): void {
+/** 检查玩家是否死亡（通过事件系统） */
+async function dieCheck(state: GameState, player: Player): Promise<void> {
   if (player.hp <= 0) {
-    player.alive = false;
-    state.gameOver = true;
-    // 赢家是另一个存活的玩家
-    state.winner = state.players.find((p) => p !== player)!;
-    console.log(`\n💀 ${player.name} 阵亡！`);
+    await new GameEvent<DieEventData>(EventType.Die, {
+      player,
+    }).execute(async (event) => {
+      event.data.player.alive = false;
+      state.gameOver = true;
+      // 赢家是另一个存活的玩家
+      state.winner = state.players.find((p) => p !== event.data.player)!;
+      console.log(`\n💀 ${event.data.player.name} 阵亡！`);
+    });
   }
 }
 
@@ -295,7 +341,7 @@ function dieCheck(state: GameState, player: Player): void {
 // ============================================================
 
 /** 执行一个玩家的完整回合 */
-export function playerTurn(state: GameState): void {
+export async function playerTurn(state: GameState): Promise<void> {
   const player = state.players[state.currentIndex];
 
   if (!player.alive) {
@@ -304,11 +350,11 @@ export function playerTurn(state: GameState): void {
   }
 
   // 1. 摸牌阶段
-  drawPhase(state);
+  await drawPhase(state);
   if (state.gameOver) return;
 
   // 2. 出牌阶段
-  playPhase(state);
+  await playPhase(state);
   if (state.gameOver) return;
 
   // 3. 弃牌阶段
