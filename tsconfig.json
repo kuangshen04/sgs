@@ -1,0 +1,13 @@
+{
+	"exclude": ["dist", "node_modules"],
+	"compilerOptions": {
+		"target": "ESNext",
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
+		"resolveJsonModule": true,
+		"esModuleInterop": true,
+		"strict": true,
+		"noImplicitAny": false,
+		"allowSyntheticDefaultImports": true
+	}
+}

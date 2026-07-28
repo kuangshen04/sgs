@@ -1,0 +1,29 @@
+{
+  "name": "sgs",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "pnpm exec tsx src/index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^11.17.0",
+      "onFail": "download"
+    }
+  },
+  "type": "module",
+  "dependencies": {
+    "@types/node": "^26.1.1",
+    "typescript": "^6.0.3",
+    "vite": "^8.1.5"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.0"
+  }
+}
