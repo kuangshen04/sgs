@@ -4,8 +4,9 @@
 // ============================================================
 
 import {
-  createGame, setGameState, runGame, printState,
+  createGame, setGameState, printState,
 } from './game.js';
+import { runGame } from './gameFlow.js';
 import { triggerSystem, EventType } from './events/index.js';
 
 // ============================================================
