@@ -120,14 +120,12 @@ export class GameEvent<T = Record<string, unknown>> {
     try {
       await triggerSystem.trigger(
         `${this.type}.before`,
-        this as unknown as { type: string; data: Record<string, unknown> },
-        eventStack.depth,
+        this as unknown as { type: string; data: Record<string, unknown> }
       );
       await content(this);
       await triggerSystem.trigger(
         `${this.type}.after`,
-        this as unknown as { type: string; data: Record<string, unknown> },
-        eventStack.depth,
+        this as unknown as { type: string; data: Record<string, unknown> }
       );
     } catch (e) {
       if (e instanceof EventPreventError && e.event === this) {
