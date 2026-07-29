@@ -14,6 +14,7 @@ export enum CardType {
 export interface Card {
   id: number;
   type: CardType;
+  name: string;   // 显示名，如 杀、闪、桃
   suit: string;   // ♠ ♥ ♣ ♦
   number: number; // 1-13
 }

@@ -14,50 +14,30 @@ import type {
 } from './events/index.js';
 import {
   gs,
-  damage, recover, drawCards, die,
-  printState,
-  displayNumber, cardEmoji,
+  drawCards, useCard,
+  printState, displayNumber, cardEmoji,
 } from './game.js';
 
 // ============================================================
-// 出牌阶段内部逻辑
+// 出牌阶段 — AI 决策
 // ============================================================
 
-/** 使用桃 */
-async function useTao(player: Player, card: Card): Promise<void> {
-  gs().discardPile.push(card);
-  const before = player.hp;
-
-  await recover({ target: player, amount: 1 });
-
-  console.log(
-    `  ${player.name} 使用了 🍑桃 (${card.suit}${displayNumber(card.number)})，` +
-    `体力恢复到 ${before}→${player.hp}/${player.maxHp}`,
-  );
-}
-
-/** 使用杀 */
-async function useSha(attacker: Player, defender: Player, card: Card): Promise<void> {
-  gs().discardPile.push(card);
-  console.log(
-    `  ${attacker.name} 对 ${defender.name} 使用了 🗡️杀 (${card.suit}${displayNumber(card.number)})`,
-  );
-  await resolveSha(attacker, defender);
-}
-
-/** 结算杀：检查闪 → 伤害 */
-async function resolveSha(attacker: Player, defender: Player): Promise<void> {
-  const shanIndex = defender.hand.findIndex((c) => c.type === CardType.Shan);
-
-  if (shanIndex >= 0) {
-    const shanCard = defender.hand.splice(shanIndex, 1)[0];
-    gs().discardPile.push(shanCard);
-    console.log(
-      `  ${defender.name} 使用了 🛡️闪 (${shanCard.suit}${displayNumber(shanCard.number)})，抵消了攻击`,
-    );
-  } else {
-    await damage({ target: defender, source: attacker, amount: 1 });
+function aiChoosePlay(
+  player: Player,
+  enemy: Player,
+  shaUsed: boolean,
+): { card: Card; targets: Player[] } | null {
+  // 有桃且受伤 → 对自己用桃
+  const tao = player.hand.find((c) => c.type === CardType.Tao);
+  if (tao && player.hp < player.maxHp) {
+    return { card: tao, targets: [player] };
   }
+  // 有杀且本回合未出过杀 → 对敌人用杀
+  const sha = player.hand.find((c) => c.type === CardType.Sha);
+  if (sha && !shaUsed) {
+    return { card: sha, targets: [enemy] };
+  }
+  return null;
 }
 
 // ============================================================
@@ -140,24 +120,12 @@ export async function playPhase(
       const enemy = state.players.find((p) => p !== player)!;
 
       let shaUsed = false;
-      let i = 0;
-      while (i < player.hand.length) {
-        const card = player.hand[i];
+      while (true) {
+        const action = aiChoosePlay(player, enemy, shaUsed);
+        if (!action) break;
 
-        if (card.type === CardType.Tao && player.hp < player.maxHp) {
-          player.hand.splice(i, 1);
-          await useTao(player, card);
-          continue;
-        }
-
-        if (card.type === CardType.Sha && !shaUsed) {
-          shaUsed = true;
-          player.hand.splice(i, 1);
-          await useSha(player, enemy, card);
-          continue;
-        }
-
-        i++;
+        if (action.card.type === CardType.Sha) shaUsed = true;
+        await useCard({ player, card: action.card, targets: action.targets });
       }
     });
 }

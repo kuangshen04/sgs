@@ -32,7 +32,13 @@ export class TriggerSystem {
   async trigger(
     eventName: string,
     event: { type: string; data: Record<string, unknown> },
+    depth?: number,
   ): Promise<void> {
+    // debug log：缩进反映事件栈深度
+    if (depth !== undefined) {
+      const indent = '  '.repeat(Math.max(0, depth - 1));
+      console.log(`${indent}[trigger] ${eventName}`);
+    }
     const list = this._handlers.get(eventName);
     if (!list || list.length === 0) return;
     for (const handler of list) {

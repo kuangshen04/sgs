@@ -10,6 +10,7 @@ export type {
   RecoverEventData,
   DrawEventData,
   DieEventData,
+  UseCardEventData,
   TurnEventData,
   RoundEventData,
   GameEventData,

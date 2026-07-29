@@ -10,6 +10,7 @@ import type {
   DrawEventData,
   RecoverEventData,
   DieEventData,
+  UseCardEventData,
 } from './events/index.js';
 
 // ============================================================
@@ -51,7 +52,7 @@ export function createDeck(): Card[] {
         } else {
           type = CardType.Tao;
         }
-        deck.push({ id: nextCardId++, type, suit, number: num });
+        deck.push({ id: nextCardId++, type, name: type, suit, number: num });
       }
     }
   }
@@ -185,6 +186,76 @@ export async function die(
 
       // 胜负判定：阻止游戏继续，沿事件栈向上传播
       event.getParent(EventType.Game)?.prevent();
+    });
+}
+
+// ============================================================
+// 卡牌效果 & useCard
+// ============================================================
+
+type CardContentFn = (
+  data: UseCardEventData,
+  event: GameEvent<UseCardEventData>,
+) => Promise<void>;
+
+/** 杀：目标需出闪，否则受到1点伤害 */
+const shaContent: CardContentFn = async (data) => {
+  const attacker = data.player;
+  const defender = data.targets[0];
+  console.log(
+    `  ${attacker.name} 对 ${defender.name} 使用了 🗡️杀 (${data.card.suit}${displayNumber(data.card.number)})`,
+  );
+
+  const shanIdx = defender.hand.findIndex((c) => c.type === CardType.Shan);
+  if (shanIdx >= 0) {
+    const shanCard = defender.hand.splice(shanIdx, 1)[0];
+    gs().discardPile.push(shanCard);
+    console.log(
+      `  ${defender.name} 使用了 🛡️闪 (${shanCard.suit}${displayNumber(shanCard.number)})，抵消了攻击`,
+    );
+  } else {
+    await damage({ target: defender, source: attacker, amount: 1 });
+  }
+};
+
+/** 桃：回复1点体力 */
+const taoContent: CardContentFn = async (data) => {
+  const player = data.player;
+  const before = player.hp;
+  await recover({ target: player, amount: 1 });
+  console.log(
+    `  ${player.name} 使用了 🍑桃 (${data.card.suit}${displayNumber(data.card.number)})，` +
+    `体力恢复到 ${before}→${player.hp}/${player.maxHp}`,
+  );
+};
+
+/** 卡牌类型 → 效果函数 */
+const cardContents: Partial<Record<CardType, CardContentFn>> = {
+  [CardType.Sha]: shaContent,
+  [CardType.Tao]: taoContent,
+  // 闪不在此列——闪是响应牌，不走主动使用路径
+};
+
+/** 使用一张牌 */
+export async function useCard(
+  data: UseCardEventData,
+): Promise<GameEvent<UseCardEventData>> {
+  return new GameEvent<UseCardEventData>(EventType.UseCard, data)
+    .execute(async (event) => {
+      // 从手牌移除
+      const idx = event.data.player.hand.findIndex(
+        (c) => c.id === event.data.card.id,
+      );
+      if (idx >= 0) {
+        event.data.player.hand.splice(idx, 1);
+      }
+      // 移入弃牌堆
+      gs().discardPile.push(event.data.card);
+      // 执行牌的效果
+      const content = cardContents[event.data.card.type];
+      if (content) {
+        await content(event.data, event);
+      }
     });
 }
 

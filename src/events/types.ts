@@ -2,7 +2,7 @@
 // 事件系统 — 事件名常量 & 事件数据接口
 // ============================================================
 
-import type { Player } from '../types.js';
+import type { Card, Player } from '../types.js';
 
 /** 事件名常量 */
 export const EventType = {
@@ -11,6 +11,7 @@ export const EventType = {
   Recover: 'recover',
   Draw: 'draw',
   Die: 'die',
+  UseCard: 'useCard',
   // Boundary 事件 — 游戏/轮/回合/阶段的分界标记
   Game: 'game',
   Round: 'round',
@@ -42,6 +43,12 @@ export interface DrawEventData {
 
 export interface DieEventData {
   player: Player;
+}
+
+export interface UseCardEventData {
+  player: Player;
+  card: Card;
+  targets: Player[];
 }
 
 export interface TurnEventData {
