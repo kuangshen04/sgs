@@ -32,6 +32,17 @@ function aiChoosePlay(
   if (tao && player.hp < player.maxHp) {
     return { card: tao, targets: [player] };
   }
+  // 有无中生有 → 对自己用（免费摸牌）
+  const wuzhong = player.hand.find((c) => c.type === CardType.WuZhong);
+  if (wuzhong) {
+    return { card: wuzhong, targets: [player] };
+  }
+  // 有决斗且有杀 → 对敌人用（有胜算才打）
+  const juedou = player.hand.find((c) => c.type === CardType.JueDou);
+  const hasSha = player.hand.some((c) => c.type === CardType.Sha);
+  if (juedou && hasSha) {
+    return { card: juedou, targets: [enemy] };
+  }
   // 有杀且本回合未出过杀 → 对敌人用杀
   const sha = player.hand.find((c) => c.type === CardType.Sha);
   if (sha && !shaUsed) {
@@ -60,7 +71,8 @@ function doDiscard(player: Player): void {
   );
 
   const priority: Record<string, number> = {
-    [CardType.Sha]: 0, [CardType.Shan]: 1, [CardType.Tao]: 2,
+    [CardType.JueDou]: 0, [CardType.Sha]: 0, [CardType.Shan]: 1,
+    [CardType.WuZhong]: 2, [CardType.Tao]: 3,
   };
   const sorted = [...player.hand].sort(
     (a, b) => priority[a.type] - priority[b.type],

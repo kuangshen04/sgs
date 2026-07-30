@@ -45,12 +45,16 @@ export function createDeck(): Card[] {
     for (const suit of suits) {
       for (const num of numbers) {
         let type: CardType;
-        if (suit === '♠' || suit === '♣') {
-          type = CardType.Sha;
+        if (suit === '♠') {
+          type = num === 1 ? CardType.JueDou : CardType.Sha;
         } else if (suit === '♥') {
-          type = num === 2 ? CardType.Tao : CardType.Shan;
+          if (num === 2) type = CardType.Tao;
+          else if ([7, 8, 9, 11].includes(num)) type = CardType.WuZhong;
+          else type = CardType.Shan;
+        } else if (suit === '♣') {
+          type = num === 1 ? CardType.JueDou : CardType.Sha;
         } else {
-          type = CardType.Tao;
+          type = num === 1 ? CardType.JueDou : CardType.Tao;
         }
         deck.push({ id: nextCardId++, type, name: type, suit, number: num });
       }
@@ -229,10 +233,51 @@ const taoContent: CardContentFn = async (data) => {
   );
 };
 
+/** 无中生有：摸2张牌 */
+const wuzhongContent: CardContentFn = async (data) => {
+  const player = data.player;
+  const before = player.hand.length;
+  await drawCards({ target: player, count: 2 });
+  console.log(
+    `  ${player.name} 使用了 📜无中生有 (${data.card.suit}${displayNumber(data.card.number)})，` +
+    `摸了 ${player.hand.length - before} 张牌`,
+  );
+};
+
+/** 决斗：由对方开始，双方轮流打出杀，先打不出的受到1点伤害 */
+const juedouContent: CardContentFn = async (data) => {
+  const initiator = data.player;
+  const target = data.targets[0];
+  console.log(
+    `  ${initiator.name} 对 ${target.name} 使用了 ⚔️决斗 (${data.card.suit}${displayNumber(data.card.number)})`,
+  );
+
+  // 由目标开始（对方开始）
+  let current = target;
+  let opponent = initiator;
+
+  while (true) {
+    const shaIdx = current.hand.findIndex((c) => c.type === CardType.Sha);
+    if (shaIdx < 0) {
+      console.log(`  ${current.name} 无法打出杀！`);
+      await damage({ target: current, source: opponent, amount: 1 });
+      return;
+    }
+    const shaCard = current.hand.splice(shaIdx, 1)[0];
+    gs().discardPile.push(shaCard);
+    console.log(
+      `  ${current.name} 打出了 🗡️杀 (${shaCard.suit}${displayNumber(shaCard.number)})`,
+    );
+    [current, opponent] = [opponent, current];
+  }
+};
+
 /** 卡牌类型 → 效果函数 */
 const cardContents: Partial<Record<CardType, CardContentFn>> = {
   [CardType.Sha]: shaContent,
   [CardType.Tao]: taoContent,
+  [CardType.WuZhong]: wuzhongContent,
+  [CardType.JueDou]: juedouContent,
   // 闪不在此列——闪是响应牌，不走主动使用路径
 };
 
@@ -265,9 +310,11 @@ export async function useCard(
 
 export function cardEmoji(type: CardType): string {
   switch (type) {
-    case CardType.Sha:  return '🗡️';
-    case CardType.Shan: return '🛡️';
-    case CardType.Tao:  return '🍑';
+    case CardType.Sha:     return '🗡️';
+    case CardType.Shan:    return '🛡️';
+    case CardType.Tao:     return '🍑';
+    case CardType.WuZhong: return '📜';
+    case CardType.JueDou:  return '⚔️';
   }
 }
 
@@ -285,7 +332,8 @@ function handDisplay(hand: Card[]): string {
   if (hand.length === 0) return '（空）';
   const sorted = [...hand].sort((a, b) => {
     const order: Record<string, number> = {
-      [CardType.Sha]: 0, [CardType.Shan]: 1, [CardType.Tao]: 2,
+      [CardType.Sha]: 0, [CardType.JueDou]: 1, [CardType.Shan]: 2,
+      [CardType.WuZhong]: 3, [CardType.Tao]: 4,
     };
     return (order[a.type] ?? 0) - (order[b.type] ?? 0);
   });
