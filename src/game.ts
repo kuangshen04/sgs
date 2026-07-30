@@ -1,6 +1,9 @@
 // ============================================================
-// 三国杀最小原型 — 核心游戏逻辑
-// 事件系统已接入，所有游戏动作通过工厂函数触发
+// 三国杀最小原型 — 游戏引擎
+//
+// 定义卡牌接口（CardDef）+ 注册表（cardRegistry）。
+// 卡牌实现（cards.ts）调用 cardRegistry.register() 注册自身。
+// 引擎不依赖任何具体卡牌实现。
 // ============================================================
 
 import { Card, CardType, GameState, Hero, Player } from './types.js';
@@ -14,12 +17,86 @@ import type {
 } from './events/index.js';
 
 // ============================================================
-// 游戏状态引用（供工厂函数在 content 中访问全局状态）
+// 卡牌定义接口 & 注册表
+// ============================================================
+
+/** content 函数可访问的游戏 API */
+export interface GameAPI {
+  gs(): GameState;
+  damage(data: DamageEventData): Promise<GameEvent<DamageEventData>>;
+  recover(data: RecoverEventData): Promise<GameEvent<RecoverEventData>>;
+  drawCards(data: DrawEventData): Promise<GameEvent<DrawEventData>>;
+}
+
+/** 卡牌效果函数 */
+export type CardContentFn = (
+  data: UseCardEventData,
+  event: GameEvent<UseCardEventData>,
+  api: GameAPI,
+) => Promise<void>;
+
+/** 一张牌的完整定义（由 cards.ts 注册） */
+export interface CardDef {
+  type: CardType;
+  name: string;
+  emoji: string;
+  content: CardContentFn;
+  ai: {
+    canUse: (player: Player, enemy: Player, shaUsed: boolean) => boolean;
+    targets: (player: Player, enemy: Player) => Player[];
+    usePriority: number;     // AI 使用优先级（越大越优先）
+    discardPriority: number; // 弃牌优先级（越小越先弃）
+  };
+}
+
+/** 牌堆配置条目 */
+export interface DeckEntry {
+  type: CardType;
+  suit: string;
+  numbers: number[];
+}
+
+// --- 注册表 ---
+
+const _defs = new Map<CardType, CardDef>();
+
+export const cardRegistry = {
+  register(def: CardDef): void {
+    _defs.set(def.type, def);
+  },
+  get(type: CardType): CardDef | undefined {
+    return _defs.get(type);
+  },
+  /** 遍历所有已注册的 CardDef */
+  all(): IterableIterator<CardDef> {
+    return _defs.values();
+  },
+};
+
+// --- 从注册表派生的工具函数 ---
+
+/** 卡牌类型 → emoji */
+export function cardEmoji(type: CardType): string {
+  return cardRegistry.get(type)?.emoji ?? '❓';
+}
+
+/** 卡牌点数 → 显示字符 */
+export function displayNumber(n: number): string {
+  switch (n) {
+    case 1:  return 'A';
+    case 11: return 'J';
+    case 12: return 'Q';
+    case 13: return 'K';
+    default: return String(n);
+  }
+}
+
+// ============================================================
+// 游戏状态引用
 // ============================================================
 
 let _gs: GameState | null = null;
 
-/** 主循环调用，设置当前游戏实例 */
 export function setGameState(gs: GameState): void {
   _gs = gs;
 }
@@ -35,28 +112,21 @@ export function gs(): GameState {
 
 let nextCardId = 1;
 
-/** 创建一副简化牌堆（104张，2副标准扑克合并） */
-export function createDeck(): Card[] {
-  const suits = ['♠', '♥', '♣', '♦'];
-  const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+/** 根据牌堆配置生成牌堆（每副牌 ×2） */
+export function createDeck(config: DeckEntry[]): Card[] {
   const deck: Card[] = [];
-
-  for (let copy = 0; copy < 2; copy++) {
-    for (const suit of suits) {
-      for (const num of numbers) {
-        let type: CardType;
-        if (suit === '♠') {
-          type = num === 1 ? CardType.JueDou : CardType.Sha;
-        } else if (suit === '♥') {
-          if (num === 2) type = CardType.Tao;
-          else if ([7, 8, 9, 11].includes(num)) type = CardType.WuZhong;
-          else type = CardType.Shan;
-        } else if (suit === '♣') {
-          type = num === 1 ? CardType.JueDou : CardType.Sha;
-        } else {
-          type = num === 1 ? CardType.JueDou : CardType.Tao;
-        }
-        deck.push({ id: nextCardId++, type, name: type, suit, number: num });
+  for (const entry of config) {
+    const def = cardRegistry.get(entry.type);
+    if (!def) {
+      console.warn(`CardDef "${entry.type}" not registered, skipping.`);
+      continue;
+    }
+    for (let copy = 0; copy < 2; copy++) {
+      for (const num of entry.numbers) {
+        deck.push({
+          id: nextCardId++, type: entry.type,
+          name: def.name, suit: entry.suit, number: num,
+        });
       }
     }
   }
@@ -77,7 +147,7 @@ export function shuffle(deck: Card[]): Card[] {
 // 游戏初始化
 // ============================================================
 
-export function createGame(): GameState {
+export function createGame(deckConfig: DeckEntry[]): GameState {
   const liuBei: Hero = { name: '刘备', maxHp: 4 };
   const caoAcao: Hero = { name: '曹操', maxHp: 4 };
 
@@ -92,7 +162,7 @@ export function createGame(): GameState {
     hand: [], alive: true,
   };
 
-  const deck = shuffle(createDeck());
+  const deck = shuffle(createDeck(deckConfig));
   const discardPile: Card[] = [];
 
   // 起始手牌（不走事件）
@@ -133,7 +203,6 @@ function drawCardsFromDeck(
 // Action 工厂函数
 // ============================================================
 
-/** 造成伤害 */
 export async function damage(
   data: DamageEventData,
 ): Promise<GameEvent<DamageEventData>> {
@@ -150,7 +219,6 @@ export async function damage(
     });
 }
 
-/** 恢复体力 */
 export async function recover(
   data: RecoverEventData,
 ): Promise<GameEvent<RecoverEventData>> {
@@ -163,7 +231,6 @@ export async function recover(
     });
 }
 
-/** 摸牌 */
 export async function drawCards(
   data: DrawEventData,
 ): Promise<GameEvent<DrawEventData>> {
@@ -176,7 +243,6 @@ export async function drawCards(
     });
 }
 
-/** 死亡结算 */
 export async function die(
   data: DieEventData,
 ): Promise<GameEvent<DieEventData>> {
@@ -187,101 +253,25 @@ export async function die(
       state.gameOver = true;
       state.winner = state.players.find((p) => p !== event.data.player)!;
       console.log(`\n💀 ${event.data.player.name} 阵亡！`);
-
-      // 胜负判定：阻止游戏继续，沿事件栈向上传播
       event.getParent(EventType.Game)?.prevent();
     });
 }
 
 // ============================================================
-// 卡牌效果 & useCard
+// gameAPI — CardContentFn 通过此对象访问引擎
 // ============================================================
 
-type CardContentFn = (
-  data: UseCardEventData,
-  event: GameEvent<UseCardEventData>,
-) => Promise<void>;
-
-/** 杀：目标需出闪，否则受到1点伤害 */
-const shaContent: CardContentFn = async (data) => {
-  const attacker = data.player;
-  const defender = data.targets[0];
-  console.log(
-    `  ${attacker.name} 对 ${defender.name} 使用了 🗡️杀 (${data.card.suit}${displayNumber(data.card.number)})`,
-  );
-
-  const shanIdx = defender.hand.findIndex((c) => c.type === CardType.Shan);
-  if (shanIdx >= 0) {
-    const shanCard = defender.hand.splice(shanIdx, 1)[0];
-    gs().discardPile.push(shanCard);
-    console.log(
-      `  ${defender.name} 使用了 🛡️闪 (${shanCard.suit}${displayNumber(shanCard.number)})，抵消了攻击`,
-    );
-  } else {
-    await damage({ target: defender, source: attacker, amount: 1 });
-  }
+const gameAPI: GameAPI = {
+  gs: () => gs(),
+  damage,
+  recover,
+  drawCards,
 };
 
-/** 桃：回复1点体力 */
-const taoContent: CardContentFn = async (data) => {
-  const player = data.player;
-  const before = player.hp;
-  await recover({ target: player, amount: 1 });
-  console.log(
-    `  ${player.name} 使用了 🍑桃 (${data.card.suit}${displayNumber(data.card.number)})，` +
-    `体力恢复到 ${before}→${player.hp}/${player.maxHp}`,
-  );
-};
+// ============================================================
+// useCard — 通过 cardRegistry 分发
+// ============================================================
 
-/** 无中生有：摸2张牌 */
-const wuzhongContent: CardContentFn = async (data) => {
-  const player = data.player;
-  const before = player.hand.length;
-  await drawCards({ target: player, count: 2 });
-  console.log(
-    `  ${player.name} 使用了 📜无中生有 (${data.card.suit}${displayNumber(data.card.number)})，` +
-    `摸了 ${player.hand.length - before} 张牌`,
-  );
-};
-
-/** 决斗：由对方开始，双方轮流打出杀，先打不出的受到1点伤害 */
-const juedouContent: CardContentFn = async (data) => {
-  const initiator = data.player;
-  const target = data.targets[0];
-  console.log(
-    `  ${initiator.name} 对 ${target.name} 使用了 ⚔️决斗 (${data.card.suit}${displayNumber(data.card.number)})`,
-  );
-
-  // 由目标开始（对方开始）
-  let current = target;
-  let opponent = initiator;
-
-  while (true) {
-    const shaIdx = current.hand.findIndex((c) => c.type === CardType.Sha);
-    if (shaIdx < 0) {
-      console.log(`  ${current.name} 无法打出杀！`);
-      await damage({ target: current, source: opponent, amount: 1 });
-      return;
-    }
-    const shaCard = current.hand.splice(shaIdx, 1)[0];
-    gs().discardPile.push(shaCard);
-    console.log(
-      `  ${current.name} 打出了 🗡️杀 (${shaCard.suit}${displayNumber(shaCard.number)})`,
-    );
-    [current, opponent] = [opponent, current];
-  }
-};
-
-/** 卡牌类型 → 效果函数 */
-const cardContents: Partial<Record<CardType, CardContentFn>> = {
-  [CardType.Sha]: shaContent,
-  [CardType.Tao]: taoContent,
-  [CardType.WuZhong]: wuzhongContent,
-  [CardType.JueDou]: juedouContent,
-  // 闪不在此列——闪是响应牌，不走主动使用路径
-};
-
-/** 使用一张牌 */
 export async function useCard(
   data: UseCardEventData,
 ): Promise<GameEvent<UseCardEventData>> {
@@ -296,10 +286,10 @@ export async function useCard(
       }
       // 移入弃牌堆
       gs().discardPile.push(event.data.card);
-      // 执行牌的效果
-      const content = cardContents[event.data.card.type];
-      if (content) {
-        await content(event.data, event);
+      // 查注册表 → 执行效果
+      const def = cardRegistry.get(event.data.card.type);
+      if (def) {
+        await def.content(event.data, event, gameAPI);
       }
     });
 }
@@ -308,34 +298,12 @@ export async function useCard(
 // 显示
 // ============================================================
 
-export function cardEmoji(type: CardType): string {
-  switch (type) {
-    case CardType.Sha:     return '🗡️';
-    case CardType.Shan:    return '🛡️';
-    case CardType.Tao:     return '🍑';
-    case CardType.WuZhong: return '📜';
-    case CardType.JueDou:  return '⚔️';
-  }
-}
-
-export function displayNumber(n: number): string {
-  switch (n) {
-    case 1:  return 'A';
-    case 11: return 'J';
-    case 12: return 'Q';
-    case 13: return 'K';
-    default: return String(n);
-  }
-}
-
 function handDisplay(hand: Card[]): string {
   if (hand.length === 0) return '（空）';
   const sorted = [...hand].sort((a, b) => {
-    const order: Record<string, number> = {
-      [CardType.Sha]: 0, [CardType.JueDou]: 1, [CardType.Shan]: 2,
-      [CardType.WuZhong]: 3, [CardType.Tao]: 4,
-    };
-    return (order[a.type] ?? 0) - (order[b.type] ?? 0);
+    const pa = cardRegistry.get(a.type)?.ai.discardPriority ?? 0;
+    const pb = cardRegistry.get(b.type)?.ai.discardPriority ?? 0;
+    return pa - pb;
   });
   return sorted
     .map((c) => `${cardEmoji(c.type)}${c.suit}${displayNumber(c.number)}`)

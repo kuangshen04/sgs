@@ -1,12 +1,10 @@
 // ============================================================
 // 三国杀最小原型 — 入口
-// 事件驱动：game → round → turn → phase → action 全自动
-// trigger log 由 TriggerSystem.trigger() 统一输出
 // ============================================================
 
-import {
-  createGame, setGameState, printState,
-} from './game.js';
+import './cards.js';  // 触发卡牌注册（side-effect import）
+import { STANDARD_DECK } from './cards.js';
+import { createGame, setGameState, printState } from './game.js';
 import { runGame } from './gameFlow.js';
 
 // ============================================================
@@ -14,13 +12,12 @@ import { runGame } from './gameFlow.js';
 // ============================================================
 
 async function main() {
-  const game = createGame();
+  const game = createGame(STANDARD_DECK);
   setGameState(game);
 
   console.clear();
   printState(game);
 
-  // 一整局就是一个事件：game.before → 主循环 → game.after
   await runGame();
 
   console.log('\n' + '='.repeat(42));

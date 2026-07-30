@@ -1,10 +1,11 @@
 // ============================================================
 // 三国杀最小原型 — 基本游戏流程
 // game / round / turn / phase 边界事件工厂
-// 出牌/弃牌内部逻辑
+// 出牌/弃牌逻辑
 // ============================================================
 
-import { Card, CardType, GameState, Player } from './types.js';
+import { CardType, GameState, Player } from './types.js';
+import type { Card } from './types.js';
 import { EventType, GameEvent } from './events/index.js';
 import type {
   TurnEventData,
@@ -15,7 +16,8 @@ import type {
 import {
   gs,
   drawCards, useCard,
-  printState, displayNumber, cardEmoji,
+  printState,
+  cardRegistry, cardEmoji, displayNumber,
 } from './game.js';
 
 // ============================================================
@@ -27,28 +29,16 @@ function aiChoosePlay(
   enemy: Player,
   shaUsed: boolean,
 ): { card: Card; targets: Player[] } | null {
-  // 有桃且受伤 → 对自己用桃
-  const tao = player.hand.find((c) => c.type === CardType.Tao);
-  if (tao && player.hp < player.maxHp) {
-    return { card: tao, targets: [player] };
-  }
-  // 有无中生有 → 对自己用（免费摸牌）
-  const wuzhong = player.hand.find((c) => c.type === CardType.WuZhong);
-  if (wuzhong) {
-    return { card: wuzhong, targets: [player] };
-  }
-  // 有决斗且有杀 → 对敌人用（有胜算才打）
-  const juedou = player.hand.find((c) => c.type === CardType.JueDou);
-  const hasSha = player.hand.some((c) => c.type === CardType.Sha);
-  if (juedou && hasSha) {
-    return { card: juedou, targets: [enemy] };
-  }
-  // 有杀且本回合未出过杀 → 对敌人用杀
-  const sha = player.hand.find((c) => c.type === CardType.Sha);
-  if (sha && !shaUsed) {
-    return { card: sha, targets: [enemy] };
-  }
-  return null;
+  // 遍历手牌，找有 CardDef 且 canUse 为 true 的，按 usePriority 降序取最佳
+  const options = player.hand
+    .map((card) => ({ card, def: cardRegistry.get(card.type) }))
+    .filter(({ def }) => def && def.ai.canUse(player, enemy, shaUsed))
+    .sort((a, b) => b.def!.ai.usePriority - a.def!.ai.usePriority);
+
+  if (options.length === 0) return null;
+
+  const { card, def } = options[0];
+  return { card, targets: def!.ai.targets(player, enemy) };
 }
 
 // ============================================================
@@ -70,12 +60,10 @@ function doDiscard(player: Player): void {
     `[弃牌阶段] ${player.name} 手牌数(${player.hand.length}) > 体力(${player.hp})，需要弃置 ${excess} 张`,
   );
 
-  const priority: Record<string, number> = {
-    [CardType.JueDou]: 0, [CardType.Sha]: 0, [CardType.Shan]: 1,
-    [CardType.WuZhong]: 2, [CardType.Tao]: 3,
-  };
+  // 按 discardPriority 升序排列（越小越先弃）
   const sorted = [...player.hand].sort(
-    (a, b) => priority[a.type] - priority[b.type],
+    (a, b) => (cardRegistry.get(a.type)?.ai.discardPriority ?? 0)
+            - (cardRegistry.get(b.type)?.ai.discardPriority ?? 0),
   );
   const toDiscard = new Set(sorted.slice(0, excess).map((c) => c.id));
 
