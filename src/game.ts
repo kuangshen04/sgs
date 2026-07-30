@@ -20,19 +20,10 @@ import type {
 // 卡牌定义接口 & 注册表
 // ============================================================
 
-/** content 函数可访问的游戏 API */
-export interface GameAPI {
-  gs(): GameState;
-  damage(data: DamageEventData): Promise<GameEvent<DamageEventData>>;
-  recover(data: RecoverEventData): Promise<GameEvent<RecoverEventData>>;
-  drawCards(data: DrawEventData): Promise<GameEvent<DrawEventData>>;
-}
-
 /** 卡牌效果函数 */
 export type CardContentFn = (
   data: UseCardEventData,
   event: GameEvent<UseCardEventData>,
-  api: GameAPI,
 ) => Promise<void>;
 
 /** 一张牌的完整定义（由 cards.ts 注册） */
@@ -258,17 +249,6 @@ export async function die(
 }
 
 // ============================================================
-// gameAPI — CardContentFn 通过此对象访问引擎
-// ============================================================
-
-const gameAPI: GameAPI = {
-  gs: () => gs(),
-  damage,
-  recover,
-  drawCards,
-};
-
-// ============================================================
 // useCard — 通过 cardRegistry 分发
 // ============================================================
 
@@ -289,7 +269,7 @@ export async function useCard(
       // 查注册表 → 执行效果
       const def = cardRegistry.get(event.data.card.type);
       if (def) {
-        await def.content(event.data, event, gameAPI);
+        await def.content(event.data, event);
       }
     });
 }
