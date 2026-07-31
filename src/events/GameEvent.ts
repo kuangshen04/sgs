@@ -41,7 +41,7 @@ export class GameEvent<T = Record<string, unknown>> {
     this.type = type;
     this.data = data;
     this.game = game;
-    this._parent = eventStack.top;
+    this._parent = game.eventStack.top;
   }
 
   /** 当前生命周期阶段 */
@@ -119,7 +119,7 @@ export class GameEvent<T = Record<string, unknown>> {
     }
 
     this._phase = 'executing';
-    eventStack.push(this);
+    this.game.eventStack.push(this);
 
     try {
       await triggerSystem.trigger(`${this.type}.before`, this);
@@ -133,7 +133,7 @@ export class GameEvent<T = Record<string, unknown>> {
         throw e;
       }
     } finally {
-      eventStack.pop();
+      this.game.eventStack.pop();
       this._phase = 'completed';
     }
 
@@ -142,27 +142,32 @@ export class GameEvent<T = Record<string, unknown>> {
 }
 
 // ============================================================
-// EventStack — 模块级单例
+// EventStack — 事件执行栈（随局创建，挂在 Game.eventStack 上）
 // ============================================================
 
-const _stack: GameEvent<any>[] = [];
-
-export const eventStack = {
+export interface EventStack {
   /** 当前栈顶事件（无事件时为 null） */
-  get top(): GameEvent<any> | null {
-    return _stack.length > 0 ? _stack[_stack.length - 1] : null;
-  },
-
-  push(event: GameEvent<any>): void {
-    _stack.push(event);
-  },
-
-  pop(): GameEvent<any> {
-    return _stack.pop()!;
-  },
-
+  readonly top: GameEvent<any> | null;
+  push(event: GameEvent<any>): void;
+  pop(): GameEvent<any>;
   /** 当前事件栈深度 */
-  get depth(): number {
-    return _stack.length;
-  },
-};
+  readonly depth: number;
+}
+
+export function createEventStack(): EventStack {
+  const stack: GameEvent<any>[] = [];
+  return {
+    get top(): GameEvent<any> | null {
+      return stack.length > 0 ? stack[stack.length - 1] : null;
+    },
+    push(event: GameEvent<any>): void {
+      stack.push(event);
+    },
+    pop(): GameEvent<any> {
+      return stack.pop()!;
+    },
+    get depth(): number {
+      return stack.length;
+    },
+  };
+}

@@ -7,13 +7,14 @@
 // ============================================================
 
 import { Card, CardType, GameState, Hero, Player, VictoryCondition } from './types.js';
-import { EventType, GameEvent } from './events/index.js';
+import { EventType, GameEvent, createEventStack } from './events/index.js';
 import type {
   DamageEventData,
   DrawEventData,
   RecoverEventData,
   DieEventData,
   UseCardEventData,
+  EventStack,
 } from './events/index.js';
 import type { Deciders } from './choose.js';
 
@@ -96,6 +97,8 @@ export interface Game {
   state: GameState;
   /** 全局注入的出牌策略（choose() 优先级：调用参数 > 此处 > 默认 AI） */
   deciders: Deciders;
+  /** 本局的事件执行栈（随局隔离） */
+  eventStack: EventStack;
 }
 
 // ============================================================
@@ -182,6 +185,7 @@ export function createGame(
       victoryCheck: options?.victoryCheck ?? lastManStanding,
     },
     deciders: options?.deciders ?? {},
+    eventStack: createEventStack(),
   };
 }
 
