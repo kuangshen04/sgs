@@ -62,6 +62,14 @@ export interface ChooseParams {
   targetDecide?: TargetDecider;
 }
 
+// ---- 全局注入（挂在 Game.deciders 上） ----
+
+/** 出牌策略集合：可全局注入到游戏实例，choose() 优先使用调用参数 */
+export interface Deciders {
+  cardDecide?: CardDecider;
+  targetDecide?: TargetDecider;
+}
+
 // ============================================================
 // Phase 1: 选牌（引擎层 — 规则）
 // ============================================================
@@ -171,8 +179,9 @@ export async function choose(
   params: ChooseParams,
 ): Promise<{ card: Card; targets: Player[] } | null> {
   const { player, shaUsed, cardDecide, targetDecide } = params;
-  const cd = cardDecide ?? defaultCardDecider;
-  const td = targetDecide ?? defaultTargetDecider;
+  // 优先级：调用参数 > 全局注入 > 默认 AI
+  const cd = cardDecide ?? game.deciders.cardDecide ?? defaultCardDecider;
+  const td = targetDecide ?? game.deciders.targetDecide ?? defaultTargetDecider;
 
   // Phase 1: 选牌
   const cardOptions = computeCardOptions(game, player, shaUsed);

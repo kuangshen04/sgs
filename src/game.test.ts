@@ -27,7 +27,7 @@ import {
   computeTargetOptions,
   choose,
 } from './choose.js';
-import type { CardDecider } from './choose.js';
+import type { CardDecider, Deciders } from './choose.js';
 
 import { playPhase } from './gameFlow.js';
 
@@ -710,5 +710,78 @@ describe('playPhase', () => {
     // 默认 AI：决斗(70) → 杀(60)，两轮循环
     expect(target.hp).toBe(hpBefore - 2);
     expect(player.hand.length).toBe(0);
+  });
+});
+
+// ============================================================
+// 全局注入 decider（Game.deciders）
+// ============================================================
+
+describe('全局注入 decider', () => {
+  /** 创建带全局 decider 的测试局（清空手牌） */
+  function gameWithDeciders(deciders: Deciders): Game {
+    const g = createGame(STANDARD_DECK, testHeroes, { deciders });
+    for (const p of g.state.players) p.hand = [];
+    return g;
+  }
+
+  it('choose 使用 game.deciders.cardDecide', async () => {
+    const g = gameWithDeciders({
+      cardDecide: (options) => {
+        const jd = options.find((o) => o.card.type === CardType.JueDou);
+        return jd ? { cardId: jd.card.id } : null;
+      },
+    });
+    const player = g.state.players[0];
+    giveHand(player, CardType.Sha, CardType.JueDou);
+
+    const result = await choose(g, { player, shaUsed: false });
+    expect(result).not.toBeNull();
+    expect(result!.card.type).toBe(CardType.JueDou);
+  });
+
+  it('choose 参数注入优先于 game.deciders', async () => {
+    const g = gameWithDeciders({ cardDecide: () => null }); // 全局：不出牌
+    const player = g.state.players[0];
+    giveHand(player, CardType.Sha);
+
+    // 调用参数覆盖全局 → 出杀
+    const result = await choose(g, {
+      player, shaUsed: false,
+      cardDecide: (options) => ({ cardId: options[0].card.id }),
+    });
+    expect(result).not.toBeNull();
+    expect(result!.card.type).toBe(CardType.Sha);
+  });
+
+  it('playPhase 使用全局注入的 cardDecide 循环出牌', async () => {
+    const g = gameWithDeciders({
+      cardDecide: (options) => {
+        const sha = options.find((o) => o.card.type === CardType.Sha);
+        return sha ? { cardId: sha.card.id } : null;
+      },
+    });
+    const player = g.state.players[0];
+    const target = g.state.players[1];
+    giveHand(player, CardType.Sha);
+    const hpBefore = target.hp;
+
+    await playPhase(g, { player, round: 1 });
+
+    expect(player.hand.length).toBe(0);
+    expect(target.hp).toBe(hpBefore - 1);
+  });
+
+  it('全局注入非法 targetDecider → 校验拒绝，牌留在手上', async () => {
+    // 南蛮入侵只选 1 个目标 → targetCount=all 校验失败
+    const g = gameWithDeciders({
+      targetDecide: () => ({ targetIndices: [1] }),
+    });
+    const player = g.state.players[0];
+    giveHand(player, CardType.NanMan);
+
+    await playPhase(g, { player, round: 1 });
+
+    expect(player.hand.length).toBe(1);
   });
 });

@@ -15,6 +15,7 @@ import type {
   DieEventData,
   UseCardEventData,
 } from './events/index.js';
+import type { Deciders } from './choose.js';
 
 // ============================================================
 // 卡牌定义接口 & 注册表
@@ -93,6 +94,8 @@ export function displayNumber(n: number): string {
 
 export interface Game {
   state: GameState;
+  /** 全局注入的出牌策略（choose() 优先级：调用参数 > 此处 > 默认 AI） */
+  deciders: Deciders;
 }
 
 // ============================================================
@@ -145,10 +148,16 @@ export function lastManStanding(state: GameState): Player | null {
 // 游戏初始化
 // ============================================================
 
+/** createGame 的可选注入项 */
+export interface CreateGameOptions {
+  victoryCheck?: VictoryCondition;
+  deciders?: Deciders;
+}
+
 export function createGame(
   deckConfig: DeckEntry[],
   heroes: Hero[],
-  victoryCheck?: VictoryCondition,
+  options?: CreateGameOptions,
 ): Game {
   const players: Player[] = heroes.map((h) => ({
     name: h.name, hero: h,
@@ -170,8 +179,9 @@ export function createGame(
       currentIndex: 0,
       deck, discardPile,
       round: 1, gameOver: false, winner: null,
-      victoryCheck: victoryCheck ?? lastManStanding,
+      victoryCheck: options?.victoryCheck ?? lastManStanding,
     },
+    deciders: options?.deciders ?? {},
   };
 }
 
