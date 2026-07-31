@@ -10,6 +10,7 @@ export enum CardType {
   Tao = '桃',
   WuZhong = '无中生有',
   JueDou = '决斗',
+  NanMan = '南蛮入侵',
 }
 
 /** 一张卡牌 */

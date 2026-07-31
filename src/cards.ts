@@ -81,6 +81,27 @@ const juedouContent: CardContentFn = async (data, _event) => {
   }
 };
 
+const nanmanContent: CardContentFn = async (data, _event) => {
+  const user = data.player;
+  console.log(
+    `  ${user.name} 使用了 🐘南蛮入侵 (${data.card.suit}${displayNumber(data.card.number)})！` +
+    `所有其他角色必须打出杀`,
+  );
+
+  for (const target of data.targets) {
+    const shaIdx = target.hand.findIndex((c) => c.type === CardType.Sha);
+    if (shaIdx >= 0) {
+      const shaCard = target.hand.splice(shaIdx, 1)[0];
+      gs().discardPile.push(shaCard);
+      console.log(
+        `  ${target.name} 打出了 🗡️杀 (${shaCard.suit}${displayNumber(shaCard.number)})`,
+      );
+    } else {
+      await damage({ target, source: user, amount: 1 });
+    }
+  }
+};
+
 // ============================================================
 // 工具
 // ============================================================
@@ -94,6 +115,11 @@ function otherAlive(user: Player, all: Player[]): Player[] {
 function randomOne(_player: Player, valid: Player[]): Player[] {
   if (valid.length === 0) return [];
   return [valid[Math.floor(Math.random() * valid.length)]];
+}
+
+/** 全选（多目标 AOE 用） */
+function allTargets(_player: Player, valid: Player[]): Player[] {
+  return valid;
 }
 
 // ============================================================
@@ -170,6 +196,20 @@ cardRegistry.register({
   },
 });
 
+cardRegistry.register({
+  type: CardType.NanMan,
+  name: '南蛮入侵',
+  emoji: '🐘',
+  content: nanmanContent,
+  targetFilter: otherAlive,
+  ai: {
+    canUse: () => true,
+    pickTargets: allTargets,
+    usePriority: 75,
+    discardPriority: 0,
+  },
+});
+
 // ============================================================
 // 标准牌堆配置
 // ============================================================
@@ -177,14 +217,16 @@ cardRegistry.register({
 export const STANDARD_DECK: DeckEntry[] = [
   // ♠
   { type: CardType.JueDou, suit: '♠', numbers: [1] },
-  { type: CardType.Sha,    suit: '♠', numbers: [2,3,4,5,6,7,8,9,10,11,12,13] },
+  { type: CardType.NanMan, suit: '♠', numbers: [7, 13] },
+  { type: CardType.Sha,    suit: '♠', numbers: [2,3,4,5,6,8,9,10,11,12] },
   // ♥
   { type: CardType.Tao,     suit: '♥', numbers: [2] },
   { type: CardType.WuZhong, suit: '♥', numbers: [7,8,9,11] },
   { type: CardType.Shan,    suit: '♥', numbers: [1,3,4,5,6,10,12,13] },
   // ♣
   { type: CardType.JueDou, suit: '♣', numbers: [1] },
-  { type: CardType.Sha,    suit: '♣', numbers: [2,3,4,5,6,7,8,9,10,11,12,13] },
+  { type: CardType.NanMan, suit: '♣', numbers: [7] },
+  { type: CardType.Sha,    suit: '♣', numbers: [2,3,4,5,6,8,9,10,11,12,13] },
   // ♦
   { type: CardType.JueDou, suit: '♦', numbers: [1] },
   { type: CardType.Tao,    suit: '♦', numbers: [2,3,4,5,6,7,8,9,10,11,12,13] },
