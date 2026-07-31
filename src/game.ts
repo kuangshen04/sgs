@@ -6,7 +6,7 @@
 // 引擎不依赖任何具体卡牌实现。
 // ============================================================
 
-import { Card, CardType, GameState, Hero, Player } from './types.js';
+import { Card, CardType, GameState, Hero, Player, VictoryCondition } from './types.js';
 import { EventType, GameEvent } from './events/index.js';
 import type {
   DamageEventData,
@@ -32,9 +32,12 @@ export interface CardDef {
   name: string;
   emoji: string;
   content: CardContentFn;
+  /** 此牌可选择的合法目标列表（规则层面） */
+  targetFilter: (user: Player, allPlayers: Player[]) => Player[];
   ai: {
-    canUse: (player: Player, enemy: Player, shaUsed: boolean) => boolean;
-    targets: (player: Player, enemy: Player) => Player[];
+    canUse: (player: Player, allPlayers: Player[], shaUsed: boolean) => boolean;
+    /** 从合法目标中选出实际目标（策略层面） */
+    pickTargets: (player: Player, validTargets: Player[]) => Player[];
     usePriority: number;     // AI 使用优先级（越大越优先）
     discardPriority: number; // 弃牌优先级（越小越先弃）
   };
@@ -135,36 +138,44 @@ export function shuffle(deck: Card[]): Card[] {
 }
 
 // ============================================================
+// 胜利条件
+// ============================================================
+
+/** 吃鸡模式：最后一人存活即获胜 */
+export function lastManStanding(state: GameState): Player | null {
+  const alive = state.players.filter((p) => p.alive);
+  return alive.length === 1 ? alive[0] : null;
+}
+
+// ============================================================
 // 游戏初始化
 // ============================================================
 
-export function createGame(deckConfig: DeckEntry[]): GameState {
-  const liuBei: Hero = { name: '刘备', maxHp: 4 };
-  const caoAcao: Hero = { name: '曹操', maxHp: 4 };
-
-  const player1: Player = {
-    name: '刘备', hero: liuBei,
-    hp: liuBei.maxHp, maxHp: liuBei.maxHp,
+export function createGame(
+  deckConfig: DeckEntry[],
+  heroes: Hero[],
+  victoryCheck?: VictoryCondition,
+): GameState {
+  const players: Player[] = heroes.map((h) => ({
+    name: h.name, hero: h,
+    hp: h.maxHp, maxHp: h.maxHp,
     hand: [], alive: true,
-  };
-  const player2: Player = {
-    name: '曹操', hero: caoAcao,
-    hp: caoAcao.maxHp, maxHp: caoAcao.maxHp,
-    hand: [], alive: true,
-  };
+  }));
 
   const deck = shuffle(createDeck(deckConfig));
   const discardPile: Card[] = [];
 
   // 起始手牌（不走事件）
-  drawCardsFromDeck(player1, deck, discardPile, 4);
-  drawCardsFromDeck(player2, deck, discardPile, 4);
+  for (const p of players) {
+    drawCardsFromDeck(p, deck, discardPile, 4);
+  }
 
   return {
-    players: [player1, player2],
+    players,
     currentIndex: 0,
     deck, discardPile,
     round: 1, gameOver: false, winner: null,
+    victoryCheck: victoryCheck ?? lastManStanding,
   };
 }
 
@@ -241,10 +252,13 @@ export async function die(
   return new GameEvent<DieEventData>(EventType.Die, data)
     .execute(async (event) => {
       event.data.player.alive = false;
-      state.gameOver = true;
-      state.winner = state.players.find((p) => p !== event.data.player)!;
       console.log(`\n💀 ${event.data.player.name} 阵亡！`);
-      event.getParent(EventType.Game)?.prevent();
+      const winner = state.victoryCheck(state);
+      if (winner) {
+        state.gameOver = true;
+        state.winner = winner;
+        event.getParent(EventType.Game)?.prevent();
+      }
     });
 }
 
@@ -295,19 +309,25 @@ function hpBar(current: number, max: number): string {
 }
 
 export function printState(state: GameState): void {
-  const [p1, p2] = state.players;
+  const alive = state.players.filter((p) => p.alive).length;
+  const W = 42; // 内容区宽度
+
+  let body = '';
+  for (const p of state.players) {
+    const marker = p.alive ? ' ' : '💀';
+    const nameCol = padEnd(`${marker}${p.name}`, 5);
+    const hpCol = hpBar(p.hp, p.maxHp);
+    body += `║ ${nameCol} ${padEnd(hpCol, W - 7 - 5)}║\n`;
+    body += `║   手牌: ${padEnd(handDisplay(p.hand), W - 10)}║\n`;
+    body += `║${' '.repeat(W)}║\n`;
+  }
+
   console.log(`
-╔══════════════════════════════════════╗
-║        🏯 三国杀 · 最小原型         ║
-╠══════════════════════════════════════╣
-║ ${padEnd(p1.name, 4)} ${hpBar(p1.hp, p1.maxHp).padEnd(24)}║
-║   手牌: ${padEnd(handDisplay(p1.hand), 28)}║
-║                                      ║
-║ ${padEnd(p2.name, 4)} ${hpBar(p2.hp, p2.maxHp).padEnd(24)}║
-║   手牌: ${padEnd(handDisplay(p2.hand), 28)}║
-║                                      ║
-║ 牌堆: ${String(state.deck.length).padStart(3)}张 | 弃牌堆: ${String(state.discardPile.length).padStart(3)}张 | 第${state.round}轮 ║
-╚══════════════════════════════════════╝`);
+╔${'═'.repeat(W)}╗
+║${padEnd('🏯 三国杀 · 最小原型', W)}║
+╠${'═'.repeat(W)}╣
+${body}║ 牌堆: ${String(state.deck.length).padStart(3)}张 | 弃牌堆: ${String(state.discardPile.length).padStart(3)}张 | 存活: ${alive}人 | 第${state.round}轮 ║
+╚${'═'.repeat(W)}╝`);
 }
 
 function padEnd(str: string, len: number): string {

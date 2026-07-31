@@ -24,21 +24,33 @@ import {
 // 出牌阶段 — AI 决策
 // ============================================================
 
+/** 根据卡牌的 targetFilter 和 pickTargets 选出实际目标 */
+function choose(player: Player, card: Card): Player[] {
+  const def = cardRegistry.get(card.type);
+  if (!def) return [];
+  const valid = def.targetFilter(player, gs().players);
+  if (valid.length === 0) return [];
+  return def.ai.pickTargets(player, valid);
+}
+
 function aiChoosePlay(
   player: Player,
-  enemy: Player,
   shaUsed: boolean,
 ): { card: Card; targets: Player[] } | null {
+  const allPlayers = gs().players;
+
   // 遍历手牌，找有 CardDef 且 canUse 为 true 的，按 usePriority 降序取最佳
   const options = player.hand
     .map((card) => ({ card, def: cardRegistry.get(card.type) }))
-    .filter(({ def }) => def && def.ai.canUse(player, enemy, shaUsed))
+    .filter(({ def }) => def && def.ai.canUse(player, allPlayers, shaUsed))
     .sort((a, b) => b.def!.ai.usePriority - a.def!.ai.usePriority);
 
   if (options.length === 0) return null;
 
-  const { card, def } = options[0];
-  return { card, targets: def!.ai.targets(player, enemy) };
+  const { card } = options[0];
+  const targets = choose(player, card);
+  if (targets.length === 0) return null;
+  return { card, targets };
 }
 
 // ============================================================
@@ -108,20 +120,18 @@ export async function drawPhase(
     });
 }
 
-/** 出牌阶段：AI 自动决策（吃桃 → 出杀） */
+/** 出牌阶段：AI 自动决策 */
 export async function playPhase(
   data: PhaseEventData,
 ): Promise<GameEvent<PhaseEventData>> {
-  const state = gs();
   return new GameEvent<PhaseEventData>(EventType.PlayPhase, data)
     .execute(async (event) => {
       console.log(`[出牌阶段]`);
       const player = event.data.player;
-      const enemy = state.players.find((p) => p !== player)!;
 
       let shaUsed = false;
       while (true) {
-        const action = aiChoosePlay(player, enemy, shaUsed);
+        const action = aiChoosePlay(player, shaUsed);
         if (!action) break;
 
         if (action.card.type === CardType.Sha) shaUsed = true;

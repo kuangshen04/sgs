@@ -5,6 +5,7 @@
 // ============================================================
 
 import { CardType } from './types.js';
+import type { Player } from './types.js';
 import type { CardContentFn, DeckEntry } from './game.js';
 import {
   cardRegistry, displayNumber,
@@ -81,6 +82,21 @@ const juedouContent: CardContentFn = async (data, _event) => {
 };
 
 // ============================================================
+// 工具
+// ============================================================
+
+/** 其他存活玩家 */
+function otherAlive(user: Player, all: Player[]): Player[] {
+  return all.filter((p) => p !== user && p.alive);
+}
+
+/** 随机选一个 */
+function randomOne(_player: Player, valid: Player[]): Player[] {
+  if (valid.length === 0) return [];
+  return [valid[Math.floor(Math.random() * valid.length)]];
+}
+
+// ============================================================
 // 注册
 // ============================================================
 
@@ -89,9 +105,10 @@ cardRegistry.register({
   name: '杀',
   emoji: '🗡️',
   content: shaContent,
+  targetFilter: otherAlive,
   ai: {
     canUse: (_, __, shaUsed) => !shaUsed,
-    targets: (_, enemy) => [enemy],
+    pickTargets: randomOne,
     usePriority: 60,
     discardPriority: 0,
   },
@@ -102,9 +119,10 @@ cardRegistry.register({
   name: '闪',
   emoji: '🛡️',
   content: async () => {}, // 闪不主动使用
+  targetFilter: () => [],
   ai: {
     canUse: () => false,
-    targets: () => [],
+    pickTargets: () => [],
     usePriority: 0,
     discardPriority: 1,
   },
@@ -115,9 +133,10 @@ cardRegistry.register({
   name: '桃',
   emoji: '🍑',
   content: taoContent,
+  targetFilter: (user) => [user],
   ai: {
     canUse: (player) => player.hp < player.maxHp,
-    targets: (player) => [player],
+    pickTargets: (player) => [player],
     usePriority: 90,
     discardPriority: 3,
   },
@@ -128,9 +147,10 @@ cardRegistry.register({
   name: '无中生有',
   emoji: '📜',
   content: wuzhongContent,
+  targetFilter: (user) => [user],
   ai: {
     canUse: () => true,
-    targets: (player) => [player],
+    pickTargets: (user) => [user],
     usePriority: 80,
     discardPriority: 2,
   },
@@ -141,9 +161,10 @@ cardRegistry.register({
   name: '决斗',
   emoji: '⚔️',
   content: juedouContent,
+  targetFilter: otherAlive,
   ai: {
     canUse: (player) => player.hand.some((c) => c.type === CardType.Sha),
-    targets: (_, enemy) => [enemy],
+    pickTargets: randomOne,
     usePriority: 70,
     discardPriority: 0,
   },
