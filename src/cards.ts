@@ -9,14 +9,14 @@ import type { Player } from './types.js';
 import type { CardContentFn, DeckEntry } from './game.js';
 import {
   cardRegistry, displayNumber,
-  gs, damage, recover, drawCards,
+  damage, recover, drawCards,
 } from './game.js';
 
 // ============================================================
 // 卡牌效果
 // ============================================================
 
-const shaContent: CardContentFn = async (data, _event) => {
+const shaContent: CardContentFn = async (game, data, _event) => {
   const attacker = data.player;
   const defender = data.targets[0];
   console.log(
@@ -26,36 +26,36 @@ const shaContent: CardContentFn = async (data, _event) => {
   const shanIdx = defender.hand.findIndex((c) => c.type === CardType.Shan);
   if (shanIdx >= 0) {
     const shanCard = defender.hand.splice(shanIdx, 1)[0];
-    gs().discardPile.push(shanCard);
+    game.state.discardPile.push(shanCard);
     console.log(
       `  ${defender.name} 使用了 🛡️闪 (${shanCard.suit}${displayNumber(shanCard.number)})，抵消了攻击`,
     );
   } else {
-    await damage({ target: defender, source: attacker, amount: 1 });
+    await damage(game, { target: defender, source: attacker, amount: 1 });
   }
 };
 
-const taoContent: CardContentFn = async (data, _event) => {
+const taoContent: CardContentFn = async (game, data, _event) => {
   const player = data.player;
   const before = player.hp;
-  await recover({ target: player, amount: 1 });
+  await recover(game, { target: player, amount: 1 });
   console.log(
     `  ${player.name} 使用了 🍑桃 (${data.card.suit}${displayNumber(data.card.number)})，` +
     `体力恢复到 ${before}→${player.hp}/${player.maxHp}`,
   );
 };
 
-const wuzhongContent: CardContentFn = async (data, _event) => {
+const wuzhongContent: CardContentFn = async (game, data, _event) => {
   const player = data.player;
   const before = player.hand.length;
-  await drawCards({ target: player, count: 2 });
+  await drawCards(game, { target: player, count: 2 });
   console.log(
     `  ${player.name} 使用了 📜无中生有 (${data.card.suit}${displayNumber(data.card.number)})，` +
     `摸了 ${player.hand.length - before} 张牌`,
   );
 };
 
-const juedouContent: CardContentFn = async (data, _event) => {
+const juedouContent: CardContentFn = async (game, data, _event) => {
   const initiator = data.player;
   const target = data.targets[0];
   console.log(
@@ -69,11 +69,11 @@ const juedouContent: CardContentFn = async (data, _event) => {
     const shaIdx = current.hand.findIndex((c) => c.type === CardType.Sha);
     if (shaIdx < 0) {
       console.log(`  ${current.name} 无法打出杀！`);
-      await damage({ target: current, source: opponent, amount: 1 });
+      await damage(game, { target: current, source: opponent, amount: 1 });
       return;
     }
     const shaCard = current.hand.splice(shaIdx, 1)[0];
-    gs().discardPile.push(shaCard);
+    game.state.discardPile.push(shaCard);
     console.log(
       `  ${current.name} 打出了 🗡️杀 (${shaCard.suit}${displayNumber(shaCard.number)})`,
     );
@@ -81,7 +81,7 @@ const juedouContent: CardContentFn = async (data, _event) => {
   }
 };
 
-const nanmanContent: CardContentFn = async (data, _event) => {
+const nanmanContent: CardContentFn = async (game, data, _event) => {
   const user = data.player;
   console.log(
     `  ${user.name} 使用了 🐘南蛮入侵 (${data.card.suit}${displayNumber(data.card.number)})！` +
@@ -92,12 +92,12 @@ const nanmanContent: CardContentFn = async (data, _event) => {
     const shaIdx = target.hand.findIndex((c) => c.type === CardType.Sha);
     if (shaIdx >= 0) {
       const shaCard = target.hand.splice(shaIdx, 1)[0];
-      gs().discardPile.push(shaCard);
+      game.state.discardPile.push(shaCard);
       console.log(
         `  ${target.name} 打出了 🗡️杀 (${shaCard.suit}${displayNumber(shaCard.number)})`,
       );
     } else {
-      await damage({ target, source: user, amount: 1 });
+      await damage(game, { target, source: user, amount: 1 });
     }
   }
 };

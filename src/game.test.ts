@@ -15,24 +15,21 @@ import {
   cardRegistry,
   createDeck,
   createGame,
-  setGameState,
-  gs,
   damage,
   recover,
   drawCards,
   useCard,
 } from './game.js';
+import type { Game } from './game.js';
 
 import {
   computeCardOptions,
   computeTargetOptions,
   choose,
-  playPhase,
-} from './gameFlow.js';
-import type {
-  CardOption, TargetOption,
-  CardDecider, TargetDecider, ChooseParams,
-} from './gameFlow.js';
+} from './choose.js';
+import type { CardDecider } from './choose.js';
+
+import { playPhase } from './gameFlow.js';
 
 import { CardType } from './types.js';
 import type { Card, GameState, Hero, Player } from './types.js';
@@ -55,13 +52,12 @@ const testHeroes: Hero[] = [
 ];
 
 let nextId = 1000;
-function freshGame(state?: Partial<GameState>): GameState {
-  const game = createGame(STANDARD_DECK, testHeroes);
+function freshGame(state?: Partial<GameState>): Game {
+  const g = createGame(STANDARD_DECK, testHeroes);
   // 清空手牌以便精确控制测试
-  for (const p of game.players) p.hand = [];
-  const final = { ...game, ...state };
-  setGameState(final);
-  return final;
+  for (const p of g.state.players) p.hand = [];
+  if (state) g.state = { ...g.state, ...state };
+  return g;
 }
 
 function giveHand(player: Player, ...types: CardType[]): void {
@@ -185,29 +181,35 @@ describe('createDeck', () => {
 
 describe('createGame', () => {
   it('创建指定数量的玩家', () => {
-    const game = createGame(STANDARD_DECK, testHeroes);
-    expect(game.players.length).toBe(3);
-    expect(game.players[0].name).toBe('刘备');
-    expect(game.players[1].name).toBe('曹操');
-    expect(game.players[2].name).toBe('孙权');
+    const g = createGame(STANDARD_DECK, testHeroes);
+    expect(g.state.players.length).toBe(3);
+    expect(g.state.players[0].name).toBe('刘备');
+    expect(g.state.players[1].name).toBe('曹操');
+    expect(g.state.players[2].name).toBe('孙权');
   });
 
   it('每个玩家初始 4 张手牌', () => {
-    const game = createGame(STANDARD_DECK, testHeroes);
-    for (const p of game.players) {
+    const g = createGame(STANDARD_DECK, testHeroes);
+    for (const p of g.state.players) {
       expect(p.hand.length).toBe(4);
     }
   });
 
   it('初始状态正确', () => {
-    const game = createGame(STANDARD_DECK, testHeroes);
-    expect(game.round).toBe(1);
-    expect(game.currentIndex).toBe(0);
-    expect(game.gameOver).toBe(false);
-    expect(game.winner).toBeNull();
+    const g = createGame(STANDARD_DECK, testHeroes);
+    expect(g.state.round).toBe(1);
+    expect(g.state.currentIndex).toBe(0);
+    expect(g.state.gameOver).toBe(false);
+    expect(g.state.winner).toBeNull();
     // 104 - 3人×4 = 92
-    expect(game.deck.length).toBe(92);
-    expect(game.discardPile.length).toBe(0);
+    expect(g.state.deck.length).toBe(92);
+    expect(g.state.discardPile.length).toBe(0);
+  });
+
+  it('局内牌 id 唯一', () => {
+    const g = createGame(STANDARD_DECK, testHeroes);
+    const ids = new Set(g.state.deck.map((c) => c.id));
+    expect(ids.size).toBe(g.state.deck.length);
   });
 });
 
@@ -217,25 +219,25 @@ describe('createGame', () => {
 
 describe('lastManStanding', () => {
   it('只有 1 人存活 → 返回该玩家', () => {
-    const game = freshGame();
-    game.players[0].alive = true;
-    game.players[1].alive = false;
-    game.players[2].alive = false;
-    const winner = lastManStanding(game);
-    expect(winner).toBe(game.players[0]);
+    const g = freshGame();
+    g.state.players[0].alive = true;
+    g.state.players[1].alive = false;
+    g.state.players[2].alive = false;
+    const winner = lastManStanding(g.state);
+    expect(winner).toBe(g.state.players[0]);
   });
 
   it('多人存活 → 返回 null', () => {
-    const game = freshGame();
-    game.players[0].alive = true;
-    game.players[1].alive = true;
-    game.players[2].alive = false;
-    expect(lastManStanding(game)).toBeNull();
+    const g = freshGame();
+    g.state.players[0].alive = true;
+    g.state.players[1].alive = true;
+    g.state.players[2].alive = false;
+    expect(lastManStanding(g.state)).toBeNull();
   });
 
   it('全员存活 → 返回 null', () => {
-    const game = freshGame();
-    expect(lastManStanding(game)).toBeNull();
+    const g = freshGame();
+    expect(lastManStanding(g.state)).toBeNull();
   });
 });
 
@@ -245,18 +247,18 @@ describe('lastManStanding', () => {
 
 describe('damage', () => {
   it('造成 1 点伤害', async () => {
-    const game = freshGame();
-    const target = game.players[0];
+    const g = freshGame();
+    const target = g.state.players[0];
     const before = target.hp;
-    await damage({ target, source: game.players[1], amount: 1 });
+    await damage(g, { target, source: g.state.players[1], amount: 1 });
     expect(target.hp).toBe(before - 1);
   });
 
   it('造成致死伤害 → player.alive = false', async () => {
-    const game = freshGame();
-    const target = game.players[0];
+    const g = freshGame();
+    const target = g.state.players[0];
     target.hp = 1;
-    await damage({ target, source: game.players[1], amount: 2 });
+    await damage(g, { target, source: g.state.players[1], amount: 2 });
     expect(target.hp).toBeLessThanOrEqual(0);
     expect(target.alive).toBe(false);
   });
@@ -264,40 +266,40 @@ describe('damage', () => {
 
 describe('recover', () => {
   it('恢复 1 点体力', async () => {
-    const game = freshGame();
-    const target = game.players[0];
+    const g = freshGame();
+    const target = g.state.players[0];
     target.hp = 2;
-    await recover({ target, amount: 1 });
+    await recover(g, { target, amount: 1 });
     expect(target.hp).toBe(3);
   });
 
   it('不超过最大体力', async () => {
-    const game = freshGame();
-    const target = game.players[0];
+    const g = freshGame();
+    const target = g.state.players[0];
     target.hp = target.maxHp;
-    await recover({ target, amount: 1 });
+    await recover(g, { target, amount: 1 });
     expect(target.hp).toBe(target.maxHp);
   });
 });
 
 describe('drawCards', () => {
   it('摸 2 张牌', async () => {
-    const game = freshGame();
-    const target = game.players[0];
+    const g = freshGame();
+    const target = g.state.players[0];
     const before = target.hand.length;
-    await drawCards({ target, count: 2 });
+    await drawCards(g, { target, count: 2 });
     expect(target.hand.length).toBe(before + 2);
   });
 
   it('牌堆空时自动洗入弃牌堆', async () => {
-    const game = freshGame();
+    const g = freshGame();
     // 把牌堆移到弃牌堆
-    game.discardPile.push(...game.deck.splice(0));
-    const target = game.players[0];
-    await drawCards({ target, count: 1 });
+    g.state.discardPile.push(...g.state.deck.splice(0));
+    const target = g.state.players[0];
+    await drawCards(g, { target, count: 1 });
     expect(target.hand.length).toBe(1);
     // 弃牌堆被洗回牌堆，牌堆数 = 原弃牌堆 - 1
-    expect(game.deck.length).toBeGreaterThan(0);
+    expect(g.state.deck.length).toBeGreaterThan(0);
   });
 });
 
@@ -307,29 +309,29 @@ describe('drawCards', () => {
 
 describe('useCard — 杀', () => {
   it('敌人无闪 → 受到 1 点伤害', async () => {
-    const game = freshGame();
-    const attacker = game.players[0];
-    const defender = game.players[1];
+    const g = freshGame();
+    const attacker = g.state.players[0];
+    const defender = g.state.players[1];
 
     giveHand(attacker, CardType.Sha);
     giveHand(defender);  // 空手牌
 
     const card = attacker.hand[0];
     const hpBefore = defender.hp;
-    await useCard({ player: attacker, card, targets: [defender] });
+    await useCard(g, { player: attacker, card, targets: [defender] });
 
     // 手牌已移除
     expect(attacker.hand.find((c) => c.id === card.id)).toBeUndefined();
     // 敌人受伤
     expect(defender.hp).toBe(hpBefore - 1);
     // 牌进入弃牌堆
-    expect(game.discardPile.find((c) => c.id === card.id)).toBeDefined();
+    expect(g.state.discardPile.find((c) => c.id === card.id)).toBeDefined();
   });
 
   it('敌人有闪 → 弃置闪，不受伤', async () => {
-    const game = freshGame();
-    const attacker = game.players[0];
-    const defender = game.players[1];
+    const g = freshGame();
+    const attacker = g.state.players[0];
+    const defender = g.state.players[1];
 
     giveHand(attacker, CardType.Sha);
     giveHand(defender, CardType.Shan);
@@ -338,7 +340,7 @@ describe('useCard — 杀', () => {
     const shanCard = defender.hand[0];
     const hpBefore = defender.hp;
 
-    await useCard({ player: attacker, card: shaCard, targets: [defender] });
+    await useCard(g, { player: attacker, card: shaCard, targets: [defender] });
 
     // 闪被弃置
     expect(defender.hand.find((c) => c.id === shanCard.id)).toBeUndefined();
@@ -349,13 +351,13 @@ describe('useCard — 杀', () => {
 
 describe('useCard — 桃', () => {
   it('恢复 1 点体力', async () => {
-    const game = freshGame();
-    const player = game.players[0];
+    const g = freshGame();
+    const player = g.state.players[0];
     player.hp = 2;
     giveHand(player, CardType.Tao);
 
     const card = player.hand[0];
-    await useCard({ player, card, targets: [player] });
+    await useCard(g, { player, card, targets: [player] });
 
     expect(player.hp).toBe(3);
     expect(player.hand.length).toBe(0);
@@ -364,13 +366,13 @@ describe('useCard — 桃', () => {
 
 describe('useCard — 无中生有', () => {
   it('摸 2 张牌', async () => {
-    const game = freshGame();
-    const player = game.players[0];
+    const g = freshGame();
+    const player = g.state.players[0];
     giveHand(player, CardType.WuZhong);
 
     const card = player.hand[0];
     const before = player.hand.length;
-    await useCard({ player, card, targets: [player] });
+    await useCard(g, { player, card, targets: [player] });
 
     // 用了 1 张，摸了 2 张 → net +1
     expect(player.hand.length).toBe(before + 1);
@@ -379,32 +381,32 @@ describe('useCard — 无中生有', () => {
 
 describe('useCard — 决斗', () => {
   it('双方轮流出杀，无杀者受伤', async () => {
-    const game = freshGame();
-    const attacker = game.players[0];
-    const defender = game.players[1];
+    const g = freshGame();
+    const attacker = g.state.players[0];
+    const defender = g.state.players[1];
 
     giveHand(attacker, CardType.JueDou, CardType.Sha);
     giveHand(defender); // 空手牌 → 无法出杀
 
     const card = attacker.hand[0];
     const hpBefore = defender.hp;
-    await useCard({ player: attacker, card, targets: [defender] });
+    await useCard(g, { player: attacker, card, targets: [defender] });
 
     // 防御方空手 → 立即受伤
     expect(defender.hp).toBe(hpBefore - 1);
   });
 
   it('双方都有杀 → 杀多者获胜', async () => {
-    const game = freshGame();
-    const attacker = game.players[0];
-    const defender = game.players[1];
+    const g = freshGame();
+    const attacker = g.state.players[0];
+    const defender = g.state.players[1];
 
     giveHand(attacker, CardType.JueDou, CardType.Sha, CardType.Sha);
     giveHand(defender, CardType.Sha); // 只有一张杀
 
     const card = attacker.hand[0];
     const hpBefore = defender.hp;
-    await useCard({ player: attacker, card, targets: [defender] });
+    await useCard(g, { player: attacker, card, targets: [defender] });
 
     // 防御方只有 1 张杀 → 攻击方 2 张杀 → 防御方受伤
     expect(defender.hp).toBe(hpBefore - 1);
@@ -415,10 +417,10 @@ describe('useCard — 决斗', () => {
 
 describe('useCard — 南蛮入侵', () => {
   it('所有敌人必须出杀', async () => {
-    const game = freshGame();
-    const attacker = game.players[0];
-    const p2 = game.players[1];
-    const p3 = game.players[2];
+    const g = freshGame();
+    const attacker = g.state.players[0];
+    const p2 = g.state.players[1];
+    const p3 = g.state.players[2];
 
     giveHand(attacker, CardType.NanMan);
     giveHand(p2, CardType.Sha);      // p2 有杀可出
@@ -428,7 +430,7 @@ describe('useCard — 南蛮入侵', () => {
     const hp2Before = p2.hp;
     const hp3Before = p3.hp;
 
-    await useCard({ player: attacker, card, targets: [p2, p3] });
+    await useCard(g, { player: attacker, card, targets: [p2, p3] });
 
     // p2 出了杀 → 不受伤
     expect(p2.hp).toBe(hp2Before);
@@ -445,35 +447,35 @@ describe('useCard — 南蛮入侵', () => {
 
 describe('computeCardOptions', () => {
   it('手牌有杀 → 返回杀选项', () => {
-    const game = freshGame();
-    const player = game.players[0];
+    const g = freshGame();
+    const player = g.state.players[0];
     giveHand(player, CardType.Sha);
 
-    const options = computeCardOptions(player, false);
+    const options = computeCardOptions(g, player, false);
     expect(options.length).toBe(1);
     expect(options[0].card.type).toBe(CardType.Sha);
   });
 
   it('shaUsed=true → 杀不再是选项', () => {
-    const game = freshGame();
-    const player = game.players[0];
+    const g = freshGame();
+    const player = g.state.players[0];
     giveHand(player, CardType.Sha);
 
-    expect(computeCardOptions(player, true).length).toBe(0);
+    expect(computeCardOptions(g, player, true).length).toBe(0);
   });
 
   it('空手 → 返回空', () => {
-    const game = freshGame();
-    expect(computeCardOptions(game.players[0], false).length).toBe(0);
+    const g = freshGame();
+    expect(computeCardOptions(g, g.state.players[0], false).length).toBe(0);
   });
 
   it('多张牌按 usePriority 降序排列', () => {
-    const game = freshGame();
-    const player = game.players[0];
+    const g = freshGame();
+    const player = g.state.players[0];
     player.hp = 2;
     giveHand(player, CardType.Sha, CardType.JueDou, CardType.Tao);
 
-    const options = computeCardOptions(player, false);
+    const options = computeCardOptions(g, player, false);
     expect(options[0].card.type).toBe(CardType.Tao);  // 桃 90 排第一
     expect(options[0].def.ai.usePriority).toBeGreaterThanOrEqual(
       options[options.length - 1].def.ai.usePriority,
@@ -481,22 +483,22 @@ describe('computeCardOptions', () => {
   });
 
   it('桃 hp 满时不可用', () => {
-    const game = freshGame();
-    const player = game.players[0];
+    const g = freshGame();
+    const player = g.state.players[0];
     player.hp = player.maxHp;
     giveHand(player, CardType.Tao);
 
-    expect(computeCardOptions(player, false).find(
+    expect(computeCardOptions(g, player, false).find(
       (o) => o.card.type === CardType.Tao,
     )).toBeUndefined();
   });
 
   it('闪不会出现（canUse=false）', () => {
-    const game = freshGame();
-    const player = game.players[0];
+    const g = freshGame();
+    const player = g.state.players[0];
     giveHand(player, CardType.Shan);
 
-    expect(computeCardOptions(player, false).length).toBe(0);
+    expect(computeCardOptions(g, player, false).length).toBe(0);
   });
 });
 
@@ -506,34 +508,34 @@ describe('computeCardOptions', () => {
 
 describe('computeTargetOptions', () => {
   it('杀的合法目标是不包含自己的其他存活玩家', () => {
-    const game = freshGame();
-    const player = game.players[0];
+    const g = freshGame();
+    const player = g.state.players[0];
     giveHand(player, CardType.Sha);
     const card = player.hand[0];
 
-    const targets = computeTargetOptions(card, player);
+    const targets = computeTargetOptions(g, card, player);
     expect(targets.length).toBe(2);
-    expect(targets.map((t) => t.player)).toEqual([game.players[1], game.players[2]]);
+    expect(targets.map((t) => t.player)).toEqual([g.state.players[1], g.state.players[2]]);
   });
 
   it('桃的合法目标只有自己', () => {
-    const game = freshGame();
-    const player = game.players[0];
+    const g = freshGame();
+    const player = g.state.players[0];
     giveHand(player, CardType.Tao);
     const card = player.hand[0];
 
-    const targets = computeTargetOptions(card, player);
+    const targets = computeTargetOptions(g, card, player);
     expect(targets.length).toBe(1);
     expect(targets[0].player).toBe(player);
   });
 
   it('南蛮入侵的合法目标是全体其他存活玩家', () => {
-    const game = freshGame();
-    const player = game.players[0];
+    const g = freshGame();
+    const player = g.state.players[0];
     giveHand(player, CardType.NanMan);
     const card = player.hand[0];
 
-    const targets = computeTargetOptions(card, player);
+    const targets = computeTargetOptions(g, card, player);
     expect(targets.length).toBe(2);
   });
 });
@@ -544,29 +546,29 @@ describe('computeTargetOptions', () => {
 
 describe('choose', () => {
   it('默认 AI：手牌只有杀 → 选杀 + AI 选目标', async () => {
-    const game = freshGame();
-    const player = game.players[0];
+    const g = freshGame();
+    const player = g.state.players[0];
     giveHand(player, CardType.Sha);
 
-    const result = await choose({ player, shaUsed: false });
+    const result = await choose(g, { player, shaUsed: false });
     expect(result).not.toBeNull();
     expect(result!.card.type).toBe(CardType.Sha);
     expect(result!.targets.length).toBe(1);
   });
 
   it('默认 AI：空手 → 返回 null', async () => {
-    const game = freshGame();
-    const player = game.players[0];
+    const g = freshGame();
+    const player = g.state.players[0];
 
-    const result = await choose({ player, shaUsed: false });
+    const result = await choose(g, { player, shaUsed: false });
     expect(result).toBeNull();
   });
 
   // Phase 1: 自定义 cardDecider
 
   it('自定义 cardDecider：优先选决斗', async () => {
-    const game = freshGame();
-    const player = game.players[0];
+    const g = freshGame();
+    const player = g.state.players[0];
     giveHand(player, CardType.Sha, CardType.JueDou);
 
     const preferJuedou: CardDecider = (options) => {
@@ -574,17 +576,17 @@ describe('choose', () => {
       return jd ? { cardId: jd.card.id } : null;
     };
 
-    const result = await choose({ player, shaUsed: false, cardDecide: preferJuedou });
+    const result = await choose(g, { player, shaUsed: false, cardDecide: preferJuedou });
     expect(result).not.toBeNull();
     expect(result!.card.type).toBe(CardType.JueDou);
   });
 
   it('cardDecider 返回 null → choose 返回 null', async () => {
-    const game = freshGame();
-    const player = game.players[0];
+    const g = freshGame();
+    const player = g.state.players[0];
     giveHand(player, CardType.Sha);
 
-    const result = await choose({
+    const result = await choose(g, {
       player, shaUsed: false,
       cardDecide: () => null,
     });
@@ -592,11 +594,11 @@ describe('choose', () => {
   });
 
   it('cardDecider 选不存在的 cardId → 校验拒绝 → null', async () => {
-    const game = freshGame();
-    const player = game.players[0];
+    const g = freshGame();
+    const player = g.state.players[0];
     giveHand(player, CardType.Sha);
 
-    const result = await choose({
+    const result = await choose(g, {
       player, shaUsed: false,
       cardDecide: () => ({ cardId: 99999 }),
     });
@@ -606,24 +608,24 @@ describe('choose', () => {
   // Phase 2: 自定义 targetDecider
 
   it('自定义 targetDecider：杀指定打索引 2', async () => {
-    const game = freshGame();
-    const player = game.players[0];
+    const g = freshGame();
+    const player = g.state.players[0];
     giveHand(player, CardType.Sha);
 
-    const result = await choose({
+    const result = await choose(g, {
       player, shaUsed: false,
       targetDecide: () => ({ targetIndices: [2] }),
     });
     expect(result).not.toBeNull();
-    expect(result!.targets).toEqual([game.players[2]]);
+    expect(result!.targets).toEqual([g.state.players[2]]);
   });
 
   it('targetDecider 选自己(杀不能打自己) → 校验拒绝 → null', async () => {
-    const game = freshGame();
-    const player = game.players[0];
+    const g = freshGame();
+    const player = g.state.players[0];
     giveHand(player, CardType.Sha);
 
-    const result = await choose({
+    const result = await choose(g, {
       player, shaUsed: false,
       targetDecide: () => ({ targetIndices: [0] }),
     });
@@ -631,11 +633,11 @@ describe('choose', () => {
   });
 
   it('南蛮入侵只选 1 个目标 → targetCount=all 校验拒绝 → null', async () => {
-    const game = freshGame();
-    const player = game.players[0];
+    const g = freshGame();
+    const player = g.state.players[0];
     giveHand(player, CardType.NanMan);
 
-    const result = await choose({
+    const result = await choose(g, {
       player, shaUsed: false,
       targetDecide: () => ({ targetIndices: [1] }),
     });
@@ -643,11 +645,11 @@ describe('choose', () => {
   });
 
   it('杀选 2 个目标 → targetCount=1 校验拒绝 → null', async () => {
-    const game = freshGame();
-    const player = game.players[0];
+    const g = freshGame();
+    const player = g.state.players[0];
     giveHand(player, CardType.Sha);
 
-    const result = await choose({
+    const result = await choose(g, {
       player, shaUsed: false,
       targetDecide: () => ({ targetIndices: [1, 2] }),
     });
@@ -655,11 +657,11 @@ describe('choose', () => {
   });
 
   it('targetDecider 返回 null → choose 返回 null', async () => {
-    const game = freshGame();
-    const player = game.players[0];
+    const g = freshGame();
+    const player = g.state.players[0];
     giveHand(player, CardType.Sha);
 
-    const result = await choose({
+    const result = await choose(g, {
       player, shaUsed: false,
       targetDecide: () => null,
     });
@@ -668,71 +670,44 @@ describe('choose', () => {
 });
 
 // ============================================================
-// playPhase — 循环 choose + useCard
+// playPhase — 循环 choose + useCard（默认 AI，不注入 decider）
 // ============================================================
 
-describe('playPhase — 自定义决策', () => {
-  it('注入 cardDecider：始终出杀打索引 1', async () => {
-    const game = freshGame();
-    const player = game.players[0];
-    const target = game.players[1];
+describe('playPhase', () => {
+  it('有杀出杀 → 循环打出', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    const target = g.state.players[1];
     giveHand(player, CardType.Sha);
     const hpBefore = target.hp;
 
-    const killPlayer1: CardDecider = (options) => {
-      const sha = options.find((o) => o.card.type === CardType.Sha);
-      return sha ? { cardId: sha.card.id } : null;
-    };
+    await playPhase(g, { player, round: 1 });
 
-    await playPhase({ player, round: 1 }, killPlayer1);
-
+    // 默认 AI 出杀
     expect(player.hand.length).toBe(0);
     expect(target.hp).toBe(hpBefore - 1);
   });
 
-  it('cardDecider 返回 null → 不出牌', async () => {
-    const game = freshGame();
-    const player = game.players[0];
-    giveHand(player, CardType.Sha, CardType.Sha);
+  it('无可用牌 → 不出牌', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    giveHand(player, CardType.Shan); // 闪不可主动使用
 
-    await playPhase({ player, round: 1 }, () => null);
+    await playPhase(g, { player, round: 1 });
 
-    expect(player.hand.length).toBe(2);
-  });
-
-  it('非法目标被校验拒绝，牌留在手上', async () => {
-    const game = freshGame();
-    const player = game.players[0];
-    giveHand(player, CardType.NanMan);
-
-    await playPhase(
-      { player, round: 1 },
-      undefined,
-      () => ({ targetIndices: [1] }), // 只选 1 个 → 校验失败
-    );
-
-    // 南蛮入侵没打出去
     expect(player.hand.length).toBe(1);
   });
 
-  it('cardDecider 优先决斗 → playPhase 循环打出两轮', async () => {
-    const game = freshGame();
-    const player = game.players[0];
-    const target = game.players[1];
+  it('多张可用牌 → 按优先级循环打出', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    const target = g.state.players[1];
     giveHand(player, CardType.JueDou, CardType.Sha);
     const hpBefore = target.hp;
 
-    const preferJuedou: CardDecider = (options) => {
-      const jd = options.find((o) => o.card.type === CardType.JueDou);
-      if (jd) return { cardId: jd.card.id };
-      const sha = options.find((o) => o.card.type === CardType.Sha);
-      if (sha) return { cardId: sha.card.id };
-      return null;
-    };
+    await playPhase(g, { player, round: 1 });
 
-    await playPhase({ player, round: 1 }, preferJuedou);
-
-    // 两轮：决斗(-1) + 杀(-1) = -2
+    // 默认 AI：决斗(70) → 杀(60)，两轮循环
     expect(target.hp).toBe(hpBefore - 2);
     expect(player.hand.length).toBe(0);
   });

@@ -4,8 +4,7 @@
 // 出牌/弃牌逻辑
 // ============================================================
 
-import { CardType, GameState, Player } from './types.js';
-import type { Card } from './types.js';
+import { CardType, Player } from './types.js';
 import { EventType, GameEvent } from './events/index.js';
 import type {
   TurnEventData,
@@ -14,191 +13,19 @@ import type {
   PhaseEventData,
 } from './events/index.js';
 import {
-  gs,
   drawCards, useCard,
   printState,
   cardRegistry, cardEmoji, displayNumber,
 } from './game.js';
-import type { CardDef } from './game.js';
-
-// ============================================================
-// 出牌阶段 — 两阶段选择接口
-// ============================================================
-
-// ---- Phase 1: 选牌 ----
-
-/** 一张可选的卡牌 */
-export interface CardOption {
-  card: Card;
-  def: CardDef;
-}
-
-/** 选牌结果 */
-export interface CardSelection {
-  cardId: number;
-}
-
-/** 选牌决策函数 */
-export type CardDecider = (
-  options: CardOption[],
-  player: Player,
-  shaUsed: boolean,
-) => CardSelection | null;
-
-// ---- Phase 2: 选目标 ----
-
-/** 一个可选的目标玩家 */
-export interface TargetOption {
-  player: Player;
-  index: number; // gs().players 中的索引
-}
-
-/** 选目标结果 */
-export interface TargetSelection {
-  targetIndices: number[];
-}
-
-/** 选目标决策函数 */
-export type TargetDecider = (
-  options: TargetOption[],
-  card: Card,
-  player: Player,
-) => TargetSelection | null;
-
-// ---- choose() 入参 ----
-
-export interface ChooseParams {
-  player: Player;
-  shaUsed: boolean;
-  cardDecide?: CardDecider;
-  targetDecide?: TargetDecider;
-}
-
-// ============================================================
-// Phase 1: 选牌（引擎层 — 规则）
-// ============================================================
-
-/** 计算可选卡牌（已按 usePriority 降序排列） */
-export function computeCardOptions(player: Player, shaUsed: boolean): CardOption[] {
-  const allPlayers = gs().players;
-
-  return player.hand
-    .map((card) => ({ card, def: cardRegistry.get(card.type) }))
-    .filter(({ def }) => def && def.ai.canUse(player, allPlayers, shaUsed))
-    .map(({ card, def }) => ({ card, def: def! }))
-    .sort((a, b) => b.def.ai.usePriority - a.def.ai.usePriority);
-}
-
-function defaultCardDecider(options: CardOption[]): CardSelection | null {
-  if (options.length === 0) return null;
-  return { cardId: options[0].card.id };
-}
-
-function validateCardSelection(
-  sel: CardSelection,
-  options: CardOption[],
-): Card | null {
-  const opt = options.find((o) => o.card.id === sel.cardId);
-  return opt ? opt.card : null;
-}
-
-// ============================================================
-// Phase 2: 选目标（引擎层 — 规则）
-// ============================================================
-
-/** 计算某张牌的合法目标 */
-export function computeTargetOptions(card: Card, player: Player): TargetOption[] {
-  const def = cardRegistry.get(card.type);
-  if (!def) return [];
-  return def.targetFilter(player, gs().players)
-    .map((t) => ({ player: t, index: gs().players.indexOf(t) }));
-}
-
-function defaultTargetDecider(
-  options: TargetOption[],
-  card: Card,
-  player: Player,
-): TargetSelection | null {
-  if (options.length === 0) return null;
-  const def = cardRegistry.get(card.type)!;
-  const tc = def.targetCount;
-
-  let selected: TargetOption[];
-  if (tc === 'all') {
-    selected = options;
-  } else {
-    // 优先自己（桃/无中生有），否则取前 N 个
-    const self = options.find((t) => t.player === player);
-    selected = self ? [self] : options.slice(0, tc);
-  }
-
-  return { targetIndices: selected.map((t) => t.index) };
-}
-
-function validateTargetSelection(
-  sel: TargetSelection,
-  options: TargetOption[],
-  card: Card,
-): Player[] | null {
-  const def = cardRegistry.get(card.type);
-  if (!def) return null;
-
-  const targets = sel.targetIndices.map((i) => gs().players[i]);
-
-  // 目标必须在合法范围内
-  const validIndices = new Set(options.map((o) => o.index));
-  if (!sel.targetIndices.every((i) => validIndices.has(i))) return null;
-
-  // targetCount 约束
-  if (def.targetCount === 'all') {
-    if (targets.length !== options.length) return null;
-  } else if (targets.length !== def.targetCount) {
-    return null;
-  }
-
-  return targets;
-}
-
-// ============================================================
-// choose() — 串联两阶段
-// ============================================================
-
-/**
- * 一次出牌选择：
- *   Phase 1: compute → decide → validate（选牌）
- *   Phase 2: compute → decide → validate（选目标）
- * 返回 { card, targets } 或 null（不出牌）。
- */
-export async function choose(
-  params: ChooseParams,
-): Promise<{ card: Card; targets: Player[] } | null> {
-  const { player, shaUsed, cardDecide, targetDecide } = params;
-  const cd = cardDecide ?? defaultCardDecider;
-  const td = targetDecide ?? defaultTargetDecider;
-
-  // Phase 1: 选牌
-  const cardOptions = computeCardOptions(player, shaUsed);
-  const cardSel = cd(cardOptions, player, shaUsed);
-  if (!cardSel) return null;
-  const card = validateCardSelection(cardSel, cardOptions);
-  if (!card) return null;
-
-  // Phase 2: 选目标
-  const targetOptions = computeTargetOptions(card, player);
-  const targetSel = td(targetOptions, card, player);
-  if (!targetSel) return null;
-  const targets = validateTargetSelection(targetSel, targetOptions, card);
-  if (!targets) return null;
-
-  return { card, targets };
-}
+import type { Game } from './game.js';
+import { choose } from './choose.js';
 
 // ============================================================
 // 弃牌阶段逻辑
 // ============================================================
 
-function doDiscard(player: Player): void {
-  const state = gs();
+function doDiscard(game: Game, player: Player): void {
+  const state = game.state;
 
   if (player.hand.length <= player.hp) {
     if (player.hand.length > 0) {
@@ -236,35 +63,36 @@ function doDiscard(player: Player): void {
 
 /** 回合：依次执行摸牌 → 出牌 → 弃牌三个阶段 */
 export async function turn(
+  game: Game,
   data: TurnEventData,
 ): Promise<GameEvent<TurnEventData>> {
   return new GameEvent<TurnEventData>(EventType.Turn, data)
     .execute(async () => {
-      await drawPhase({ player: data.player, round: data.round });
-      await playPhase({ player: data.player, round: data.round });
-      await discardPhase({ player: data.player, round: data.round });
+      await drawPhase(game, { player: data.player, round: data.round });
+      await playPhase(game, { player: data.player, round: data.round });
+      await discardPhase(game, { player: data.player, round: data.round });
     });
 }
 
 /** 摸牌阶段：摸2张牌 */
 export async function drawPhase(
+  game: Game,
   data: PhaseEventData,
 ): Promise<GameEvent<PhaseEventData>> {
   return new GameEvent<PhaseEventData>(EventType.DrawPhase, data)
     .execute(async (event) => {
       const player = event.data.player;
       const before = player.hand.length;
-      await drawCards({ target: player, count: 2 });
+      await drawCards(game, { target: player, count: 2 });
       const after = player.hand.length;
       console.log(`[摸牌阶段] ${player.name} 摸了 ${after - before} 张牌`);
     });
 }
 
-/** 出牌阶段：循环 choose → 执行，可注入自定义 decider */
+/** 出牌阶段：循环 choose → 执行 */
 export async function playPhase(
+  game: Game,
   data: PhaseEventData,
-  cardDecide?: CardDecider,
-  targetDecide?: TargetDecider,
 ): Promise<GameEvent<PhaseEventData>> {
   return new GameEvent<PhaseEventData>(EventType.PlayPhase, data)
     .execute(async (event) => {
@@ -273,32 +101,33 @@ export async function playPhase(
 
       let shaUsed = false;
       while (true) {
-        const result = await choose({ player, shaUsed, cardDecide, targetDecide });
+        const result = await choose(game, { player, shaUsed });
         if (!result) break;
 
         if (result.card.type === CardType.Sha) shaUsed = true;
-        await useCard({ player, card: result.card, targets: result.targets });
+        await useCard(game, { player, card: result.card, targets: result.targets });
       }
     });
 }
 
 /** 弃牌阶段：手牌数不能超过当前体力值 */
 export async function discardPhase(
+  game: Game,
   data: PhaseEventData,
 ): Promise<GameEvent<PhaseEventData>> {
   return new GameEvent<PhaseEventData>(EventType.DiscardPhase, data)
     .execute(async (event) => {
-      doDiscard(event.data.player);
+      doDiscard(game, event.data.player);
     });
 }
 
 /** 一整局游戏：主循环 */
-export async function runGame(): Promise<GameEvent<GameEventData>> {
-  const state = gs();
+export async function runGame(game: Game): Promise<GameEvent<GameEventData>> {
+  const state = game.state;
   return new GameEvent<GameEventData>(EventType.Game, {})
     .execute(async () => {
       while (!state.gameOver) {
-        await round({ round: state.round });
+        await round(game, { round: state.round });
         state.round++;
       }
     });
@@ -306,9 +135,10 @@ export async function runGame(): Promise<GameEvent<GameEventData>> {
 
 /** 一轮：所有玩家依次执行回合 */
 export async function round(
+  game: Game,
   data: RoundEventData,
 ): Promise<GameEvent<RoundEventData>> {
-  const state = gs();
+  const state = game.state;
   return new GameEvent<RoundEventData>(EventType.Round, data)
     .execute(async () => {
       for (let i = 0; i < state.players.length; i++) {
@@ -316,7 +146,7 @@ export async function round(
         const player = state.players[i];
 
         console.log(`\n━━━ 第 ${data.round} 轮 · ${player.name} 的回合 ━━━`);
-        await playerTurn(state);
+        await playerTurn(game);
         printState(state);
       }
     });
@@ -327,7 +157,8 @@ export async function round(
 // ============================================================
 
 /** 执行一个玩家的完整回合 */
-export async function playerTurn(state: GameState): Promise<void> {
+export async function playerTurn(game: Game): Promise<void> {
+  const state = game.state;
   const player = state.players[state.currentIndex];
 
   if (!player.alive) {
@@ -335,5 +166,5 @@ export async function playerTurn(state: GameState): Promise<void> {
     return;
   }
 
-  await turn({ player, round: state.round });
+  await turn(game, { player, round: state.round });
 }

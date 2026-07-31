@@ -22,6 +22,7 @@ import type {
 
 /** 卡牌效果函数 */
 export type CardContentFn = (
+  game: Game,
   data: UseCardEventData,
   event: GameEvent<UseCardEventData>,
 ) => Promise<void>;
@@ -86,28 +87,21 @@ export function displayNumber(n: number): string {
 }
 
 // ============================================================
-// 游戏状态引用
+// Game — 一局游戏的容器
+// 所有引擎函数以 game 为第一参数，替代模块级 gs() 全局状态。
 // ============================================================
 
-let _gs: GameState | null = null;
-
-export function setGameState(gs: GameState): void {
-  _gs = gs;
-}
-
-export function gs(): GameState {
-  if (!_gs) throw new Error('GameState not set — call setGameState() first');
-  return _gs;
+export interface Game {
+  state: GameState;
 }
 
 // ============================================================
 // 牌堆
 // ============================================================
 
-let nextCardId = 1;
-
-/** 根据牌堆配置生成牌堆（每副牌 ×2） */
-export function createDeck(config: DeckEntry[]): Card[] {
+/** 根据牌堆配置生成牌堆（每副牌 ×2），id 从 startId 开始递增 */
+export function createDeck(config: DeckEntry[], startId = 1): Card[] {
+  let next = startId;
   const deck: Card[] = [];
   for (const entry of config) {
     const def = cardRegistry.get(entry.type);
@@ -118,7 +112,7 @@ export function createDeck(config: DeckEntry[]): Card[] {
     for (let copy = 0; copy < 2; copy++) {
       for (const num of entry.numbers) {
         deck.push({
-          id: nextCardId++, type: entry.type,
+          id: next++, type: entry.type,
           name: def.name, suit: entry.suit, number: num,
         });
       }
@@ -155,7 +149,7 @@ export function createGame(
   deckConfig: DeckEntry[],
   heroes: Hero[],
   victoryCheck?: VictoryCondition,
-): GameState {
+): Game {
   const players: Player[] = heroes.map((h) => ({
     name: h.name, hero: h,
     hp: h.maxHp, maxHp: h.maxHp,
@@ -171,11 +165,13 @@ export function createGame(
   }
 
   return {
-    players,
-    currentIndex: 0,
-    deck, discardPile,
-    round: 1, gameOver: false, winner: null,
-    victoryCheck: victoryCheck ?? lastManStanding,
+    state: {
+      players,
+      currentIndex: 0,
+      deck, discardPile,
+      round: 1, gameOver: false, winner: null,
+      victoryCheck: victoryCheck ?? lastManStanding,
+    },
   };
 }
 
@@ -206,6 +202,7 @@ function drawCardsFromDeck(
 // ============================================================
 
 export async function damage(
+  game: Game,
   data: DamageEventData,
 ): Promise<GameEvent<DamageEventData>> {
   return new GameEvent<DamageEventData>(EventType.Damage, data)
@@ -216,12 +213,13 @@ export async function damage(
         `体力: ${event.data.target.hp}/${event.data.target.maxHp}`,
       );
       if (event.data.target.hp <= 0) {
-        await die({ player: event.data.target });
+        await die(game, { player: event.data.target });
       }
     });
 }
 
 export async function recover(
+  game: Game,
   data: RecoverEventData,
 ): Promise<GameEvent<RecoverEventData>> {
   return new GameEvent<RecoverEventData>(EventType.Recover, data)
@@ -234,21 +232,22 @@ export async function recover(
 }
 
 export async function drawCards(
+  game: Game,
   data: DrawEventData,
 ): Promise<GameEvent<DrawEventData>> {
-  const state = gs();
   return new GameEvent<DrawEventData>(EventType.Draw, data)
     .execute(async (event) => {
       drawCardsFromDeck(
-        event.data.target, state.deck, state.discardPile, event.data.count,
+        event.data.target, game.state.deck, game.state.discardPile, event.data.count,
       );
     });
 }
 
 export async function die(
+  game: Game,
   data: DieEventData,
 ): Promise<GameEvent<DieEventData>> {
-  const state = gs();
+  const state = game.state;
   return new GameEvent<DieEventData>(EventType.Die, data)
     .execute(async (event) => {
       event.data.player.alive = false;
@@ -267,6 +266,7 @@ export async function die(
 // ============================================================
 
 export async function useCard(
+  game: Game,
   data: UseCardEventData,
 ): Promise<GameEvent<UseCardEventData>> {
   return new GameEvent<UseCardEventData>(EventType.UseCard, data)
@@ -279,11 +279,11 @@ export async function useCard(
         event.data.player.hand.splice(idx, 1);
       }
       // 移入弃牌堆
-      gs().discardPile.push(event.data.card);
+      game.state.discardPile.push(event.data.card);
       // 查注册表 → 执行效果
       const def = cardRegistry.get(event.data.card.type);
       if (def) {
-        await def.content(event.data, event);
+        await def.content(game, event.data, event);
       }
     });
 }

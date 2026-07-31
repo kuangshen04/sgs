@@ -4,7 +4,7 @@
 
 import './cards.js';  // 触发卡牌注册（side-effect import）
 import { STANDARD_DECK } from './cards.js';
-import { createGame, setGameState, printState } from './game.js';
+import { createGame, printState } from './game.js';
 import { runGame } from './gameFlow.js';
 import type { Hero } from './types.js';
 
@@ -20,15 +20,14 @@ async function main() {
   ];
 
   const game = createGame(STANDARD_DECK, heroes);
-  setGameState(game);
 
   console.clear();
-  printState(game);
+  printState(game.state);
 
-  await runGame();
+  await runGame(game);
 
   console.log('\n' + '='.repeat(42));
-  console.log(`🏆 游戏结束！${game.winner!.name} 获胜！`);
+  console.log(`🏆 游戏结束！${game.state.winner!.name} 获胜！`);
   console.log('='.repeat(42));
 }
 
