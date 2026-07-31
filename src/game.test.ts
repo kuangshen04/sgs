@@ -2,7 +2,7 @@
 // 三国杀最小原型 — 单元测试
 // ============================================================
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 // 触发卡牌注册（side-effect import）
 import './cards.js';
@@ -22,6 +22,17 @@ import {
   drawCards,
   useCard,
 } from './game.js';
+
+import {
+  computeCardOptions,
+  computeTargetOptions,
+  choose,
+  playPhase,
+} from './gameFlow.js';
+import type {
+  CardOption, TargetOption,
+  CardDecider, TargetDecider, ChooseParams,
+} from './gameFlow.js';
 
 import { CardType } from './types.js';
 import type { Card, GameState, Hero, Player } from './types.js';
@@ -73,19 +84,24 @@ describe('displayNumber', () => {
 });
 
 describe('shuffle', () => {
+  function cards(...ids: number[]): Card[] {
+    return ids.map((id) => makeCard(id, CardType.Sha));
+  }
+
   it('不改变数组长度', () => {
-    const input = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    const input = cards(1, 2, 3, 4, 5);
     expect(shuffle(input).length).toBe(input.length);
   });
 
   it('包含所有原元素', () => {
-    const input = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    const input = cards(1, 2, 3, 4, 5);
     const result = shuffle(input);
-    expect([...result].sort((a, b) => a - b)).toEqual(input);
+    const ids = (arr: Card[]) => [...arr].map((c) => c.id).sort((a, b) => a - b);
+    expect(ids(result)).toEqual(ids(input));
   });
 
   it('不修改原数组', () => {
-    const input = [1, 2, 3, 4, 5];
+    const input = cards(1, 2, 3, 4, 5);
     const copy = [...input];
     shuffle(input);
     expect(input).toEqual(copy);
@@ -420,5 +436,304 @@ describe('useCard — 南蛮入侵', () => {
 
     // p3 没杀 → 受伤
     expect(p3.hp).toBe(hp3Before - 1);
+  });
+});
+
+// ============================================================
+// computeCardOptions — Phase 1: 选牌
+// ============================================================
+
+describe('computeCardOptions', () => {
+  it('手牌有杀 → 返回杀选项', () => {
+    const game = freshGame();
+    const player = game.players[0];
+    giveHand(player, CardType.Sha);
+
+    const options = computeCardOptions(player, false);
+    expect(options.length).toBe(1);
+    expect(options[0].card.type).toBe(CardType.Sha);
+  });
+
+  it('shaUsed=true → 杀不再是选项', () => {
+    const game = freshGame();
+    const player = game.players[0];
+    giveHand(player, CardType.Sha);
+
+    expect(computeCardOptions(player, true).length).toBe(0);
+  });
+
+  it('空手 → 返回空', () => {
+    const game = freshGame();
+    expect(computeCardOptions(game.players[0], false).length).toBe(0);
+  });
+
+  it('多张牌按 usePriority 降序排列', () => {
+    const game = freshGame();
+    const player = game.players[0];
+    player.hp = 2;
+    giveHand(player, CardType.Sha, CardType.JueDou, CardType.Tao);
+
+    const options = computeCardOptions(player, false);
+    expect(options[0].card.type).toBe(CardType.Tao);  // 桃 90 排第一
+    expect(options[0].def.ai.usePriority).toBeGreaterThanOrEqual(
+      options[options.length - 1].def.ai.usePriority,
+    );
+  });
+
+  it('桃 hp 满时不可用', () => {
+    const game = freshGame();
+    const player = game.players[0];
+    player.hp = player.maxHp;
+    giveHand(player, CardType.Tao);
+
+    expect(computeCardOptions(player, false).find(
+      (o) => o.card.type === CardType.Tao,
+    )).toBeUndefined();
+  });
+
+  it('闪不会出现（canUse=false）', () => {
+    const game = freshGame();
+    const player = game.players[0];
+    giveHand(player, CardType.Shan);
+
+    expect(computeCardOptions(player, false).length).toBe(0);
+  });
+});
+
+// ============================================================
+// computeTargetOptions — Phase 2: 选目标
+// ============================================================
+
+describe('computeTargetOptions', () => {
+  it('杀的合法目标是不包含自己的其他存活玩家', () => {
+    const game = freshGame();
+    const player = game.players[0];
+    giveHand(player, CardType.Sha);
+    const card = player.hand[0];
+
+    const targets = computeTargetOptions(card, player);
+    expect(targets.length).toBe(2);
+    expect(targets.map((t) => t.player)).toEqual([game.players[1], game.players[2]]);
+  });
+
+  it('桃的合法目标只有自己', () => {
+    const game = freshGame();
+    const player = game.players[0];
+    giveHand(player, CardType.Tao);
+    const card = player.hand[0];
+
+    const targets = computeTargetOptions(card, player);
+    expect(targets.length).toBe(1);
+    expect(targets[0].player).toBe(player);
+  });
+
+  it('南蛮入侵的合法目标是全体其他存活玩家', () => {
+    const game = freshGame();
+    const player = game.players[0];
+    giveHand(player, CardType.NanMan);
+    const card = player.hand[0];
+
+    const targets = computeTargetOptions(card, player);
+    expect(targets.length).toBe(2);
+  });
+});
+
+// ============================================================
+// choose() — 两阶段串联
+// ============================================================
+
+describe('choose', () => {
+  it('默认 AI：手牌只有杀 → 选杀 + AI 选目标', async () => {
+    const game = freshGame();
+    const player = game.players[0];
+    giveHand(player, CardType.Sha);
+
+    const result = await choose({ player, shaUsed: false });
+    expect(result).not.toBeNull();
+    expect(result!.card.type).toBe(CardType.Sha);
+    expect(result!.targets.length).toBe(1);
+  });
+
+  it('默认 AI：空手 → 返回 null', async () => {
+    const game = freshGame();
+    const player = game.players[0];
+
+    const result = await choose({ player, shaUsed: false });
+    expect(result).toBeNull();
+  });
+
+  // Phase 1: 自定义 cardDecider
+
+  it('自定义 cardDecider：优先选决斗', async () => {
+    const game = freshGame();
+    const player = game.players[0];
+    giveHand(player, CardType.Sha, CardType.JueDou);
+
+    const preferJuedou: CardDecider = (options) => {
+      const jd = options.find((o) => o.card.type === CardType.JueDou);
+      return jd ? { cardId: jd.card.id } : null;
+    };
+
+    const result = await choose({ player, shaUsed: false, cardDecide: preferJuedou });
+    expect(result).not.toBeNull();
+    expect(result!.card.type).toBe(CardType.JueDou);
+  });
+
+  it('cardDecider 返回 null → choose 返回 null', async () => {
+    const game = freshGame();
+    const player = game.players[0];
+    giveHand(player, CardType.Sha);
+
+    const result = await choose({
+      player, shaUsed: false,
+      cardDecide: () => null,
+    });
+    expect(result).toBeNull();
+  });
+
+  it('cardDecider 选不存在的 cardId → 校验拒绝 → null', async () => {
+    const game = freshGame();
+    const player = game.players[0];
+    giveHand(player, CardType.Sha);
+
+    const result = await choose({
+      player, shaUsed: false,
+      cardDecide: () => ({ cardId: 99999 }),
+    });
+    expect(result).toBeNull();
+  });
+
+  // Phase 2: 自定义 targetDecider
+
+  it('自定义 targetDecider：杀指定打索引 2', async () => {
+    const game = freshGame();
+    const player = game.players[0];
+    giveHand(player, CardType.Sha);
+
+    const result = await choose({
+      player, shaUsed: false,
+      targetDecide: () => ({ targetIndices: [2] }),
+    });
+    expect(result).not.toBeNull();
+    expect(result!.targets).toEqual([game.players[2]]);
+  });
+
+  it('targetDecider 选自己(杀不能打自己) → 校验拒绝 → null', async () => {
+    const game = freshGame();
+    const player = game.players[0];
+    giveHand(player, CardType.Sha);
+
+    const result = await choose({
+      player, shaUsed: false,
+      targetDecide: () => ({ targetIndices: [0] }),
+    });
+    expect(result).toBeNull();
+  });
+
+  it('南蛮入侵只选 1 个目标 → targetCount=all 校验拒绝 → null', async () => {
+    const game = freshGame();
+    const player = game.players[0];
+    giveHand(player, CardType.NanMan);
+
+    const result = await choose({
+      player, shaUsed: false,
+      targetDecide: () => ({ targetIndices: [1] }),
+    });
+    expect(result).toBeNull();
+  });
+
+  it('杀选 2 个目标 → targetCount=1 校验拒绝 → null', async () => {
+    const game = freshGame();
+    const player = game.players[0];
+    giveHand(player, CardType.Sha);
+
+    const result = await choose({
+      player, shaUsed: false,
+      targetDecide: () => ({ targetIndices: [1, 2] }),
+    });
+    expect(result).toBeNull();
+  });
+
+  it('targetDecider 返回 null → choose 返回 null', async () => {
+    const game = freshGame();
+    const player = game.players[0];
+    giveHand(player, CardType.Sha);
+
+    const result = await choose({
+      player, shaUsed: false,
+      targetDecide: () => null,
+    });
+    expect(result).toBeNull();
+  });
+});
+
+// ============================================================
+// playPhase — 循环 choose + useCard
+// ============================================================
+
+describe('playPhase — 自定义决策', () => {
+  it('注入 cardDecider：始终出杀打索引 1', async () => {
+    const game = freshGame();
+    const player = game.players[0];
+    const target = game.players[1];
+    giveHand(player, CardType.Sha);
+    const hpBefore = target.hp;
+
+    const killPlayer1: CardDecider = (options) => {
+      const sha = options.find((o) => o.card.type === CardType.Sha);
+      return sha ? { cardId: sha.card.id } : null;
+    };
+
+    await playPhase({ player, round: 1 }, killPlayer1);
+
+    expect(player.hand.length).toBe(0);
+    expect(target.hp).toBe(hpBefore - 1);
+  });
+
+  it('cardDecider 返回 null → 不出牌', async () => {
+    const game = freshGame();
+    const player = game.players[0];
+    giveHand(player, CardType.Sha, CardType.Sha);
+
+    await playPhase({ player, round: 1 }, () => null);
+
+    expect(player.hand.length).toBe(2);
+  });
+
+  it('非法目标被校验拒绝，牌留在手上', async () => {
+    const game = freshGame();
+    const player = game.players[0];
+    giveHand(player, CardType.NanMan);
+
+    await playPhase(
+      { player, round: 1 },
+      undefined,
+      () => ({ targetIndices: [1] }), // 只选 1 个 → 校验失败
+    );
+
+    // 南蛮入侵没打出去
+    expect(player.hand.length).toBe(1);
+  });
+
+  it('cardDecider 优先决斗 → playPhase 循环打出两轮', async () => {
+    const game = freshGame();
+    const player = game.players[0];
+    const target = game.players[1];
+    giveHand(player, CardType.JueDou, CardType.Sha);
+    const hpBefore = target.hp;
+
+    const preferJuedou: CardDecider = (options) => {
+      const jd = options.find((o) => o.card.type === CardType.JueDou);
+      if (jd) return { cardId: jd.card.id };
+      const sha = options.find((o) => o.card.type === CardType.Sha);
+      if (sha) return { cardId: sha.card.id };
+      return null;
+    };
+
+    await playPhase({ player, round: 1 }, preferJuedou);
+
+    // 两轮：决斗(-1) + 杀(-1) = -2
+    expect(target.hp).toBe(hpBefore - 2);
+    expect(player.hand.length).toBe(0);
   });
 });

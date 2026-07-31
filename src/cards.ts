@@ -111,17 +111,6 @@ function otherAlive(user: Player, all: Player[]): Player[] {
   return all.filter((p) => p !== user && p.alive);
 }
 
-/** 随机选一个 */
-function randomOne(_player: Player, valid: Player[]): Player[] {
-  if (valid.length === 0) return [];
-  return [valid[Math.floor(Math.random() * valid.length)]];
-}
-
-/** 全选（多目标 AOE 用） */
-function allTargets(_player: Player, valid: Player[]): Player[] {
-  return valid;
-}
-
 // ============================================================
 // 注册
 // ============================================================
@@ -132,9 +121,9 @@ cardRegistry.register({
   emoji: '🗡️',
   content: shaContent,
   targetFilter: otherAlive,
+  targetCount: 1,
   ai: {
     canUse: (_, __, shaUsed) => !shaUsed,
-    pickTargets: randomOne,
     usePriority: 60,
     discardPriority: 0,
   },
@@ -146,9 +135,9 @@ cardRegistry.register({
   emoji: '🛡️',
   content: async () => {}, // 闪不主动使用
   targetFilter: () => [],
+  targetCount: 0,
   ai: {
     canUse: () => false,
-    pickTargets: () => [],
     usePriority: 0,
     discardPriority: 1,
   },
@@ -160,9 +149,9 @@ cardRegistry.register({
   emoji: '🍑',
   content: taoContent,
   targetFilter: (user) => [user],
+  targetCount: 1,
   ai: {
     canUse: (player) => player.hp < player.maxHp,
-    pickTargets: (player) => [player],
     usePriority: 90,
     discardPriority: 3,
   },
@@ -174,9 +163,9 @@ cardRegistry.register({
   emoji: '📜',
   content: wuzhongContent,
   targetFilter: (user) => [user],
+  targetCount: 1,
   ai: {
     canUse: () => true,
-    pickTargets: (user) => [user],
     usePriority: 80,
     discardPriority: 2,
   },
@@ -188,9 +177,9 @@ cardRegistry.register({
   emoji: '⚔️',
   content: juedouContent,
   targetFilter: otherAlive,
+  targetCount: 1,
   ai: {
     canUse: (player) => player.hand.some((c) => c.type === CardType.Sha),
-    pickTargets: randomOne,
     usePriority: 70,
     discardPriority: 0,
   },
@@ -202,9 +191,9 @@ cardRegistry.register({
   emoji: '🐘',
   content: nanmanContent,
   targetFilter: otherAlive,
+  targetCount: 'all',
   ai: {
     canUse: () => true,
-    pickTargets: allTargets,
     usePriority: 75,
     discardPriority: 0,
   },

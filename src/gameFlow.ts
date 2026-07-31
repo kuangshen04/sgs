@@ -19,37 +19,177 @@ import {
   printState,
   cardRegistry, cardEmoji, displayNumber,
 } from './game.js';
+import type { CardDef } from './game.js';
 
 // ============================================================
-// 出牌阶段 — AI 决策
+// 出牌阶段 — 两阶段选择接口
 // ============================================================
 
-/** 根据卡牌的 targetFilter 和 pickTargets 选出实际目标 */
-function choose(player: Player, card: Card): Player[] {
-  const def = cardRegistry.get(card.type);
-  if (!def) return [];
-  const valid = def.targetFilter(player, gs().players);
-  if (valid.length === 0) return [];
-  return def.ai.pickTargets(player, valid);
+// ---- Phase 1: 选牌 ----
+
+/** 一张可选的卡牌 */
+export interface CardOption {
+  card: Card;
+  def: CardDef;
 }
 
-function aiChoosePlay(
+/** 选牌结果 */
+export interface CardSelection {
+  cardId: number;
+}
+
+/** 选牌决策函数 */
+export type CardDecider = (
+  options: CardOption[],
   player: Player,
   shaUsed: boolean,
-): { card: Card; targets: Player[] } | null {
+) => CardSelection | null;
+
+// ---- Phase 2: 选目标 ----
+
+/** 一个可选的目标玩家 */
+export interface TargetOption {
+  player: Player;
+  index: number; // gs().players 中的索引
+}
+
+/** 选目标结果 */
+export interface TargetSelection {
+  targetIndices: number[];
+}
+
+/** 选目标决策函数 */
+export type TargetDecider = (
+  options: TargetOption[],
+  card: Card,
+  player: Player,
+) => TargetSelection | null;
+
+// ---- choose() 入参 ----
+
+export interface ChooseParams {
+  player: Player;
+  shaUsed: boolean;
+  cardDecide?: CardDecider;
+  targetDecide?: TargetDecider;
+}
+
+// ============================================================
+// Phase 1: 选牌（引擎层 — 规则）
+// ============================================================
+
+/** 计算可选卡牌（已按 usePriority 降序排列） */
+export function computeCardOptions(player: Player, shaUsed: boolean): CardOption[] {
   const allPlayers = gs().players;
 
-  // 遍历手牌，找有 CardDef 且 canUse 为 true 的，按 usePriority 降序取最佳
-  const options = player.hand
+  return player.hand
     .map((card) => ({ card, def: cardRegistry.get(card.type) }))
     .filter(({ def }) => def && def.ai.canUse(player, allPlayers, shaUsed))
-    .sort((a, b) => b.def!.ai.usePriority - a.def!.ai.usePriority);
+    .map(({ card, def }) => ({ card, def: def! }))
+    .sort((a, b) => b.def.ai.usePriority - a.def.ai.usePriority);
+}
 
+function defaultCardDecider(options: CardOption[]): CardSelection | null {
   if (options.length === 0) return null;
+  return { cardId: options[0].card.id };
+}
 
-  const { card } = options[0];
-  const targets = choose(player, card);
-  if (targets.length === 0) return null;
+function validateCardSelection(
+  sel: CardSelection,
+  options: CardOption[],
+): Card | null {
+  const opt = options.find((o) => o.card.id === sel.cardId);
+  return opt ? opt.card : null;
+}
+
+// ============================================================
+// Phase 2: 选目标（引擎层 — 规则）
+// ============================================================
+
+/** 计算某张牌的合法目标 */
+export function computeTargetOptions(card: Card, player: Player): TargetOption[] {
+  const def = cardRegistry.get(card.type);
+  if (!def) return [];
+  return def.targetFilter(player, gs().players)
+    .map((t) => ({ player: t, index: gs().players.indexOf(t) }));
+}
+
+function defaultTargetDecider(
+  options: TargetOption[],
+  card: Card,
+  player: Player,
+): TargetSelection | null {
+  if (options.length === 0) return null;
+  const def = cardRegistry.get(card.type)!;
+  const tc = def.targetCount;
+
+  let selected: TargetOption[];
+  if (tc === 'all') {
+    selected = options;
+  } else {
+    // 优先自己（桃/无中生有），否则取前 N 个
+    const self = options.find((t) => t.player === player);
+    selected = self ? [self] : options.slice(0, tc);
+  }
+
+  return { targetIndices: selected.map((t) => t.index) };
+}
+
+function validateTargetSelection(
+  sel: TargetSelection,
+  options: TargetOption[],
+  card: Card,
+): Player[] | null {
+  const def = cardRegistry.get(card.type);
+  if (!def) return null;
+
+  const targets = sel.targetIndices.map((i) => gs().players[i]);
+
+  // 目标必须在合法范围内
+  const validIndices = new Set(options.map((o) => o.index));
+  if (!sel.targetIndices.every((i) => validIndices.has(i))) return null;
+
+  // targetCount 约束
+  if (def.targetCount === 'all') {
+    if (targets.length !== options.length) return null;
+  } else if (targets.length !== def.targetCount) {
+    return null;
+  }
+
+  return targets;
+}
+
+// ============================================================
+// choose() — 串联两阶段
+// ============================================================
+
+/**
+ * 一次出牌选择：
+ *   Phase 1: compute → decide → validate（选牌）
+ *   Phase 2: compute → decide → validate（选目标）
+ * 返回 { card, targets } 或 null（不出牌）。
+ */
+export async function choose(
+  params: ChooseParams,
+): Promise<{ card: Card; targets: Player[] } | null> {
+  const { player, shaUsed, cardDecide, targetDecide } = params;
+  const cd = cardDecide ?? defaultCardDecider;
+  const td = targetDecide ?? defaultTargetDecider;
+
+  // Phase 1: 选牌
+  const cardOptions = computeCardOptions(player, shaUsed);
+  const cardSel = cd(cardOptions, player, shaUsed);
+  if (!cardSel) return null;
+  const card = validateCardSelection(cardSel, cardOptions);
+  if (!card) return null;
+
+  // Phase 2: 选目标
+  const targetOptions = computeTargetOptions(card, player);
+  const targetSel = td(targetOptions, card, player);
+  if (!targetSel) return null;
+  const targets = validateTargetSelection(targetSel, targetOptions, card);
+  if (!targets) return null;
+
   return { card, targets };
 }
 
@@ -120,9 +260,11 @@ export async function drawPhase(
     });
 }
 
-/** 出牌阶段：AI 自动决策 */
+/** 出牌阶段：循环 choose → 执行，可注入自定义 decider */
 export async function playPhase(
   data: PhaseEventData,
+  cardDecide?: CardDecider,
+  targetDecide?: TargetDecider,
 ): Promise<GameEvent<PhaseEventData>> {
   return new GameEvent<PhaseEventData>(EventType.PlayPhase, data)
     .execute(async (event) => {
@@ -131,11 +273,11 @@ export async function playPhase(
 
       let shaUsed = false;
       while (true) {
-        const action = aiChoosePlay(player, shaUsed);
-        if (!action) break;
+        const result = await choose({ player, shaUsed, cardDecide, targetDecide });
+        if (!result) break;
 
-        if (action.card.type === CardType.Sha) shaUsed = true;
-        await useCard({ player, card: action.card, targets: action.targets });
+        if (result.card.type === CardType.Sha) shaUsed = true;
+        await useCard({ player, card: result.card, targets: result.targets });
       }
     });
 }

@@ -34,10 +34,10 @@ export interface CardDef {
   content: CardContentFn;
   /** 此牌可选择的合法目标列表（规则层面） */
   targetFilter: (user: Player, allPlayers: Player[]) => Player[];
+  /** 目标数量约束（规则层面）：固定数 或 'all' 表示合法目标全部 */
+  targetCount: number | 'all';
   ai: {
     canUse: (player: Player, allPlayers: Player[], shaUsed: boolean) => boolean;
-    /** 从合法目标中选出实际目标（策略层面） */
-    pickTargets: (player: Player, validTargets: Player[]) => Player[];
     usePriority: number;     // AI 使用优先级（越大越优先）
     discardPriority: number; // 弃牌优先级（越小越先弃）
   };
