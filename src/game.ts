@@ -215,7 +215,7 @@ export async function damage(
   game: Game,
   data: DamageEventData,
 ): Promise<GameEvent<DamageEventData>> {
-  return new GameEvent<DamageEventData>(EventType.Damage, data)
+  return new GameEvent<DamageEventData>(EventType.Damage, data, game)
     .execute(async (event) => {
       event.data.target.hp -= event.data.amount;
       console.log(
@@ -232,7 +232,7 @@ export async function recover(
   game: Game,
   data: RecoverEventData,
 ): Promise<GameEvent<RecoverEventData>> {
-  return new GameEvent<RecoverEventData>(EventType.Recover, data)
+  return new GameEvent<RecoverEventData>(EventType.Recover, data, game)
     .execute(async (event) => {
       event.data.target.hp = Math.min(
         event.data.target.hp + event.data.amount,
@@ -245,7 +245,7 @@ export async function drawCards(
   game: Game,
   data: DrawEventData,
 ): Promise<GameEvent<DrawEventData>> {
-  return new GameEvent<DrawEventData>(EventType.Draw, data)
+  return new GameEvent<DrawEventData>(EventType.Draw, data, game)
     .execute(async (event) => {
       drawCardsFromDeck(
         event.data.target, game.state.deck, game.state.discardPile, event.data.count,
@@ -258,7 +258,7 @@ export async function die(
   data: DieEventData,
 ): Promise<GameEvent<DieEventData>> {
   const state = game.state;
-  return new GameEvent<DieEventData>(EventType.Die, data)
+  return new GameEvent<DieEventData>(EventType.Die, data, game)
     .execute(async (event) => {
       event.data.player.alive = false;
       console.log(`\n💀 ${event.data.player.name} 阵亡！`);
@@ -279,7 +279,7 @@ export async function useCard(
   game: Game,
   data: UseCardEventData,
 ): Promise<GameEvent<UseCardEventData>> {
-  return new GameEvent<UseCardEventData>(EventType.UseCard, data)
+  return new GameEvent<UseCardEventData>(EventType.UseCard, data, game)
     .execute(async (event) => {
       // 从手牌移除
       const idx = event.data.player.hand.findIndex(

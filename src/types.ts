@@ -26,6 +26,8 @@ export interface Card {
 export interface Hero {
   name: string;
   maxHp: number;
+  /** 拥有的技能名列表（引用 skillRegistry 中的 SkillDef.name） */
+  skills?: string[];
 }
 
 /** 玩家状态 */

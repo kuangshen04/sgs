@@ -8,6 +8,7 @@
 // ============================================================
 
 import { triggerSystem } from './TriggerSystem.js';
+import type { Game } from '../game.js';
 
 // ============================================================
 // EventPreventError
@@ -30,13 +31,16 @@ type EventPhase = 'created' | 'executing' | 'completed';
 export class GameEvent<T = Record<string, unknown>> {
   readonly type: string;
   data: T;
+  /** 所属对局（trigger handler / content 访问对局上下文用） */
+  readonly game: Game;
   private _phase: EventPhase = 'created';
   private _parent: GameEvent<any> | null;
   private _prevented = false;
 
-  constructor(type: string, data: T) {
+  constructor(type: string, data: T, game: Game) {
     this.type = type;
     this.data = data;
+    this.game = game;
     this._parent = eventStack.top;
   }
 
@@ -118,15 +122,9 @@ export class GameEvent<T = Record<string, unknown>> {
     eventStack.push(this);
 
     try {
-      await triggerSystem.trigger(
-        `${this.type}.before`,
-        this as unknown as { type: string; data: Record<string, unknown> }
-      );
+      await triggerSystem.trigger(`${this.type}.before`, this);
       await content(this);
-      await triggerSystem.trigger(
-        `${this.type}.after`,
-        this as unknown as { type: string; data: Record<string, unknown> }
-      );
+      await triggerSystem.trigger(`${this.type}.after`, this);
     } catch (e) {
       if (e instanceof EventPreventError && e.event === this) {
         // 本事件被 prevent — after 跳过，父事件不受影响

@@ -66,7 +66,7 @@ export async function turn(
   game: Game,
   data: TurnEventData,
 ): Promise<GameEvent<TurnEventData>> {
-  return new GameEvent<TurnEventData>(EventType.Turn, data)
+  return new GameEvent<TurnEventData>(EventType.Turn, data, game)
     .execute(async () => {
       await drawPhase(game, { player: data.player, round: data.round });
       await playPhase(game, { player: data.player, round: data.round });
@@ -79,7 +79,7 @@ export async function drawPhase(
   game: Game,
   data: PhaseEventData,
 ): Promise<GameEvent<PhaseEventData>> {
-  return new GameEvent<PhaseEventData>(EventType.DrawPhase, data)
+  return new GameEvent<PhaseEventData>(EventType.DrawPhase, data, game)
     .execute(async (event) => {
       const player = event.data.player;
       const before = player.hand.length;
@@ -94,7 +94,7 @@ export async function playPhase(
   game: Game,
   data: PhaseEventData,
 ): Promise<GameEvent<PhaseEventData>> {
-  return new GameEvent<PhaseEventData>(EventType.PlayPhase, data)
+  return new GameEvent<PhaseEventData>(EventType.PlayPhase, data, game)
     .execute(async (event) => {
       console.log(`[出牌阶段]`);
       const player = event.data.player;
@@ -115,7 +115,7 @@ export async function discardPhase(
   game: Game,
   data: PhaseEventData,
 ): Promise<GameEvent<PhaseEventData>> {
-  return new GameEvent<PhaseEventData>(EventType.DiscardPhase, data)
+  return new GameEvent<PhaseEventData>(EventType.DiscardPhase, data, game)
     .execute(async (event) => {
       doDiscard(game, event.data.player);
     });
@@ -124,7 +124,7 @@ export async function discardPhase(
 /** 一整局游戏：主循环 */
 export async function runGame(game: Game): Promise<GameEvent<GameEventData>> {
   const state = game.state;
-  return new GameEvent<GameEventData>(EventType.Game, {})
+  return new GameEvent<GameEventData>(EventType.Game, {}, game)
     .execute(async () => {
       while (!state.gameOver) {
         await round(game, { round: state.round });
@@ -139,7 +139,7 @@ export async function round(
   data: RoundEventData,
 ): Promise<GameEvent<RoundEventData>> {
   const state = game.state;
-  return new GameEvent<RoundEventData>(EventType.Round, data)
+  return new GameEvent<RoundEventData>(EventType.Round, data, game)
     .execute(async () => {
       for (let i = 0; i < state.players.length; i++) {
         state.currentIndex = i;
