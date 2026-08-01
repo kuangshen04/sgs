@@ -4,7 +4,7 @@
 // 加新牌只需：CardType 枚举 +1，此处加一个 register 调用。
 // ============================================================
 
-import { CardType } from './types.js';
+import { CardTag, CardType } from './types.js';
 import type { Player } from './types.js';
 import type { CardContentFn, DeckEntry } from './game.js';
 import {
@@ -120,6 +120,7 @@ cardRegistry.register({
   name: '杀',
   emoji: '🗡️',
   content: shaContent,
+  tags: [CardTag.Basic],
   targetFilter: otherAlive,
   targetCount: 1,
   ai: {
@@ -134,6 +135,7 @@ cardRegistry.register({
   name: '闪',
   emoji: '🛡️',
   content: async () => {}, // 闪不主动使用
+  tags: [CardTag.Basic],
   targetFilter: () => [],
   targetCount: 0,
   ai: {
@@ -148,6 +150,7 @@ cardRegistry.register({
   name: '桃',
   emoji: '🍑',
   content: taoContent,
+  tags: [CardTag.Basic],
   targetFilter: (user) => [user],
   targetCount: 1,
   ai: {
@@ -162,6 +165,7 @@ cardRegistry.register({
   name: '无中生有',
   emoji: '📜',
   content: wuzhongContent,
+  tags: [CardTag.Trick],
   targetFilter: (user) => [user],
   targetCount: 1,
   ai: {
@@ -176,6 +180,7 @@ cardRegistry.register({
   name: '决斗',
   emoji: '⚔️',
   content: juedouContent,
+  tags: [CardTag.Trick],
   targetFilter: otherAlive,
   targetCount: 1,
   ai: {
@@ -190,6 +195,7 @@ cardRegistry.register({
   name: '南蛮入侵',
   emoji: '🐘',
   content: nanmanContent,
+  tags: [CardTag.Trick],
   targetFilter: otherAlive,
   targetCount: 'all',
   ai: {

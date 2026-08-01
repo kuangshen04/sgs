@@ -13,6 +13,12 @@ export enum CardType {
   NanMan = '南蛮入侵',
 }
 
+/** 卡牌标签（分类） */
+export enum CardTag {
+  Basic = 'basic',   // 基本牌
+  Trick = 'trick',   // 锦囊牌
+}
+
 /** 一张卡牌 */
 export interface Card {
   id: number;

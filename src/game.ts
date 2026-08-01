@@ -6,7 +6,7 @@
 // 引擎不依赖任何具体卡牌实现。
 // ============================================================
 
-import { Card, CardType, GameState, Hero, Player, VictoryCondition } from './types.js';
+import { Card, CardTag, CardType, GameState, Hero, Player, VictoryCondition } from './types.js';
 import { EventType, GameEvent, createEventStack } from './events/index.js';
 import type {
   DamageEventData,
@@ -36,6 +36,8 @@ export interface CardDef {
   name: string;
   emoji: string;
   content: CardContentFn;
+  /** 卡牌标签（基本牌/锦囊牌等） */
+  tags: CardTag[];
   /** 此牌可选择的合法目标列表（规则层面） */
   targetFilter: (user: Player, allPlayers: Player[]) => Player[];
   /** 目标数量约束（规则层面）：固定数 或 'all' 表示合法目标全部 */

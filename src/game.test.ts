@@ -35,7 +35,7 @@ import { playPhase } from './gameFlow.js';
 import { registerSkills, skillRegistry } from './skills.js';
 import { triggerSystem } from './events/index.js';
 
-import { CardType } from './types.js';
+import { CardTag, CardType } from './types.js';
 import type { Card, GameState, Hero, Player } from './types.js';
 
 // ============================================================
@@ -141,6 +141,18 @@ describe('cardRegistry', () => {
   it('每张注册牌都有 targetFilter', () => {
     for (const def of cardRegistry.all()) {
       expect(def.targetFilter).toBeTypeOf('function');
+    }
+  });
+
+  it('基本牌 tag = Basic', () => {
+    for (const t of [CardType.Sha, CardType.Shan, CardType.Tao]) {
+      expect(cardRegistry.get(t)!.tags).toContain(CardTag.Basic);
+    }
+  });
+
+  it('锦囊牌 tag = Trick', () => {
+    for (const t of [CardType.WuZhong, CardType.JueDou, CardType.NanMan]) {
+      expect(cardRegistry.get(t)!.tags).toContain(CardTag.Trick);
     }
   });
 });
