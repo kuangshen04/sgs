@@ -12,6 +12,7 @@ import type {
   DamageEventData,
   DrawEventData,
   RecoverEventData,
+  DyingEventData,
   DieEventData,
   UseCardEventData,
   EventStack,
@@ -227,7 +228,7 @@ export async function damage(
         `体力: ${event.data.target.hp}/${event.data.target.maxHp}`,
       );
       if (event.data.target.hp <= 0) {
-        await die(game, { player: event.data.target });
+        await dying(game, { player: event.data.target });
       }
     });
 }
@@ -254,6 +255,43 @@ export async function drawCards(
       drawCardsFromDeck(
         event.data.target, game.state.deck, game.state.discardPile, event.data.count,
       );
+    });
+}
+
+/**
+ * 濒死：求桃自救。内容：
+ *   1. 循环使用桃直到体力 > 0 或无桃可用
+ *   2. 若仍 ≤ 0，调用 die() 真正死亡
+ */
+export async function dying(
+  game: Game,
+  data: DyingEventData,
+): Promise<GameEvent<DyingEventData>> {
+  return new GameEvent<DyingEventData>(EventType.Dying, data, game)
+    .execute(async (event) => {
+      const player = event.data.player;
+
+      if (!player.alive) return; // 已死亡，跳过
+
+      // 求桃：自己使用桃直到体力 > 0 或无桃可用
+      let usedTao = false;
+      while (player.hp <= 0) {
+        const taoIdx = player.hand.findIndex((c) => c.type === CardType.Tao);
+        if (taoIdx < 0) break;
+        const taoCard = player.hand[taoIdx];
+        console.log(`  🩸${player.name} 濒死！使用 🍑桃 自救`);
+        await useCard(game, { player, card: taoCard, targets: [player] });
+        usedTao = true;
+      }
+
+      if (usedTao && player.hp > 0) {
+        console.log(`  💚${player.name} 脱离濒死，体力: ${player.hp}/${player.maxHp}`);
+      }
+
+      // 若仍死亡，真正阵亡
+      if (player.hp <= 0) {
+        await die(game, { player });
+      }
     });
 }
 

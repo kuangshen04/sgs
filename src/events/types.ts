@@ -11,6 +11,7 @@ export const EventType = {
   Recover: 'recover',
   Draw: 'draw',
   Die: 'die',
+  Dying: 'dying',
   UseCard: 'useCard',
   // Boundary 事件 — 游戏/轮/回合/阶段的分界标记
   Game: 'game',
@@ -39,6 +40,10 @@ export interface RecoverEventData {
 export interface DrawEventData {
   target: Player;
   count: number;
+}
+
+export interface DyingEventData {
+  player: Player;
 }
 
 export interface DieEventData {
