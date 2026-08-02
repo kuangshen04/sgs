@@ -12,6 +12,7 @@ export const EventType = {
   Draw: 'draw',
   Die: 'die',
   Dying: 'dying',
+  Targeting: 'targeting',
   UseCard: 'useCard',
   // Boundary 事件 — 游戏/轮/回合/阶段的分界标记
   Game: 'game',
@@ -48,6 +49,12 @@ export interface DyingEventData {
 
 export interface DieEventData {
   player: Player;
+}
+
+export interface TargetingEventData {
+  user: Player;
+  card: Card;
+  target: Player;   // 当前正在指定的单个目标
 }
 
 export interface UseCardEventData {

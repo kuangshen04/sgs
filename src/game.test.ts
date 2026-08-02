@@ -34,6 +34,7 @@ import { playPhase } from './gameFlow.js';
 
 import { registerSkills, skillRegistry } from './skills.js';
 import { triggerSystem } from './events/index.js';
+import { EventType } from './events/index.js';
 
 import { CardTag, CardType } from './types.js';
 import type { Card, GameState, Hero, Player } from './types.js';
@@ -527,6 +528,123 @@ describe('useCard — 南蛮入侵', () => {
 
     // p3 没杀 → 受伤
     expect(p3.hp).toBe(hp3Before - 1);
+  });
+});
+
+// ============================================================
+// targeting — 逐目标判定（无懈可击的挂载点）
+// ============================================================
+
+describe('targeting', () => {
+  it('每个 target 触发一次 targeting 事件', async () => {
+    const g = freshGame();
+    const attacker = g.state.players[0];
+    const p2 = g.state.players[1];
+    const p3 = g.state.players[2];
+    giveHand(attacker, CardType.NanMan);
+    giveHand(p2, CardType.Sha);
+    giveHand(p3, CardType.Sha);
+
+    const targets: string[] = [];
+    triggerSystem.on(`${EventType.Targeting}.before`, (e) => {
+      targets.push(e.data.target.name);
+    });
+
+    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [p2, p3] });
+
+    expect(targets).toEqual(['曹操', '孙权']);
+    triggerSystem.clear();
+  });
+
+  it('prevent targeting → 该 target 被跳过', async () => {
+    const g = freshGame();
+    const attacker = g.state.players[0];
+    const p2 = g.state.players[1];
+    const p3 = g.state.players[2];
+    giveHand(attacker, CardType.NanMan);
+    giveHand(p2); // 空手 — 本应受伤
+    giveHand(p3); // 空手 — 本应受伤
+
+    // 抵消 p2 的目标指定
+    triggerSystem.on(`${EventType.Targeting}.before`, (e) => {
+      if (e.data.target === p2) e.prevent();
+    });
+
+    const hp2Before = p2.hp;
+    const hp3Before = p3.hp;
+    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [p2, p3] });
+
+    expect(p2.hp).toBe(hp2Before);    // p2 被抵消，不受伤
+    expect(p3.hp).toBe(hp3Before - 1); // p3 未被抵消，受伤
+    triggerSystem.clear();
+  });
+
+  it('全部 target 被 prevent → content 不执行，所有目标不受伤', async () => {
+    const g = freshGame();
+    const attacker = g.state.players[0];
+    const p2 = g.state.players[1];
+    const p3 = g.state.players[2];
+    giveHand(attacker, CardType.NanMan);
+    giveHand(p2);
+    giveHand(p3);
+
+    triggerSystem.on(`${EventType.Targeting}.before`, (e) => e.prevent());
+
+    const hp2Before = p2.hp;
+    const hp3Before = p3.hp;
+    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [p2, p3] });
+
+    expect(p2.hp).toBe(hp2Before);   // 被抵消
+    expect(p3.hp).toBe(hp3Before);   // 被抵消
+    triggerSystem.clear();
+  });
+
+  it('无目标牌触发单次 targeting(target = user)', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    giveHand(player, CardType.Shan);
+
+    const triggered: string[] = [];
+    triggerSystem.on(`${EventType.Targeting}.before`, (e) => {
+      triggered.push(e.data.target.name);
+    });
+
+    await useCard(g, { player, card: player.hand[0], targets: [] });
+
+    expect(triggered).toEqual([player.name]);
+    triggerSystem.clear();
+  });
+
+  it('无目标牌的 targeting 被 prevent → content 不执行', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    giveHand(player, CardType.WuZhong); // 本来会摸 2 张
+
+    triggerSystem.on(`${EventType.Targeting}.before`, (e) => e.prevent());
+
+    const before = player.hand.length;
+    await useCard(g, { player, card: player.hand[0], targets: [] });
+
+    expect(player.hand.length).toBe(before - 1); // 牌已消耗
+    expect(g.state.discardPile.length).toBe(1);   // 牌在弃牌堆
+    triggerSystem.clear();
+  });
+
+  it('牌被全部抵消时仍进入弃牌堆', async () => {
+    const g = freshGame();
+    const attacker = g.state.players[0];
+    giveHand(attacker, CardType.NanMan);
+
+    triggerSystem.on(`${EventType.Targeting}.before`, (e) => e.prevent());
+
+    const card = attacker.hand[0];
+    await useCard(g, { player: attacker, card, targets: [g.state.players[1], g.state.players[2]] });
+
+    // 手牌已移除
+    expect(attacker.hand.length).toBe(0);
+    // 牌在弃牌堆
+    expect(g.state.discardPile.find((c) => c.id === card.id)).toBeDefined();
+    triggerSystem.clear();
   });
 });
 

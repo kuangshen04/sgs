@@ -12,6 +12,7 @@ export type {
   DrawEventData,
   DyingEventData,
   DieEventData,
+  TargetingEventData,
   UseCardEventData,
   TurnEventData,
   RoundEventData,

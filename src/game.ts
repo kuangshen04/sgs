@@ -14,6 +14,7 @@ import type {
   RecoverEventData,
   DyingEventData,
   DieEventData,
+  TargetingEventData,
   UseCardEventData,
   EventStack,
 } from './events/index.js';
@@ -325,19 +326,60 @@ export async function useCard(
 ): Promise<GameEvent<UseCardEventData>> {
   return new GameEvent<UseCardEventData>(EventType.UseCard, data, game)
     .execute(async (event) => {
-      // 从手牌移除
+      // 从手牌移除 → 移入弃牌堆
       const idx = event.data.player.hand.findIndex(
         (c) => c.id === event.data.card.id,
       );
       if (idx >= 0) {
         event.data.player.hand.splice(idx, 1);
       }
-      // 移入弃牌堆
       game.state.discardPile.push(event.data.card);
-      // 查注册表 → 执行效果
-      const def = cardRegistry.get(event.data.card.type);
-      if (def) {
-        await def.content(game, event.data, event);
+
+      // 逐 target 判定（无懈可击等响应在这里）
+      let shouldExecute = true;
+
+      if (event.data.targets.length > 0) {
+        const remaining: Player[] = [];
+        for (const target of event.data.targets) {
+          const targetingEvent = await new GameEvent<TargetingEventData>(
+            EventType.Targeting,
+            { user: event.data.player, card: event.data.card, target },
+            game,
+          ).execute(async () => {
+            // content 为空 — targeting 纯粹是 trigger 检查点
+          });
+
+          if (!targetingEvent.isPrevented()) {
+            remaining.push(target);
+          } else {
+            console.log(`  🚫${target.name} 被指定为目标的效果已被抵消`);
+          }
+        }
+        if (remaining.length === 0) {
+          shouldExecute = false;
+        } else {
+          event.data.targets = remaining;
+        }
+      } else {
+        // 无目标牌（如无懈可击）：单次 targeting，target = 使用者自己
+        // 这是唯一的响应窗口，无懈可击可以被反无懈
+        const targetingEvent = await new GameEvent<TargetingEventData>(
+          EventType.Targeting,
+          { user: event.data.player, card: event.data.card, target: event.data.player },
+          game,
+        ).execute(async () => {});
+
+        if (targetingEvent.isPrevented()) {
+          console.log(`  🚫${event.data.player.name} 的 ${cardRegistry.get(event.data.card.type)?.name ?? '牌'} 效果已被抵消`);
+          shouldExecute = false;
+        }
+      }
+
+      if (shouldExecute) {
+        const def = cardRegistry.get(event.data.card.type);
+        if (def) {
+          await def.content(game, event.data, event);
+        }
       }
     });
 }
