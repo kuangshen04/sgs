@@ -6,11 +6,16 @@
 
 import { CardTag, CardType } from './types.js';
 import type { Player } from './types.js';
-import type { CardContentFn, DeckEntry } from './game.js';
+import type { CardContentFn, DeckEntry, Game } from './game.js';
 import {
-  cardRegistry, displayNumber,
+  cardRegistry, displayNumber, useCard,
   damage, recover, drawCards,
 } from './game.js';
+import { triggerSystem } from './events/index.js';
+import type {
+  TargetingEventData,
+} from './events/index.js';
+import { EventType } from './events/index.js';
 
 // ============================================================
 // 卡牌效果
@@ -112,6 +117,74 @@ function otherAlive(user: Player, all: Player[]): Player[] {
 }
 
 // ============================================================
+// 无懈可击 — content
+// ============================================================
+
+/**
+ * 无懈可击的 content：沿事件栈向上找到原始锦囊的 targeting 事件并 prevent。
+ *
+ * 运行时事件栈：[… useCard(锦囊) → targeting(目标) → useCard(无懈)]
+ * 无懈自己的 targeting 已出栈，getParent('targeting') 命中锦囊的 targeting。
+ */
+const wuxieContent: CardContentFn = async (_game, _data, event) => {
+  const targetEvent = event.getParent(EventType.Targeting);
+  if (targetEvent) {
+    targetEvent.prevent();
+  }
+};
+
+// ============================================================
+// 无懈可击 — trigger handler（挂载在 targeting.before）
+// ============================================================
+
+/**
+ * 从当前回合角色开始轮询无懈可击。
+ * AI 策略：只对目标为自己、且使用者不为自己的锦囊牌出无懈。
+ */
+let _wuxieInstalled = false;
+
+/** 注册无懈可击 trigger handler（可重复调用，仅首次生效） */
+export function installWuxieTrigger(): void {
+  if (_wuxieInstalled) return;
+  _wuxieInstalled = true;
+
+  triggerSystem.on(`${EventType.Targeting}.before`, async (targetingEvent) => {
+    const { user, card, target } = targetingEvent.data as TargetingEventData;
+    const def = cardRegistry.get(card.type);
+    if (!def?.tags.includes(CardTag.Trick)) return;
+
+    const game = targetingEvent.game;
+    const state = game.state;
+    const startIndex = state.currentIndex;
+
+    for (let offset = 0; offset < state.players.length; offset++) {
+      const idx = (startIndex + offset) % state.players.length;
+      const player = state.players[idx];
+      if (!player.alive) continue;
+
+      // AI：只保护自己
+      if (target !== player || user === player) continue;
+
+      const wxIdx = player.hand.findIndex((c) => c.type === CardType.WuXie);
+      if (wxIdx < 0) continue;
+
+      const wxCard = player.hand[wxIdx];
+      console.log(
+        `  ✨${player.name} 使用 🛡️无懈可击 ` +
+        `(${wxCard.suit}${displayNumber(wxCard.number)}) 抵消对 ${target.name} 的效果`,
+      );
+      await useCard(game, { player, card: wxCard, targets: [] });
+
+      // 无论无懈成功或被反无懈，只尝试一次就停止
+      break;
+    }
+  });
+}
+
+// 进程启动时注册
+installWuxieTrigger();
+
+// ============================================================
 // 注册
 // ============================================================
 
@@ -205,6 +278,21 @@ cardRegistry.register({
   },
 });
 
+cardRegistry.register({
+  type: CardType.WuXie,
+  name: '无懈可击',
+  emoji: '🛡️',
+  content: wuxieContent,
+  tags: [CardTag.Trick],
+  targetFilter: () => [],
+  targetCount: 0,
+  ai: {
+    canUse: () => false,  // 不主动使用，由 trigger handler 调用
+    usePriority: 0,
+    discardPriority: 100, // 尽量保留在手牌中
+  },
+});
+
 // ============================================================
 // 标准牌堆配置
 // ============================================================
@@ -213,16 +301,20 @@ export const STANDARD_DECK: DeckEntry[] = [
   // ♠
   { type: CardType.JueDou, suit: '♠', numbers: [1] },
   { type: CardType.NanMan, suit: '♠', numbers: [7, 13] },
-  { type: CardType.Sha,    suit: '♠', numbers: [2,3,4,5,6,8,9,10,11,12] },
+  { type: CardType.WuXie,  suit: '♠', numbers: [11] },
+  { type: CardType.Sha,    suit: '♠', numbers: [2,3,4,5,6,8,9,10,12] },
   // ♥
   { type: CardType.Tao,     suit: '♥', numbers: [2] },
   { type: CardType.WuZhong, suit: '♥', numbers: [7,8,9,11] },
-  { type: CardType.Shan,    suit: '♥', numbers: [1,3,4,5,6,10,12,13] },
+  { type: CardType.WuXie,   suit: '♥', numbers: [13] },
+  { type: CardType.Shan,    suit: '♥', numbers: [1,3,4,5,6,10,12] },
   // ♣
   { type: CardType.JueDou, suit: '♣', numbers: [1] },
   { type: CardType.NanMan, suit: '♣', numbers: [7] },
-  { type: CardType.Sha,    suit: '♣', numbers: [2,3,4,5,6,8,9,10,11,12,13] },
+  { type: CardType.WuXie,  suit: '♣', numbers: [12] },
+  { type: CardType.Sha,    suit: '♣', numbers: [2,3,4,5,6,8,9,10,11,13] },
   // ♦
   { type: CardType.JueDou, suit: '♦', numbers: [1] },
-  { type: CardType.Tao,    suit: '♦', numbers: [2,3,4,5,6,7,8,9,10,11,12,13] },
+  { type: CardType.WuXie,  suit: '♦', numbers: [12] },
+  { type: CardType.Tao,    suit: '♦', numbers: [2,3,4,5,6,7,8,9,10,11,13] },
 ];

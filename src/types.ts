@@ -11,6 +11,7 @@ export enum CardType {
   WuZhong = '无中生有',
   JueDou = '决斗',
   NanMan = '南蛮入侵',
+  WuXie = '无懈可击',
 }
 
 /** 卡牌标签（分类） */
