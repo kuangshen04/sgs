@@ -40,12 +40,15 @@ export interface CardDef {
   content: CardContentFn;
   /** 卡牌标签（基本牌/锦囊牌等） */
   tags: CardTag[];
+  /** 规则层面：出牌阶段是否合法可用 */
+  canUse: (player: Player, allPlayers: Player[], shaUsed: boolean) => boolean;
   /** 此牌可选择的合法目标列表（规则层面） */
   targetFilter: (user: Player, allPlayers: Player[]) => Player[];
   /** 目标数量约束（规则层面）：固定数 或 'all' 表示合法目标全部 */
   targetCount: number | 'all';
   ai: {
-    canUse: (player: Player, allPlayers: Player[], shaUsed: boolean) => boolean;
+    /** AI 层面：当前是否应该使用（策略；规则合法 ≠ 现在应该用） */
+    shouldUse: (player: Player, allPlayers: Player[], shaUsed: boolean) => boolean;
     usePriority: number;     // AI 使用优先级（越大越优先）
     discardPriority: number; // 弃牌优先级（越小越先弃）
   };

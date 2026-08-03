@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest';
 
 import { freshGame, giveHand, testHeroes } from './test-utils.js';
 
-import { createGame } from './game.js';
+import { cardRegistry, createGame } from './game.js';
 import { STANDARD_DECK } from './cards.js';
 import type { Game } from './game.js';
 
@@ -62,6 +62,33 @@ describe('computeCardOptions', () => {
     expect(options[0].def.ai.usePriority).toBeGreaterThanOrEqual(
       options[options.length - 1].def.ai.usePriority,
     );
+  });
+
+  it('规则与 AI 分层：决斗无杀在手时规则允许、AI 不使用', () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    const def = cardRegistry.get(CardType.JueDou)!;
+
+    expect(def.canUse(player, g.state.players, false)).toBe(true);        // 规则：合法
+    expect(def.ai.shouldUse(player, g.state.players, false)).toBe(false);  // AI：没杀垫底不用
+  });
+
+  it('规则与 AI 分层：决斗有杀在手时 AI 也愿意用', () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    giveHand(player, CardType.Sha);
+    const def = cardRegistry.get(CardType.JueDou)!;
+
+    expect(def.ai.shouldUse(player, g.state.players, false)).toBe(true);
+  });
+
+  it('规则层面：桃满血时 canUse=false（受伤与否是规则不是策略）', () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    player.hp = player.maxHp;
+    const def = cardRegistry.get(CardType.Tao)!;
+
+    expect(def.canUse(player, g.state.players, false)).toBe(false);
   });
 
   it('桃 hp 满时不可用', () => {

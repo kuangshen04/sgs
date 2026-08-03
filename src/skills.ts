@@ -53,12 +53,17 @@ export interface ActiveSkillContext {
 /** 出牌阶段可发动的技能定义 */
 export interface ActiveSkillDef {
   name: string;
-  /** 当前是否可发动（含次数限制） */
+  /** 规则层面：当前是否合法可用（次数限制、前提条件等） */
   canUse: (game: Game, player: Player, ctx: ActiveSkillContext) => boolean;
   /** 发动效果 */
   content: (game: Game, player: Player) => Promise<void>;
-  /** 与其他主动技能并列时的优先级（越大越优先） */
-  priority: number;
+  /** AI 层面策略（与 CardDef.ai 同级）：规则合法 ≠ 现在应该用 */
+  ai: {
+    /** AI 当前是否应该发动（策略，如"没牌能出才换牌"） */
+    shouldUse: (game: Game, player: Player, ctx: ActiveSkillContext) => boolean;
+    /** 多个技能并列时的优先级（越大越优先） */
+    priority: number;
+  };
 }
 
 const _activeSkills = new Map<string, ActiveSkillDef>();
@@ -107,9 +112,11 @@ export function pickActiveSkill(
 ): ActiveSkillDef | null {
   const candidates = (player.hero.skills ?? [])
     .map((name) => activeSkillRegistry.get(name))
-    .filter((s): s is ActiveSkillDef => !!s && s.canUse(game, player, ctx));
-  if (candidates.length === 0) return null;
-  return candidates.sort((a, b) => b.priority - a.priority)[0];
+    .filter((s): s is ActiveSkillDef => !!s)
+    .filter((s) => s.canUse(game, player, ctx))        // 规则：能不能用
+    .filter((s) => s.ai.shouldUse(game, player, ctx))  // AI：该不该用
+    .sort((a, b) => b.ai.priority - a.ai.priority);
+  return candidates[0] ?? null;
 }
 
 // ============================================================
@@ -190,9 +197,13 @@ const zhihengContent = async (game: Game, player: Player): Promise<void> => {
 activeSkillRegistry.register({
   name: '制衡',
   canUse: (game, player, ctx) =>
-    !ctx.usedSkills.has('制衡') &&        // 每回合限一次
-    player.hand.length > 0 &&             // 空手发动无意义（简化模型）
-    computeCardOptions(game, player, ctx.shaUsed).length === 0, // 没有任何牌能出
+    !ctx.usedSkills.has('制衡') && // 规则：每回合限一次
+    player.hand.length > 0,        // 规则：简化模型需有牌可弃
   content: zhihengContent,
-  priority: 0,
+  ai: {
+    // AI：没有任何牌能出时才换牌
+    shouldUse: (game, player, ctx) =>
+      computeCardOptions(game, player, ctx.shaUsed).length === 0,
+    priority: 0,
+  },
 });

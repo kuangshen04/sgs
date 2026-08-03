@@ -85,7 +85,8 @@ export function computeCardOptions(
 
   return player.hand
     .map((card) => ({ card, def: cardRegistry.get(card.type) }))
-    .filter(({ def }) => def && def.ai.canUse(player, allPlayers, shaUsed))
+    .filter(({ def }) => def && def.canUse(player, allPlayers, shaUsed))          // 规则：能不能用
+    .filter(({ def }) => def!.ai.shouldUse(player, allPlayers, shaUsed))          // AI：该不该用
     .map(({ card, def }) => ({ card, def: def! }))
     .sort((a, b) => b.def.ai.usePriority - a.def.ai.usePriority);
 }

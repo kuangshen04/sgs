@@ -230,10 +230,11 @@ cardRegistry.register({
   emoji: '🗡️',
   content: shaContent,
   tags: [CardTag.Basic],
+  canUse: (_, __, shaUsed) => !shaUsed, // 规则：每回合限一次杀
   targetFilter: otherAlive,
   targetCount: 1,
   ai: {
-    canUse: (_, __, shaUsed) => !shaUsed,
+    shouldUse: () => true,
     usePriority: 60,
     discardPriority: 0,
   },
@@ -245,10 +246,11 @@ cardRegistry.register({
   emoji: '🛡️',
   content: async () => {}, // 闪不主动使用
   tags: [CardTag.Basic],
+  canUse: () => false, // 规则：闪不可在出牌阶段主动使用
   targetFilter: () => [],
   targetCount: 0,
   ai: {
-    canUse: () => false,
+    shouldUse: () => false,
     usePriority: 0,
     discardPriority: 1,
   },
@@ -260,10 +262,11 @@ cardRegistry.register({
   emoji: '🍑',
   content: taoContent,
   tags: [CardTag.Basic],
+  canUse: (player) => player.hp < player.maxHp, // 规则：桃需受伤才能用
   targetFilter: (user) => [user],
   targetCount: 1,
   ai: {
-    canUse: (player) => player.hp < player.maxHp,
+    shouldUse: () => true,
     usePriority: 90,
     discardPriority: 3,
   },
@@ -275,10 +278,11 @@ cardRegistry.register({
   emoji: '📜',
   content: wuzhongContent,
   tags: [CardTag.Trick],
+  canUse: () => true,
   targetFilter: (user) => [user],
   targetCount: 1,
   ai: {
-    canUse: () => true,
+    shouldUse: () => true,
     usePriority: 80,
     discardPriority: 2,
   },
@@ -290,10 +294,11 @@ cardRegistry.register({
   emoji: '⚔️',
   content: juedouContent,
   tags: [CardTag.Trick],
+  canUse: () => true,
   targetFilter: otherAlive,
   targetCount: 1,
   ai: {
-    canUse: (player) => player.hand.some((c) => c.type === CardType.Sha),
+    shouldUse: (player) => player.hand.some((c) => c.type === CardType.Sha), // AI：有杀垫底才决斗
     usePriority: 70,
     discardPriority: 0,
   },
@@ -305,10 +310,11 @@ cardRegistry.register({
   emoji: '🐘',
   content: nanmanContent,
   tags: [CardTag.Trick],
+  canUse: () => true,
   targetFilter: otherAlive,
   targetCount: 'all',
   ai: {
-    canUse: () => true,
+    shouldUse: () => true,
     usePriority: 75,
     discardPriority: 0,
   },
@@ -320,10 +326,11 @@ cardRegistry.register({
   emoji: '🌉',
   content: guoheContent,
   tags: [CardTag.Trick],
+  canUse: (player, allPlayers) => otherAliveWithCards(player, allPlayers).length > 0, // 规则：需要有牌目标
   targetFilter: otherAliveWithCards,
   targetCount: 1,
   ai: {
-    canUse: (player, allPlayers) => otherAliveWithCards(player, allPlayers).length > 0,
+    shouldUse: () => true,
     usePriority: 65,
     discardPriority: 2,
   },
@@ -335,10 +342,11 @@ cardRegistry.register({
   emoji: '🐑',
   content: shunshouContent,
   tags: [CardTag.Trick],
+  canUse: (player, allPlayers) => otherAliveWithCards(player, allPlayers).length > 0, // 规则：需要有牌目标
   targetFilter: otherAliveWithCards,
   targetCount: 1,
   ai: {
-    canUse: (player, allPlayers) => otherAliveWithCards(player, allPlayers).length > 0,
+    shouldUse: () => true,
     usePriority: 65,
     discardPriority: 2,
   },
@@ -350,10 +358,11 @@ cardRegistry.register({
   emoji: '🛡️',
   content: wuxieContent,
   tags: [CardTag.Trick],
+  canUse: () => false, // 规则：无懈不可在出牌阶段主动使用（由响应 trigger 调用）
   targetFilter: () => [],
   targetCount: 0,
   ai: {
-    canUse: () => false,  // 不主动使用，由 trigger handler 调用
+    shouldUse: () => false,
     usePriority: 0,
     discardPriority: 100, // 尽量保留在手牌中
   },

@@ -178,6 +178,39 @@ describe('制衡（孙权主动技能）', () => {
     expect(activeSkillRegistry.get('制衡')).toBeDefined();
   });
 
+  it('规则与 AI 分层：有牌可出时规则允许、AI 不使用', () => {
+    const g = freshGame({}, sunquanHeroes);
+    const sunquan = g.state.players[1];
+    giveHand(sunquan, CardType.Sha);
+    const skill = activeSkillRegistry.get('制衡')!;
+    const ctx = { shaUsed: false, usedSkills: new Set<string>() };
+
+    expect(skill.canUse(g, sunquan, ctx)).toBe(true);        // 规则：合法
+    expect(skill.ai.shouldUse(g, sunquan, ctx)).toBe(false);  // AI：不该用
+  });
+
+  it('规则与 AI 分层：无牌可出时两者都为 true', () => {
+    const g = freshGame({}, sunquanHeroes);
+    const sunquan = g.state.players[1];
+    giveHand(sunquan, CardType.Shan);
+    const skill = activeSkillRegistry.get('制衡')!;
+    const ctx = { shaUsed: false, usedSkills: new Set<string>() };
+
+    expect(skill.canUse(g, sunquan, ctx)).toBe(true);
+    expect(skill.ai.shouldUse(g, sunquan, ctx)).toBe(true);
+  });
+
+  it('规则层面：已用过 → canUse 为 false（限一次）', () => {
+    const g = freshGame({}, sunquanHeroes);
+    const sunquan = g.state.players[1];
+    giveHand(sunquan, CardType.Shan);
+    const skill = activeSkillRegistry.get('制衡')!;
+
+    expect(
+      skill.canUse(g, sunquan, { shaUsed: false, usedSkills: new Set(['制衡']) }),
+    ).toBe(false);
+  });
+
   it('手牌全部不可出 → 制衡发动，弃置所有手牌并摸等量', async () => {
     registerSkills();
     const g = freshGame({}, sunquanHeroes);
