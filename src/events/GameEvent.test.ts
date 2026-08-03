@@ -62,6 +62,29 @@ describe('GameEvent 生命周期', () => {
     expect(game.eventStack.top).toBeNull();
     expect(game.eventStack.depth).toBe(0);
   });
+
+  it('在事件上下文外构造、上下文内执行 → 抛错（禁止延迟执行）', async () => {
+    const game = makeGame();
+    const deferred = new GameEvent('deferred', {}, game); // 构造时栈顶为 null
+
+    const parent = new GameEvent('parent', {}, game);
+    await expect(parent.execute(async () => {
+      await deferred.execute(async () => {}); // 执行时栈顶是 parent ≠ null
+    })).rejects.toThrow(/constructed in a different context/);
+  });
+
+  it('在父事件中构造、父事件结束后执行 → 抛错（禁止延迟执行）', async () => {
+    const game = makeGame();
+    let deferred: GameEvent | null = null;
+
+    const parent = new GameEvent('parent', {}, game);
+    await parent.execute(async () => {
+      deferred = new GameEvent('deferred', {}, game); // 构造时 parent 在栈顶
+    });
+
+    // 此时栈顶已回到 null，父链与执行上下文不匹配
+    await expect(deferred!.execute(async () => {})).rejects.toThrow(/constructed in a different context/);
+  });
 });
 
 // ============================================================

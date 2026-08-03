@@ -118,6 +118,18 @@ export class GameEvent<T = Record<string, unknown>> {
       );
     }
 
+    // 因果上下文 == 执行上下文：禁止延迟执行。
+    // parent 在构造时绑定（栈顶），若执行时栈顶不同，说明事件在别的上下文
+    // 中被创建——父链会绑定到错误的因果来源，getParent 查询将返回错误结果。
+    if (this._parent !== this.game.eventStack.top) {
+      throw new Error(
+        `Event "${this.type}" was constructed in a different context than executed — ` +
+        `captured parent: "${this._parent?.type ?? 'null'}", current stack top: ` +
+        `"${this.game.eventStack.top?.type ?? 'null'}". ` +
+        `Events must be created and executed in the same stack context.`,
+      );
+    }
+
     this._phase = 'executing';
     this.game.eventStack.push(this);
 
