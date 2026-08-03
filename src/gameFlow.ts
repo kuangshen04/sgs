@@ -19,6 +19,7 @@ import {
 } from './game.js';
 import type { Game } from './game.js';
 import { choose } from './choose.js';
+import { pickActiveSkill } from './skills.js';
 
 // ============================================================
 // 弃牌阶段逻辑
@@ -100,12 +101,22 @@ export async function playPhase(
       const player = event.data.player;
 
       let shaUsed = false;
+      const usedSkills = new Set<string>(); // 本回合已发动的限次技能
       while (true) {
-        const result = await choose(game, { player, shaUsed });
-        if (!result) break;
+        const cardChoice = await choose(game, { player, shaUsed });
+        const skill = pickActiveSkill(game, player, { shaUsed, usedSkills });
 
-        if (result.card.type === CardType.Sha) shaUsed = true;
-        await useCard(game, { player, card: result.card, targets: result.targets });
+        if (cardChoice) {
+          if (cardChoice.card.type === CardType.Sha) shaUsed = true;
+          await useCard(game, {
+            player, card: cardChoice.card, targets: cardChoice.targets,
+          });
+        } else if (skill) {
+          usedSkills.add(skill.name);
+          await skill.content(game, player);
+        } else {
+          break;
+        }
       }
     });
 }

@@ -11,6 +11,7 @@ import type { GameEvent } from './events/index.js';
 import { triggerSystem } from './events/index.js';
 import type { DamageEventData, PhaseEventData, TurnEventData } from './events/index.js';
 import type { Player } from './types.js';
+import { computeCardOptions } from './choose.js';
 
 // ============================================================
 // 技能定义 & 注册表
@@ -39,6 +40,39 @@ export const skillRegistry = {
 };
 
 // ============================================================
+// 主动技能（出牌阶段发动）
+// ============================================================
+
+/** 主动技能的决策上下文（由出牌阶段循环提供） */
+export interface ActiveSkillContext {
+  shaUsed: boolean;
+  /** 本回合已发动过的限次技能名 */
+  usedSkills: ReadonlySet<string>;
+}
+
+/** 出牌阶段可发动的技能定义 */
+export interface ActiveSkillDef {
+  name: string;
+  /** 当前是否可发动（含次数限制） */
+  canUse: (game: Game, player: Player, ctx: ActiveSkillContext) => boolean;
+  /** 发动效果 */
+  content: (game: Game, player: Player) => Promise<void>;
+  /** 与其他主动技能并列时的优先级（越大越优先） */
+  priority: number;
+}
+
+const _activeSkills = new Map<string, ActiveSkillDef>();
+
+export const activeSkillRegistry = {
+  register(def: ActiveSkillDef): void {
+    _activeSkills.set(def.name, def);
+  },
+  get(name: string): ActiveSkillDef | undefined {
+    return _activeSkills.get(name);
+  },
+};
+
+// ============================================================
 // 分发
 // ============================================================
 
@@ -60,6 +94,22 @@ export function registerSkills(): void {
       await skill.content(event.game, event);
     });
   }
+}
+
+/**
+ * 出牌阶段挑选可发动的主动技能：
+ * 从 player.hero.skills 解析出已注册的主动技能，过滤 canUse，按 priority 取最高。
+ */
+export function pickActiveSkill(
+  game: Game,
+  player: Player,
+  ctx: ActiveSkillContext,
+): ActiveSkillDef | null {
+  const candidates = (player.hero.skills ?? [])
+    .map((name) => activeSkillRegistry.get(name))
+    .filter((s): s is ActiveSkillDef => !!s && s.canUse(game, player, ctx));
+  if (candidates.length === 0) return null;
+  return candidates.sort((a, b) => b.priority - a.priority)[0];
 }
 
 // ============================================================
@@ -119,4 +169,30 @@ skillRegistry.register({
   name: '闭月',
   trigger: 'turn.after',
   content: biyueContent,
+});
+
+// ============================================================
+// 主动技能注册
+// ============================================================
+
+/** 制衡：每回合限一次，弃置所有手牌并摸等量（简化：不任选） */
+const zhihengContent = async (game: Game, player: Player): Promise<void> => {
+  const count = player.hand.length;
+  if (count === 0) return;
+  game.state.discardPile.push(...player.hand);
+  player.hand = [];
+  await drawCards(game, { target: player, count });
+  console.log(
+    `  ✨${player.name} 发动【制衡】！弃置 ${count} 张牌，摸了 ${count} 张牌`,
+  );
+};
+
+activeSkillRegistry.register({
+  name: '制衡',
+  canUse: (game, player, ctx) =>
+    !ctx.usedSkills.has('制衡') &&        // 每回合限一次
+    player.hand.length > 0 &&             // 空手发动无意义（简化模型）
+    computeCardOptions(game, player, ctx.shaUsed).length === 0, // 没有任何牌能出
+  content: zhihengContent,
+  priority: 0,
 });
