@@ -75,7 +75,7 @@ export interface Deciders {
 // Phase 1: 选牌（引擎层 — 规则）
 // ============================================================
 
-/** 计算可选卡牌（已按 usePriority 降序排列） */
+/** 计算合法可用的牌（规则层面；AI 的 shouldUse/优先级判断在 decider 中） */
 export function computeCardOptions(
   game: Game,
   player: Player,
@@ -85,15 +85,21 @@ export function computeCardOptions(
 
   return player.hand
     .map((card) => ({ card, def: cardRegistry.get(card.type) }))
-    .filter(({ def }) => def && def.canUse(player, allPlayers, shaUsed))          // 规则：能不能用
-    .filter(({ def }) => def!.ai.shouldUse(player, allPlayers, shaUsed))          // AI：该不该用
-    .map(({ card, def }) => ({ card, def: def! }))
-    .sort((a, b) => b.def.ai.usePriority - a.def.ai.usePriority);
+    .filter(({ def }) => def && def.canUse(player, allPlayers, shaUsed))
+    .map(({ card, def }) => ({ card, def: def! }));
 }
 
-function defaultCardDecider(options: CardOption[]): CardSelection | null {
-  if (options.length === 0) return null;
-  return { cardId: options[0].card.id };
+/** 默认 AI 决策：过滤 AI 不愿出的牌，按 usePriority 降序选第一张 */
+function defaultCardDecider(
+  options: CardOption[],
+  player: Player,
+  shaUsed: boolean,
+): CardSelection | null {
+  const preferred = options
+    .filter((o) => o.def.ai.shouldUse(player, shaUsed))
+    .sort((a, b) => b.def.ai.usePriority - a.def.ai.usePriority);
+  if (preferred.length === 0) return null;
+  return { cardId: preferred[0].card.id };
 }
 
 function validateCardSelection(

@@ -104,7 +104,9 @@ export async function playPhase(
       const usedSkills = new Set<string>(); // 本回合已发动的限次技能
       while (true) {
         const cardChoice = await choose(game, { player, shaUsed });
-        const skill = pickActiveSkill(game, player, { shaUsed, usedSkills });
+        const skill = pickActiveSkill(game, player, {
+          shaUsed, usedSkills, cardChoice: cardChoice?.card ?? null,
+        });
 
         if (cardChoice) {
           if (cardChoice.card.type === CardType.Sha) shaUsed = true;

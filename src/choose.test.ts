@@ -51,17 +51,15 @@ describe('computeCardOptions', () => {
     expect(computeCardOptions(g, g.state.players[0], false).length).toBe(0);
   });
 
-  it('多张牌按 usePriority 降序排列', () => {
+  it('computeCardOptions 只做规则过滤，保持手牌顺序', () => {
     const g = freshGame();
     const player = g.state.players[0];
     player.hp = 2;
     giveHand(player, CardType.Sha, CardType.JueDou, CardType.Tao);
 
     const options = computeCardOptions(g, player, false);
-    expect(options[0].card.type).toBe(CardType.Tao);  // 桃 90 排第一
-    expect(options[0].def.ai.usePriority).toBeGreaterThanOrEqual(
-      options[options.length - 1].def.ai.usePriority,
-    );
+    expect(options.map((o) => o.card.type))
+      .toEqual([CardType.Sha, CardType.JueDou, CardType.Tao]);
   });
 
   it('规则与 AI 分层：决斗无杀在手时规则允许、AI 不使用', () => {
@@ -70,7 +68,7 @@ describe('computeCardOptions', () => {
     const def = cardRegistry.get(CardType.JueDou)!;
 
     expect(def.canUse(player, g.state.players, false)).toBe(true);        // 规则：合法
-    expect(def.ai.shouldUse(player, g.state.players, false)).toBe(false);  // AI：没杀垫底不用
+    expect(def.ai.shouldUse(player, false)).toBe(false);                  // AI：没杀垫底不用
   });
 
   it('规则与 AI 分层：决斗有杀在手时 AI 也愿意用', () => {
@@ -79,7 +77,7 @@ describe('computeCardOptions', () => {
     giveHand(player, CardType.Sha);
     const def = cardRegistry.get(CardType.JueDou)!;
 
-    expect(def.ai.shouldUse(player, g.state.players, false)).toBe(true);
+    expect(def.ai.shouldUse(player, false)).toBe(true);
   });
 
   it('规则层面：桃满血时 canUse=false（受伤与否是规则不是策略）', () => {
@@ -108,6 +106,17 @@ describe('computeCardOptions', () => {
     giveHand(player, CardType.Shan);
 
     expect(computeCardOptions(g, player, false).length).toBe(0);
+  });
+
+  it('默认 AI 决策：按 usePriority 降序选牌（桃 90 优先）', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    player.hp = 2;
+    giveHand(player, CardType.Sha, CardType.JueDou, CardType.Tao);
+
+    const result = await choose(g, { player, shaUsed: false });
+
+    expect(result!.card.type).toBe(CardType.Tao);
   });
 });
 

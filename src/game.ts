@@ -48,7 +48,7 @@ export interface CardDef {
   targetCount: number | 'all';
   ai: {
     /** AI 层面：当前是否应该使用（策略；规则合法 ≠ 现在应该用） */
-    shouldUse: (player: Player, allPlayers: Player[], shaUsed: boolean) => boolean;
+    shouldUse: (player: Player, shaUsed: boolean) => boolean;
     usePriority: number;     // AI 使用优先级（越大越优先）
     discardPriority: number; // 弃牌优先级（越小越先弃）
   };

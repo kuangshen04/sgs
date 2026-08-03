@@ -10,8 +10,7 @@ import { drawCards } from './game.js';
 import type { GameEvent } from './events/index.js';
 import { triggerSystem } from './events/index.js';
 import type { DamageEventData, PhaseEventData, TurnEventData } from './events/index.js';
-import type { Player } from './types.js';
-import { computeCardOptions } from './choose.js';
+import type { Card, Player } from './types.js';
 
 // ============================================================
 // 技能定义 & 注册表
@@ -48,6 +47,8 @@ export interface ActiveSkillContext {
   shaUsed: boolean;
   /** 本回合已发动过的限次技能名 */
   usedSkills: ReadonlySet<string>;
+  /** 本轮 AI 选出的要出的牌（null = 没有牌要出） */
+  cardChoice: Card | null;
 }
 
 /** 出牌阶段可发动的技能定义 */
@@ -201,9 +202,8 @@ activeSkillRegistry.register({
     player.hand.length > 0,        // 规则：简化模型需有牌可弃
   content: zhihengContent,
   ai: {
-    // AI：没有任何牌能出时才换牌
-    shouldUse: (game, player, ctx) =>
-      computeCardOptions(game, player, ctx.shaUsed).length === 0,
+    // AI：本轮选不出想出的牌时才换牌
+    shouldUse: (_game, _player, ctx) => ctx.cardChoice === null,
     priority: 0,
   },
 });
