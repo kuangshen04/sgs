@@ -13,6 +13,7 @@ export enum CardType {
   NanMan = '南蛮入侵',
   WanJian = '万箭齐发',
   TaoYuan = '桃园结义',
+  WuGu = '五谷丰登',
   GuoHe = '过河拆桥',
   ShunShou = '顺手牵羊',
   WuXie = '无懈可击',

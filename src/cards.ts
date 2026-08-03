@@ -137,6 +137,18 @@ const taoyuanContent: CardContentFn = async (game, data, _event) => {
   }
 };
 
+const wuguContent: CardContentFn = async (game, data, _event) => {
+  const user = data.player;
+  console.log(
+    `  ${user.name} 使用了 🌾五谷丰登 (${data.card.suit}${displayNumber(data.card.number)})！` +
+    `所有角色各摸 1 张牌（简化版：亮牌选牌尚未实现）`,
+  );
+
+  for (const target of data.targets) {
+    await drawCards(game, { target, count: 1 });
+  }
+};
+
 const guoheContent: CardContentFn = async (game, data, _event) => {
   const user = data.player;
   const target = data.targets[0];
@@ -391,6 +403,22 @@ cardRegistry.register({
 });
 
 cardRegistry.register({
+  type: CardType.WuGu,
+  name: '五谷丰登',
+  emoji: '🌾',
+  content: wuguContent,
+  tags: [CardTag.Trick],
+  canUse: () => true,
+  targetFilter: allAlive,
+  targetCount: 'all',
+  ai: {
+    shouldUse: () => true,
+    usePriority: 75,
+    discardPriority: 2,
+  },
+});
+
+cardRegistry.register({
   type: CardType.GuoHe,
   name: '过河拆桥',
   emoji: '🌉',
@@ -454,6 +482,7 @@ export const STANDARD_DECK: DeckEntry[] = [
   { type: CardType.Tao,     suit: '♥', numbers: [2] },
   { type: CardType.WanJian, suit: '♥', numbers: [1] },
   { type: CardType.TaoYuan, suit: '♥', numbers: [1] },
+  { type: CardType.WuGu,    suit: '♥', numbers: [3, 4] },
   { type: CardType.WuZhong, suit: '♥', numbers: [7,8,9,11] },
   { type: CardType.WuXie,   suit: '♥', numbers: [13] },
   { type: CardType.Shan,    suit: '♥', numbers: [1,3,4,5,6,10,12] },

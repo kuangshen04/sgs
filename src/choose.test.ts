@@ -179,6 +179,17 @@ describe('computeTargetOptions', () => {
     expect(targets.map((t) => t.player)).toContain(player);
   });
 
+  it('五谷丰登的合法目标是全体存活玩家（含自己）', () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    giveHand(player, CardType.WuGu);
+    const card = player.hand[0];
+
+    const targets = computeTargetOptions(g, card, player);
+    expect(targets.length).toBe(3);
+    expect(targets.map((t) => t.player)).toContain(player);
+  });
+
   it('过河拆桥/顺手牵羊的合法目标是有手牌的其他存活角色', () => {
     const g = freshGame();
     const player = g.state.players[0];

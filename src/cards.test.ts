@@ -200,6 +200,26 @@ describe('useCard — 桃园结义', () => {
   });
 });
 
+describe('useCard — 五谷丰登', () => {
+  it('所有角色各摸 1 张牌（简化版）', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    const p2 = g.state.players[1];
+    const p3 = g.state.players[2];
+    giveHand(player, CardType.WuGu);
+
+    const card = player.hand[0];
+    const deckBefore = g.state.deck.length;
+    await useCard(g, { player, card, targets: [player, p2, p3] });
+
+    // 自己：用了五谷（-1）又摸 1 → 手上 1 张；其余每人 +1
+    expect(player.hand.length).toBe(1);
+    expect(p2.hand.length).toBe(1);
+    expect(p3.hand.length).toBe(1);
+    expect(g.state.deck.length).toBe(deckBefore - 3); // 共摸 3 张
+  });
+});
+
 describe('useCard — 过河拆桥', () => {
   it('弃置目标一张手牌', async () => {
     const g = freshGame();
