@@ -19,6 +19,7 @@ async function main() {
 
   const heroes: Hero[] = [
     { name: '刘备', maxHp: 4, skills: ['仁德'] },
+    { name: '曹操', maxHp: 4, skills: ['奸雄'] },
     { name: '郭嘉', maxHp: 3, skills: ['遗计'] },
     { name: '孙权', maxHp: 4, skills: ['制衡'] },
     { name: '周瑜', maxHp: 3, skills: ['英姿', '反间'] },

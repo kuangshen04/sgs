@@ -8,8 +8,9 @@
 import type { Game } from './game.js';
 import { drawCards, giveCards, discardCards } from './cardActions.js';
 import { damage, recover } from './life.js';
+import { cardEmoji, displayNumber } from './cardRegistry.js';
 import type { GameEvent } from './events/index.js';
-import { triggerSystem } from './events/index.js';
+import { triggerSystem, EventType } from './events/index.js';
 import type { DamageEventData, PhaseEventData, TurnEventData } from './events/index.js';
 import type { Card, Player } from './types.js';
 
@@ -158,6 +159,24 @@ const biyueContent = async (game: Game, event: GameEvent<any>): Promise<void> =>
   );
 };
 
+/** 奸雄：受到伤害后，若伤害由使用牌造成，获得该牌 */
+const jianxiongContent = async (game: Game, event: GameEvent<any>): Promise<void> => {
+  const { target } = event.data as DamageEventData;
+  const useCardEvent = event.getParent(EventType.UseCard);
+  if (!useCardEvent) return; // 非使用牌造成的伤害（如技能伤害）
+  const card = useCardEvent.data.card as Card;
+
+  // 使用的牌已进弃牌堆：从弃牌堆找回并收入手牌
+  const idx = game.state.discardPile.findIndex((c) => c.id === card.id);
+  if (idx < 0) return;
+  const [found] = game.state.discardPile.splice(idx, 1);
+  target.hand.push(found);
+  console.log(
+    `  ✨${target.name} 发动【奸雄】！获得造成伤害的 ${cardEmoji(found.type)} ` +
+    `(${found.suit}${displayNumber(found.number)})`,
+  );
+};
+
 // ============================================================
 // 注册
 // ============================================================
@@ -178,6 +197,12 @@ skillRegistry.register({
   name: '闭月',
   trigger: 'turn.after',
   content: biyueContent,
+});
+
+skillRegistry.register({
+  name: '奸雄',
+  trigger: 'damage.after',
+  content: jianxiongContent,
 });
 
 // ============================================================
