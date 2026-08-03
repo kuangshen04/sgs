@@ -139,6 +139,8 @@ describe('cardRegistry', () => {
     expect(names).toContain('杀');
     expect(names).toContain('桃');
     expect(names).toContain('南蛮入侵');
+    expect(names).toContain('过河拆桥');
+    expect(names).toContain('顺手牵羊');
   });
 
   it('每张注册牌都有 targetFilter', () => {
@@ -154,7 +156,7 @@ describe('cardRegistry', () => {
   });
 
   it('锦囊牌 tag = Trick', () => {
-    for (const t of [CardType.WuZhong, CardType.JueDou, CardType.NanMan]) {
+    for (const t of [CardType.WuZhong, CardType.JueDou, CardType.NanMan, CardType.GuoHe, CardType.ShunShou]) {
       expect(cardRegistry.get(t)!.tags).toContain(CardTag.Trick);
     }
   });
@@ -165,9 +167,9 @@ describe('cardRegistry', () => {
 // ============================================================
 
 describe('createDeck', () => {
-  it('标准牌堆 104 张', () => {
+  it('牌堆 128 张（104 基础 + 过河拆桥/顺手牵羊各 12）', () => {
     const deck = createDeck(STANDARD_DECK);
-    expect(deck.length).toBe(104);
+    expect(deck.length).toBe(128);
   });
 
   it('每张牌有 id/type/name/suit/number', () => {
@@ -191,6 +193,18 @@ describe('createDeck', () => {
     const deck = createDeck(STANDARD_DECK);
     const nmCount = deck.filter((c) => c.type === CardType.NanMan).length;
     expect(nmCount).toBe(6);
+  });
+
+  it('过河拆桥数量 = (3+3)×2副本 = 12', () => {
+    const deck = createDeck(STANDARD_DECK);
+    const count = deck.filter((c) => c.type === CardType.GuoHe).length;
+    expect(count).toBe(12);
+  });
+
+  it('顺手牵羊数量 = (3+3)×2副本 = 12', () => {
+    const deck = createDeck(STANDARD_DECK);
+    const count = deck.filter((c) => c.type === CardType.ShunShou).length;
+    expect(count).toBe(12);
   });
 });
 
@@ -220,8 +234,8 @@ describe('createGame', () => {
     expect(g.state.currentIndex).toBe(0);
     expect(g.state.gameOver).toBe(false);
     expect(g.state.winner).toBeNull();
-    // 104 - 3人×4 = 92
-    expect(g.state.deck.length).toBe(92);
+    // 128 - 3人×4 = 116
+    expect(g.state.deck.length).toBe(116);
     expect(g.state.discardPile.length).toBe(0);
   });
 
@@ -540,6 +554,63 @@ describe('useCard — 南蛮入侵', () => {
 });
 
 // ============================================================
+// useCard — 过河拆桥 / 顺手牵羊
+// ============================================================
+
+describe('useCard — 过河拆桥', () => {
+  it('弃置目标一张手牌', async () => {
+    const g = freshGame();
+    const attacker = g.state.players[0];
+    const target = g.state.players[1];
+    giveHand(attacker, CardType.GuoHe);
+    giveHand(target, CardType.Sha); // 只有一张 → 必被弃置
+
+    const card = attacker.hand[0];
+    await useCard(g, { player: attacker, card, targets: [target] });
+
+    expect(target.hand.length).toBe(0);
+    expect(g.state.discardPile.some((c) => c.type === CardType.Sha)).toBe(true);
+    // 过河拆桥本身也进入弃牌堆
+    expect(g.state.discardPile.some((c) => c.id === card.id)).toBe(true);
+  });
+});
+
+describe('useCard — 顺手牵羊', () => {
+  it('获得目标一张手牌', async () => {
+    const g = freshGame();
+    const attacker = g.state.players[0];
+    const target = g.state.players[1];
+    giveHand(attacker, CardType.ShunShou);
+    giveHand(target, CardType.Tao); // 只有一张 → 必被牵走
+
+    const card = attacker.hand[0];
+    await useCard(g, { player: attacker, card, targets: [target] });
+
+    expect(target.hand.length).toBe(0);
+    expect(attacker.hand.some((c) => c.type === CardType.Tao)).toBe(true);
+    // 顺手牵羊本身进入弃牌堆
+    expect(g.state.discardPile.some((c) => c.id === card.id)).toBe(true);
+  });
+
+  it('可以被无懈可击抵消', async () => {
+    const g = freshGame();
+    const attacker = g.state.players[0];
+    const p2 = g.state.players[1];
+    giveHand(attacker, CardType.ShunShou);
+    giveHand(p2, CardType.WuXie, CardType.Tao);
+
+    const card = attacker.hand[0];
+    await useCard(g, { player: attacker, card, targets: [p2] });
+
+    // p2 用无懈保护自己 → 桃未被牵走
+    expect(p2.hand.length).toBe(1);
+    expect(p2.hand[0].type).toBe(CardType.Tao);
+    expect(attacker.hand.length).toBe(0); // 顺手牵羊已消耗
+    expect(g.state.discardPile.some((c) => c.type === CardType.WuXie)).toBe(true);
+  });
+});
+
+// ============================================================
 // 无懈可击
 // ============================================================
 
@@ -841,6 +912,18 @@ describe('computeTargetOptions', () => {
 
     const targets = computeTargetOptions(g, card, player);
     expect(targets.length).toBe(2);
+  });
+
+  it('过河拆桥/顺手牵羊的合法目标是有手牌的其他存活角色', () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    giveHand(player, CardType.GuoHe);
+    giveHand(g.state.players[1], CardType.Sha);
+    // players[2] 空手 → 不可选
+
+    const targets = computeTargetOptions(g, player.hand[0], player);
+    expect(targets.length).toBe(1);
+    expect(targets[0].player).toBe(g.state.players[1]);
   });
 });
 

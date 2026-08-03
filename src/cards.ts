@@ -8,7 +8,7 @@ import { CardTag, CardType } from './types.js';
 import type { Player } from './types.js';
 import type { CardContentFn, DeckEntry, Game } from './game.js';
 import {
-  cardRegistry, displayNumber, playFromHand, useCard,
+  cardRegistry, cardEmoji, displayNumber, playFromHand, useCard,
   damage, recover, drawCards,
 } from './game.js';
 import { findResponse } from './choose.js';
@@ -105,6 +105,41 @@ const nanmanContent: CardContentFn = async (game, data, _event) => {
   }
 };
 
+const guoheContent: CardContentFn = async (game, data, _event) => {
+  const user = data.player;
+  const target = data.targets[0];
+  console.log(
+    `  ${user.name} 对 ${target.name} 使用了 🌉过河拆桥，弃置其一张手牌`,
+  );
+
+  // 初步实现：随机选一张手牌弃置（装备区/判定区尚未实现）
+  const hand = target.hand;
+  if (hand.length === 0) return;
+  const card = hand[Math.floor(Math.random() * hand.length)];
+  playFromHand(game, target, card);
+  console.log(
+    `  弃置了 ${cardEmoji(card.type)} (${card.suit}${displayNumber(card.number)})`,
+  );
+};
+
+const shunshouContent: CardContentFn = async (game, data, _event) => {
+  const user = data.player;
+  const target = data.targets[0];
+  console.log(
+    `  ${user.name} 对 ${target.name} 使用了 🐑顺手牵羊，获得其一张手牌`,
+  );
+
+  // 初步实现：随机选一张手牌获得（距离与装备区尚未实现）
+  const hand = target.hand;
+  if (hand.length === 0) return;
+  const idx = Math.floor(Math.random() * hand.length);
+  const card = hand.splice(idx, 1)[0];
+  user.hand.push(card);
+  console.log(
+    `  获得了 ${cardEmoji(card.type)} (${card.suit}${displayNumber(card.number)})`,
+  );
+};
+
 // ============================================================
 // 工具
 // ============================================================
@@ -112,6 +147,11 @@ const nanmanContent: CardContentFn = async (game, data, _event) => {
 /** 其他存活玩家 */
 function otherAlive(user: Player, all: Player[]): Player[] {
   return all.filter((p) => p !== user && p.alive);
+}
+
+/** 有手牌的其他存活角色（装备区/判定区未实现，区域内先只看手牌） */
+function otherAliveWithCards(user: Player, all: Player[]): Player[] {
+  return all.filter((p) => p !== user && p.alive && p.hand.length > 0);
 }
 
 // ============================================================
@@ -275,6 +315,36 @@ cardRegistry.register({
 });
 
 cardRegistry.register({
+  type: CardType.GuoHe,
+  name: '过河拆桥',
+  emoji: '🌉',
+  content: guoheContent,
+  tags: [CardTag.Trick],
+  targetFilter: otherAliveWithCards,
+  targetCount: 1,
+  ai: {
+    canUse: (player, allPlayers) => otherAliveWithCards(player, allPlayers).length > 0,
+    usePriority: 65,
+    discardPriority: 2,
+  },
+});
+
+cardRegistry.register({
+  type: CardType.ShunShou,
+  name: '顺手牵羊',
+  emoji: '🐑',
+  content: shunshouContent,
+  tags: [CardTag.Trick],
+  targetFilter: otherAliveWithCards,
+  targetCount: 1,
+  ai: {
+    canUse: (player, allPlayers) => otherAliveWithCards(player, allPlayers).length > 0,
+    usePriority: 65,
+    discardPriority: 2,
+  },
+});
+
+cardRegistry.register({
   type: CardType.WuXie,
   name: '无懈可击',
   emoji: '🛡️',
@@ -297,6 +367,8 @@ export const STANDARD_DECK: DeckEntry[] = [
   // ♠
   { type: CardType.JueDou, suit: '♠', numbers: [1] },
   { type: CardType.NanMan, suit: '♠', numbers: [7, 13] },
+  { type: CardType.GuoHe,   suit: '♠', numbers: [3, 4, 12] },
+  { type: CardType.ShunShou, suit: '♠', numbers: [3, 4, 11] },
   { type: CardType.WuXie,  suit: '♠', numbers: [11] },
   { type: CardType.Sha,    suit: '♠', numbers: [2,3,4,5,6,8,9,10,12] },
   // ♥
@@ -307,10 +379,12 @@ export const STANDARD_DECK: DeckEntry[] = [
   // ♣
   { type: CardType.JueDou, suit: '♣', numbers: [1] },
   { type: CardType.NanMan, suit: '♣', numbers: [7] },
+  { type: CardType.GuoHe,   suit: '♣', numbers: [3, 4, 12] },
   { type: CardType.WuXie,  suit: '♣', numbers: [12] },
   { type: CardType.Sha,    suit: '♣', numbers: [2,3,4,5,6,8,9,10,11,13] },
   // ♦
   { type: CardType.JueDou, suit: '♦', numbers: [1] },
+  { type: CardType.ShunShou, suit: '♦', numbers: [3, 4, 11] },
   { type: CardType.WuXie,  suit: '♦', numbers: [12] },
   { type: CardType.Tao,    suit: '♦', numbers: [2,3,4,5,6,7,8,9,10,11,13] },
 ];
