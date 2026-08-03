@@ -19,6 +19,7 @@ import type {
   EventStack,
 } from './events/index.js';
 import type { Deciders } from './choose.js';
+import { findResponse } from './choose.js';
 
 // ============================================================
 // 卡牌定义接口 & 注册表
@@ -279,11 +280,10 @@ export async function dying(
       // 求桃：自己使用桃直到体力 > 0 或无桃可用
       let usedTao = false;
       while (player.hp <= 0) {
-        const taoIdx = player.hand.findIndex((c) => c.type === CardType.Tao);
-        if (taoIdx < 0) break;
-        const taoCard = player.hand[taoIdx];
+        const tao = findResponse(player, CardType.Tao);
+        if (!tao) break;
         console.log(`  🩸${player.name} 濒死！使用 🍑桃 自救`);
-        await useCard(game, { player, card: taoCard, targets: [player] });
+        await useCard(game, { player, card: tao, targets: [player] });
         usedTao = true;
       }
 
@@ -313,7 +313,20 @@ export async function die(
         state.winner = winner;
         event.getParent(EventType.Game)?.prevent();
       }
-    });
+  });
+}
+
+/**
+ * 打出：把一张牌从手牌移入弃牌堆（不产生使用事件）。
+ *
+ * 用于闪、决斗打出的杀、南蛮打出的杀这类"打出"响应；
+ * "使用"路径（桃自救、无懈）应走 useCard。
+ */
+export function playFromHand(game: Game, player: Player, card: Card): void {
+  const idx = player.hand.findIndex((c) => c.id === card.id);
+  if (idx < 0) return; // 牌不在手牌（已被消耗）→ 不重复入弃牌堆
+  player.hand.splice(idx, 1);
+  game.state.discardPile.push(card);
 }
 
 // ============================================================

@@ -8,6 +8,7 @@
 // ============================================================
 
 import type { Card, Player } from './types.js';
+import { CardType } from './types.js';
 import { cardRegistry } from './game.js';
 import type { CardDef, Game } from './game.js';
 
@@ -162,6 +163,19 @@ function validateTargetSelection(
   }
 
   return targets;
+}
+
+// ============================================================
+// findResponse — 响应牌询问（只读）
+//
+// 出牌阶段外的"要一张指定类型的牌"：闪、决斗打出的杀、南蛮打出的杀、
+// 濒死的桃、无懈可击共用同一个 ask。只查找不消耗，
+// 打出（playFromHand）还是使用（useCard）由调用方决定。
+// ============================================================
+
+/** 询问一个角色是否用指定类型的牌响应。只读，不改变状态；无牌返回 null。 */
+export function findResponse(player: Player, type: CardType): Card | null {
+  return player.hand.find((c) => c.type === type) ?? null;
 }
 
 // ============================================================

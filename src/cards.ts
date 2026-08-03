@@ -8,9 +8,10 @@ import { CardTag, CardType } from './types.js';
 import type { Player } from './types.js';
 import type { CardContentFn, DeckEntry, Game } from './game.js';
 import {
-  cardRegistry, displayNumber, useCard,
+  cardRegistry, displayNumber, playFromHand, useCard,
   damage, recover, drawCards,
 } from './game.js';
+import { findResponse } from './choose.js';
 import { triggerSystem } from './events/index.js';
 import type {
   TargetingEventData,
@@ -28,12 +29,11 @@ const shaContent: CardContentFn = async (game, data, _event) => {
     `  ${attacker.name} 对 ${defender.name} 使用了 🗡️杀 (${data.card.suit}${displayNumber(data.card.number)})`,
   );
 
-  const shanIdx = defender.hand.findIndex((c) => c.type === CardType.Shan);
-  if (shanIdx >= 0) {
-    const shanCard = defender.hand.splice(shanIdx, 1)[0];
-    game.state.discardPile.push(shanCard);
+  const shan = findResponse(defender, CardType.Shan);
+  if (shan) {
+    playFromHand(game, defender, shan);
     console.log(
-      `  ${defender.name} 使用了 🛡️闪 (${shanCard.suit}${displayNumber(shanCard.number)})，抵消了攻击`,
+      `  ${defender.name} 使用了 🛡️闪 (${shan.suit}${displayNumber(shan.number)})，抵消了攻击`,
     );
   } else {
     await damage(game, { target: defender, source: attacker, amount: 1 });
@@ -71,16 +71,15 @@ const juedouContent: CardContentFn = async (game, data, _event) => {
   let opponent = initiator;
 
   while (true) {
-    const shaIdx = current.hand.findIndex((c) => c.type === CardType.Sha);
-    if (shaIdx < 0) {
+    const sha = findResponse(current, CardType.Sha);
+    if (!sha) {
       console.log(`  ${current.name} 无法打出杀！`);
       await damage(game, { target: current, source: opponent, amount: 1 });
       return;
     }
-    const shaCard = current.hand.splice(shaIdx, 1)[0];
-    game.state.discardPile.push(shaCard);
+    playFromHand(game, current, sha);
     console.log(
-      `  ${current.name} 打出了 🗡️杀 (${shaCard.suit}${displayNumber(shaCard.number)})`,
+      `  ${current.name} 打出了 🗡️杀 (${sha.suit}${displayNumber(sha.number)})`,
     );
     [current, opponent] = [opponent, current];
   }
@@ -94,12 +93,11 @@ const nanmanContent: CardContentFn = async (game, data, _event) => {
   );
 
   for (const target of data.targets) {
-    const shaIdx = target.hand.findIndex((c) => c.type === CardType.Sha);
-    if (shaIdx >= 0) {
-      const shaCard = target.hand.splice(shaIdx, 1)[0];
-      game.state.discardPile.push(shaCard);
+    const sha = findResponse(target, CardType.Sha);
+    if (sha) {
+      playFromHand(game, target, sha);
       console.log(
-        `  ${target.name} 打出了 🗡️杀 (${shaCard.suit}${displayNumber(shaCard.number)})`,
+        `  ${target.name} 打出了 🗡️杀 (${sha.suit}${displayNumber(sha.number)})`,
       );
     } else {
       await damage(game, { target, source: user, amount: 1 });
@@ -165,10 +163,8 @@ export function installWuxieTrigger(): void {
       // AI：只保护自己
       if (target !== player || user === player) continue;
 
-      const wxIdx = player.hand.findIndex((c) => c.type === CardType.WuXie);
-      if (wxIdx < 0) continue;
-
-      const wxCard = player.hand[wxIdx];
+      const wxCard = findResponse(player, CardType.WuXie);
+      if (!wxCard) continue;
       console.log(
         `  ✨${player.name} 使用 🛡️无懈可击 ` +
         `(${wxCard.suit}${displayNumber(wxCard.number)}) 抵消对 ${target.name} 的效果`,

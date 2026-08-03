@@ -20,6 +20,7 @@ import {
   drawCards,
   useCard,
   dying,
+  playFromHand,
 } from './game.js';
 import type { Game } from './game.js';
 
@@ -27,6 +28,7 @@ import {
   computeCardOptions,
   computeTargetOptions,
   choose,
+  findResponse,
 } from './choose.js';
 import type { CardDecider, Deciders } from './choose.js';
 
@@ -562,7 +564,7 @@ describe('无懈可击', () => {
 
     expect(p2.hp).toBe(hp2Before);     // 被无懈保护
     expect(p3.hp).toBe(hp3Before - 1); // 无杀受伤
-    expect(g.state.discardPile.some((c) => c.id === attacker.hand[0]?.id ?? -1)).toBe(false);
+    expect(g.state.discardPile.some((c) => c.id === attacker.hand[0]?.id)).toBe(false);
     // 南蛮已进弃牌堆（手牌被移除），无懈也已进弃牌堆
     expect(p2.hand.length).toBe(0);     // 无懈已打出
   });
@@ -968,6 +970,72 @@ describe('choose', () => {
       targetDecide: () => null,
     });
     expect(result).toBeNull();
+  });
+});
+
+// ============================================================
+// findResponse / playFromHand — 响应牌原语
+// ============================================================
+
+describe('findResponse', () => {
+  it('手牌有指定类型 → 返回该牌，不改状态', () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    giveHand(player, CardType.Sha, CardType.Tao);
+
+    const result = findResponse(player, CardType.Sha);
+
+    expect(result).toBeDefined();
+    expect(result!.type).toBe(CardType.Sha);
+    expect(player.hand.length).toBe(2); // 只读，不消耗
+  });
+
+  it('多张同类型 → 返回第一张', () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    giveHand(player, CardType.Shan, CardType.Sha, CardType.Sha);
+
+    const result = findResponse(player, CardType.Sha);
+
+    expect(result).toBe(player.hand[1]);
+  });
+
+  it('手牌没有指定类型 → 返回 null', () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    giveHand(player, CardType.Tao);
+
+    expect(findResponse(player, CardType.Sha)).toBeNull();
+  });
+
+  it('空手牌 → 返回 null', () => {
+    const g = freshGame();
+    expect(findResponse(g.state.players[0], CardType.Sha)).toBeNull();
+  });
+});
+
+describe('playFromHand', () => {
+  it('把牌从手牌移入弃牌堆', () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    giveHand(player, CardType.Sha, CardType.Tao);
+    const card = player.hand[0];
+
+    playFromHand(g, player, card);
+
+    expect(player.hand.map((c) => c.type)).toEqual([CardType.Tao]);
+    expect(g.state.discardPile).toContain(card);
+  });
+
+  it('牌不在手牌 → 不重复入弃牌堆', () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    giveHand(player, CardType.Tao);
+    const phantom = makeCard(nextId++, CardType.Sha);
+
+    playFromHand(g, player, phantom);
+
+    expect(g.state.discardPile).not.toContain(phantom);
   });
 });
 
