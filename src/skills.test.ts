@@ -293,3 +293,86 @@ describe('制衡（孙权主动技能）', () => {
     expect(g.state.discardPile.length).toBe(0);
   });
 });
+
+// ============================================================
+// 仁德（刘备：出牌阶段限一次，交给他人两张牌并回复 1 点体力）
+// ============================================================
+
+describe('仁德（刘备主动技能）', () => {
+  const liubeiHeroes: Hero[] = [
+    { name: '刘备', maxHp: 4, skills: ['仁德'] },
+    { name: '曹操', maxHp: 4 },
+    { name: '孙权', maxHp: 4 },
+  ];
+
+  afterEach(() => triggerSystem.clear());
+
+  it('activeSkillRegistry 已注册仁德', () => {
+    expect(activeSkillRegistry.get('仁德')).toBeDefined();
+  });
+
+  it('交给目标 2 张牌并回复 1 点体力', async () => {
+    registerSkills();
+    const g = freshGame({}, liubeiHeroes);
+    const liubei = g.state.players[0];
+    const target = g.state.players[1];
+    liubei.hp = 3; // 受伤
+    giveHand(liubei, CardType.Shan, CardType.WuXie); // 不可出 → 触发主动技能
+    const givenIds = liubei.hand.map((c) => c.id);
+
+    await playPhase(g, { player: liubei, round: 1 });
+
+    expect(liubei.hp).toBe(4);
+    expect(liubei.hand.length).toBe(0);
+    expect(target.hand.map((c) => c.id).sort((a, b) => a - b))
+      .toEqual([...givenIds].sort((a, b) => a - b));
+    expect(g.state.discardPile.length).toBe(0); // 牌到了目标手牌，不是弃牌堆
+  });
+
+  it('满血时不发动（AI 策略：交牌换血不划算）', async () => {
+    registerSkills();
+    const g = freshGame({}, liubeiHeroes);
+    const liubei = g.state.players[0];
+    giveHand(liubei, CardType.Shan, CardType.WuXie);
+    const skill = activeSkillRegistry.get('仁德')!;
+    const ctx = { shaUsed: false, usedSkills: new Set<string>(), cardChoice: null };
+
+    expect(skill.canUse(g, liubei, ctx)).toBe(true);        // 规则：合法
+    expect(skill.ai.shouldUse(g, liubei, ctx)).toBe(false);  // AI：不该用
+  });
+});
+
+// ============================================================
+// 反间（周瑜：出牌阶段限一次，交给他人一张牌并造成 1 点伤害）
+// ============================================================
+
+describe('反间（周瑜主动技能）', () => {
+  const zhouyuHeroes: Hero[] = [
+    { name: '刘备', maxHp: 4 },
+    { name: '周瑜', maxHp: 3, skills: ['反间'] },
+    { name: '孙权', maxHp: 4 },
+  ];
+
+  afterEach(() => triggerSystem.clear());
+
+  it('activeSkillRegistry 已注册反间', () => {
+    expect(activeSkillRegistry.get('反间')).toBeDefined();
+  });
+
+  it('交给目标 1 张牌并造成 1 点伤害', async () => {
+    registerSkills();
+    const g = freshGame({}, zhouyuHeroes);
+    const zhouyu = g.state.players[1];
+    const target = g.state.players[0];
+    giveHand(zhouyu, CardType.Shan); // 不可出 → 触发主动技能
+    const givenId = zhouyu.hand[0].id;
+    const hpBefore = target.hp;
+
+    await playPhase(g, { player: zhouyu, round: 1 });
+
+    expect(target.hp).toBe(hpBefore - 1);
+    expect(zhouyu.hand.length).toBe(0);
+    expect(target.hand.map((c) => c.id)).toContain(givenId);
+    expect(g.state.discardPile.length).toBe(0); // 牌到了目标手牌
+  });
+});

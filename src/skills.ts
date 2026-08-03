@@ -6,7 +6,7 @@
 // ============================================================
 
 import type { Game } from './game.js';
-import { drawCards } from './game.js';
+import { drawCards, giveCards, damage, recover } from './game.js';
 import type { GameEvent } from './events/index.js';
 import { triggerSystem } from './events/index.js';
 import type { DamageEventData, PhaseEventData, TurnEventData } from './events/index.js';
@@ -195,6 +195,30 @@ const zhihengContent = async (game: Game, player: Player): Promise<void> => {
   );
 };
 
+/** 仁德：出牌阶段限一次，交给其他角色两张牌，然后回复 1 点体力 */
+const rendeContent = async (game: Game, player: Player): Promise<void> => {
+  if (player.hand.length < 2) return;
+  const target = game.state.players.find((p) => p !== player && p.alive);
+  if (!target) return;
+  const given = giveCards(player, target, player.hand.slice(0, 2));
+  await recover(game, { target: player, amount: 1 });
+  console.log(
+    `  ✨${player.name} 发动【仁德】！交给 ${target.name} ${given.length} 张牌，回复 1 点体力`,
+  );
+};
+
+/** 反间：出牌阶段限一次，交给其他角色一张牌，然后对其造成 1 点伤害 */
+const fanjianContent = async (game: Game, player: Player): Promise<void> => {
+  if (player.hand.length === 0) return;
+  const target = game.state.players.find((p) => p !== player && p.alive);
+  if (!target) return;
+  giveCards(player, target, [player.hand[0]]);
+  await damage(game, { target, source: player, amount: 1 });
+  console.log(
+    `  ✨${player.name} 发动【反间】！交给 ${target.name} 1 张牌并造成 1 点伤害`,
+  );
+};
+
 activeSkillRegistry.register({
   name: '制衡',
   canUse: (game, player, ctx) =>
@@ -204,6 +228,34 @@ activeSkillRegistry.register({
   ai: {
     // AI：本轮选不出想出的牌时才换牌
     shouldUse: (_game, _player, ctx) => ctx.cardChoice === null,
+    priority: 0,
+  },
+});
+
+activeSkillRegistry.register({
+  name: '仁德',
+  canUse: (game, player, ctx) =>
+    !ctx.usedSkills.has('仁德') &&                 // 规则：每回合限一次
+    player.hand.length >= 2 &&                     // 规则：需交出 2 张牌
+    game.state.players.some((p) => p !== player && p.alive), // 规则：需有其他角色
+  content: rendeContent,
+  ai: {
+    // AI：受伤才值得交牌换血
+    shouldUse: (game, player) => player.hp < player.maxHp,
+    priority: 0,
+  },
+});
+
+activeSkillRegistry.register({
+  name: '反间',
+  canUse: (game, player, ctx) =>
+    !ctx.usedSkills.has('反间') &&                 // 规则：每回合限一次
+    player.hand.length >= 1 &&                     // 规则：需交出 1 张牌
+    game.state.players.some((p) => p !== player && p.alive), // 规则：需有其他角色
+  content: fanjianContent,
+  ai: {
+    // AI：进攻技能，合法就用
+    shouldUse: () => true,
     priority: 0,
   },
 });

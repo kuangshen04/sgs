@@ -332,6 +332,18 @@ export function playFromHand(game: Game, player: Player, card: Card): void {
   game.state.discardPile.push(card);
 }
 
+/**
+ * 交给：把一组牌从 from 的手牌移入 to 的手牌，返回实际移走的牌。
+ * 用于仁德/反间/顺手牵羊这类"获得/交给"移动（手牌区 ↔ 手牌区）。
+ */
+export function giveCards(from: Player, to: Player, cards: Card[]): Card[] {
+  const ids = new Set(cards.map((c) => c.id));
+  const moved = from.hand.filter((c) => ids.has(c.id));
+  from.hand = from.hand.filter((c) => !ids.has(c.id));
+  to.hand.push(...moved);
+  return moved;
+}
+
 // ============================================================
 // useCard — 通过 cardRegistry 分发
 // ============================================================

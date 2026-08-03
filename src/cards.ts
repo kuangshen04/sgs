@@ -8,7 +8,7 @@ import { CardTag, CardType } from './types.js';
 import type { Player } from './types.js';
 import type { CardContentFn, DeckEntry, Game } from './game.js';
 import {
-  cardRegistry, cardEmoji, displayNumber, playFromHand, useCard,
+  cardRegistry, cardEmoji, displayNumber, giveCards, playFromHand, useCard,
   damage, recover, drawCards,
 } from './game.js';
 import { findResponse } from './choose.js';
@@ -133,8 +133,8 @@ const shunshouContent: CardContentFn = async (game, data, _event) => {
   const hand = target.hand;
   if (hand.length === 0) return;
   const idx = Math.floor(Math.random() * hand.length);
-  const card = hand.splice(idx, 1)[0];
-  user.hand.push(card);
+  const card = hand[idx];
+  giveCards(target, user, [card]);
   console.log(
     `  获得了 ${cardEmoji(card.type)} (${card.suit}${displayNumber(card.number)})`,
   );

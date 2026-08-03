@@ -20,6 +20,7 @@ import {
   drawCards,
   dying,
   playFromHand,
+  giveCards,
 } from './game.js';
 
 import { freshGame, giveHand, makeCard, makeUniqueCard, testHeroes } from './test-utils.js';
@@ -393,5 +394,38 @@ describe('playFromHand', () => {
     playFromHand(g, player, phantom);
 
     expect(g.state.discardPile).not.toContain(phantom);
+  });
+});
+
+// ============================================================
+// giveCards — 交给原语（手牌区 ↔ 手牌区）
+// ============================================================
+
+describe('giveCards', () => {
+  it('把牌从 from 手牌移入 to 手牌', () => {
+    const g = freshGame();
+    const from = g.state.players[0];
+    const to = g.state.players[1];
+    giveHand(from, CardType.Sha, CardType.Tao);
+    const card = from.hand[0];
+
+    giveCards(from, to, [card]);
+
+    expect(from.hand.map((c) => c.type)).toEqual([CardType.Tao]);
+    expect(to.hand).toContain(card);
+    expect(g.state.discardPile.length).toBe(0); // 不经过弃牌堆
+  });
+
+  it('牌不在 from 手牌 → 跳过，不入 to 手牌', () => {
+    const g = freshGame();
+    const from = g.state.players[0];
+    const to = g.state.players[1];
+    giveHand(from, CardType.Tao);
+    const phantom = makeUniqueCard(CardType.Sha);
+
+    giveCards(from, to, [phantom]);
+
+    expect(from.hand.length).toBe(1);
+    expect(to.hand.length).toBe(0);
   });
 });
