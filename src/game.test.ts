@@ -13,10 +13,11 @@ import { playFromHand, giveCards, discardCards, drawCards } from './cardActions.
 import { damage, recover, dying } from './life.js';
 import { createGame, lastManStanding } from './game.js';
 
-import { freshGame, giveHand, makeCard, makeUniqueCard, testHeroes } from './test-utils.js';
+import { freshGame, giveHand, makeCard, makeUniqueCard, DEFAULT_HEROES } from './test-utils.js';
 
 import { CardTag, CardType } from './types.js';
 import type { Card } from './types.js';
+import { heroRegistry } from './heroes.js';
 
 // ============================================================
 // 纯函数
@@ -166,8 +167,14 @@ describe('createDeck', () => {
 // ============================================================
 
 describe('createGame', () => {
+  it('heroRegistry 可查询已注册武将', () => {
+    expect(heroRegistry.get('刘备')?.skills).toContain('仁德');
+    expect(heroRegistry.get('郭嘉')?.maxHp).toBe(3);
+    expect(heroRegistry.get('不存在')).toBeUndefined();
+  });
+
   it('创建指定数量的玩家', () => {
-    const g = createGame(STANDARD_DECK, testHeroes);
+    const g = createGame(STANDARD_DECK, DEFAULT_HEROES);
     expect(g.state.players.length).toBe(3);
     expect(g.state.players[0].name).toBe('刘备');
     expect(g.state.players[1].name).toBe('曹操');
@@ -175,14 +182,14 @@ describe('createGame', () => {
   });
 
   it('每个玩家初始 4 张手牌', () => {
-    const g = createGame(STANDARD_DECK, testHeroes);
+    const g = createGame(STANDARD_DECK, DEFAULT_HEROES);
     for (const p of g.state.players) {
       expect(p.hand.length).toBe(4);
     }
   });
 
   it('初始状态正确', () => {
-    const g = createGame(STANDARD_DECK, testHeroes);
+    const g = createGame(STANDARD_DECK, DEFAULT_HEROES);
     expect(g.state.round).toBe(1);
     expect(g.state.currentIndex).toBe(0);
     expect(g.state.gameOver).toBe(false);
@@ -193,9 +200,22 @@ describe('createGame', () => {
   });
 
   it('局内牌 id 唯一', () => {
-    const g = createGame(STANDARD_DECK, testHeroes);
+    const g = createGame(STANDARD_DECK, DEFAULT_HEROES);
     const ids = new Set(g.state.deck.map((c) => c.id));
     expect(ids.size).toBe(g.state.deck.length);
+  });
+
+  it('同名英雄可重复（三个郭嘉）', () => {
+    const g = createGame(STANDARD_DECK, ['郭嘉', '郭嘉', '郭嘉']);
+    expect(g.state.players.length).toBe(3);
+    expect(g.state.players.every((p) => p.hero.name === '郭嘉')).toBe(true);
+    expect(g.state.players.every((p) => p.hero.skills?.includes('遗计'))).toBe(true);
+    // 同名英雄持有独立的 hero 副本
+    expect(g.state.players[0].hero).not.toBe(g.state.players[1].hero);
+  });
+
+  it('未注册的英雄名 → 抛错', () => {
+    expect(() => createGame(STANDARD_DECK, ['不存在'])).toThrow(/not registered/);
   });
 });
 

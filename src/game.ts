@@ -2,13 +2,14 @@
 // 三国杀最小原型 — 游戏容器与初始化
 // ============================================================
 
-import { Card, GameState, Hero, Player, VictoryCondition } from './types.js';
+import { Card, GameState, Player, VictoryCondition } from './types.js';
 import { createEventStack } from './events/index.js';
 import type { EventStack } from './events/index.js';
 import type { Deciders } from './choose.js';
 import { createDeck, shuffle } from './cardRegistry.js';
 import type { DeckEntry } from './cardRegistry.js';
 import { drawCardsFromDeck } from './cardActions.js';
+import { heroRegistry } from './heroes.js';
 
 // ============================================================
 // Game — 一局游戏的容器
@@ -45,14 +46,18 @@ export interface CreateGameOptions {
 
 export function createGame(
   deckConfig: DeckEntry[],
-  heroes: Hero[],
+  heroNames: string[],
   options?: CreateGameOptions,
 ): Game {
-  const players: Player[] = heroes.map((h) => ({
-    name: h.name, hero: h,
-    hp: h.maxHp, maxHp: h.maxHp,
-    hand: [], alive: true,
-  }));
+  const players: Player[] = heroNames.map((name) => {
+    const hero = heroRegistry.get(name);
+    if (!hero) throw new Error(`Hero "${name}" not registered`);
+    return {
+      name: hero.name, hero: { ...hero }, // 副本：同名英雄各自独立
+      hp: hero.maxHp, maxHp: hero.maxHp,
+      hand: [], alive: true,
+    };
+  });
 
   const deck = shuffle(createDeck(deckConfig));
   const discardPile: Card[] = [];

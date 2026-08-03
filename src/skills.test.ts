@@ -15,18 +15,13 @@ import { activeSkillRegistry, registerSkills, skillRegistry } from './skills.js'
 import { triggerSystem } from './events/index.js';
 
 import { CardType } from './types.js';
-import type { Hero } from './types.js';
 
 // ============================================================
 // 遗计（郭嘉：受到伤害后每 1 点伤害摸 2 张牌）
 // ============================================================
 
 describe('遗计（郭嘉技能）', () => {
-  const guojiaHeroes: Hero[] = [
-    { name: '刘备', maxHp: 4 },
-    { name: '郭嘉', maxHp: 3, skills: ['遗计'] },
-    { name: '孙权', maxHp: 4 },
-  ];
+  const guojiaHeroes = ['刘备', '郭嘉', '孙权'];
 
   afterEach(() => triggerSystem.clear());
 
@@ -83,11 +78,7 @@ describe('遗计（郭嘉技能）', () => {
 // ============================================================
 
 describe('英姿（周瑜技能）', () => {
-  const zhouyuHeroes: Hero[] = [
-    { name: '刘备', maxHp: 4 },
-    { name: '周瑜', maxHp: 3, skills: ['英姿'] },
-    { name: '孙权', maxHp: 4 },
-  ];
+  const zhouyuHeroes = ['刘备', '周瑜', '孙权'];
 
   afterEach(() => triggerSystem.clear());
 
@@ -123,11 +114,7 @@ describe('英姿（周瑜技能）', () => {
 // ============================================================
 
 describe('闭月（貂蝉技能）', () => {
-  const diaochanHeroes: Hero[] = [
-    { name: '刘备', maxHp: 4 },
-    { name: '貂蝉', maxHp: 3, skills: ['闭月'] },
-    { name: '孙权', maxHp: 4 },
-  ];
+  const diaochanHeroes = ['刘备', '貂蝉', '孙权'];
 
   afterEach(() => triggerSystem.clear());
 
@@ -167,11 +154,7 @@ describe('闭月（貂蝉技能）', () => {
 // ============================================================
 
 describe('制衡（孙权主动技能）', () => {
-  const sunquanHeroes: Hero[] = [
-    { name: '刘备', maxHp: 4 },
-    { name: '孙权', maxHp: 4, skills: ['制衡'] },
-    { name: '曹操', maxHp: 4 },
-  ];
+  const sunquanHeroes = ['刘备', '孙权', '曹操'];
 
   afterEach(() => triggerSystem.clear());
 
@@ -300,11 +283,7 @@ describe('制衡（孙权主动技能）', () => {
 // ============================================================
 
 describe('仁德（刘备主动技能）', () => {
-  const liubeiHeroes: Hero[] = [
-    { name: '刘备', maxHp: 4, skills: ['仁德'] },
-    { name: '曹操', maxHp: 4 },
-    { name: '孙权', maxHp: 4 },
-  ];
+  const liubeiHeroes = ['刘备', '曹操', '孙权'];
 
   afterEach(() => triggerSystem.clear());
 
@@ -348,11 +327,7 @@ describe('仁德（刘备主动技能）', () => {
 // ============================================================
 
 describe('反间（周瑜主动技能）', () => {
-  const zhouyuHeroes: Hero[] = [
-    { name: '刘备', maxHp: 4 },
-    { name: '周瑜', maxHp: 3, skills: ['反间'] },
-    { name: '孙权', maxHp: 4 },
-  ];
+  const zhouyuHeroes = ['刘备', '周瑜', '孙权'];
 
   afterEach(() => triggerSystem.clear());
 
@@ -383,11 +358,7 @@ describe('反间（周瑜主动技能）', () => {
 // ============================================================
 
 describe('奸雄（曹操技能）', () => {
-  const caocaoHeroes: Hero[] = [
-    { name: '刘备', maxHp: 4 },
-    { name: '曹操', maxHp: 4, skills: ['奸雄'] },
-    { name: '孙权', maxHp: 4 },
-  ];
+  const caocaoHeroes = ['刘备', '曹操', '孙权'];
 
   afterEach(() => triggerSystem.clear());
 

@@ -31,8 +31,8 @@ export interface Card {
   number: number; // 1-13
 }
 
-/** 武将（写死） */
-export interface Hero {
+/** 武将定义（注册到 heroRegistry，createGame 通过名字引用，可重复） */
+export interface HeroDef {
   name: string;
   maxHp: number;
   /** 拥有的技能名列表（引用 skillRegistry 中的 SkillDef.name） */
@@ -42,7 +42,7 @@ export interface Hero {
 /** 玩家状态 */
 export interface Player {
   name: string;
-  hero: Hero;
+  hero: HeroDef;
   hp: number;
   maxHp: number;
   hand: Card[];

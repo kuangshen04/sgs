@@ -8,7 +8,7 @@ import { cardRegistry } from './cardRegistry.js';
 import { createGame } from './game.js';
 import type { Game } from './game.js';
 import { CardType } from './types.js';
-import type { Card, GameState, Hero, Player } from './types.js';
+import type { Card, GameState, Player } from './types.js';
 
 export function makeCard(
   id: number, type: CardType, suit = '♠', number = 1,
@@ -24,14 +24,11 @@ export function makeUniqueCard(type: CardType, suit = '♠', number = 1): Card {
   return makeCard(nextId++, type, suit, number);
 }
 
-export const testHeroes: Hero[] = [
-  { name: '刘备', maxHp: 4 },
-  { name: '曹操', maxHp: 4 },
-  { name: '孙权', maxHp: 4 },
-];
+/** 默认测试阵容（刘备/曹操/孙权，均为已注册武将） */
+export const DEFAULT_HEROES: string[] = ['刘备', '曹操', '孙权'];
 
-export function freshGame(state?: Partial<GameState>, heroes: Hero[] = testHeroes): Game {
-  const g = createGame(STANDARD_DECK, heroes);
+export function freshGame(state?: Partial<GameState>, heroNames: string[] = DEFAULT_HEROES): Game {
+  const g = createGame(STANDARD_DECK, heroNames);
   // 清空手牌以便精确控制测试
   for (const p of g.state.players) p.hand = [];
   if (state) g.state = { ...g.state, ...state };

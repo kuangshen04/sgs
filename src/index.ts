@@ -8,7 +8,6 @@ import { registerSkills } from './skills.js';
 import { createGame } from './game.js';
 import { printState } from './display.js';
 import { runGame } from './gameFlow.js';
-import type { Hero } from './types.js';
 
 // ============================================================
 // 主程序
@@ -17,16 +16,7 @@ import type { Hero } from './types.js';
 async function main() {
   registerSkills(); // 把技能挂到事件系统
 
-  const heroes: Hero[] = [
-    { name: '刘备', maxHp: 4, skills: ['仁德'] },
-    { name: '曹操', maxHp: 4, skills: ['奸雄'] },
-    { name: '郭嘉', maxHp: 3, skills: ['遗计'] },
-    { name: '孙权', maxHp: 4, skills: ['制衡'] },
-    { name: '周瑜', maxHp: 3, skills: ['英姿', '反间'] },
-    { name: '貂蝉', maxHp: 3, skills: ['闭月'] },
-  ];
-
-  const game = createGame(STANDARD_DECK, heroes);
+  const game = createGame(STANDARD_DECK, ['刘备', '曹操', '郭嘉', '孙权', '周瑜', '貂蝉']);
 
   console.clear();
   printState(game.state);

@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { freshGame, giveHand, testHeroes } from './test-utils.js';
+import { freshGame, giveHand, DEFAULT_HEROES } from './test-utils.js';
 
 import { cardRegistry } from './cardRegistry.js';
 import { createGame } from './game.js';
@@ -348,7 +348,7 @@ describe('findResponse', () => {
 describe('全局注入 decider', () => {
   /** 创建带全局 decider 的测试局（清空手牌） */
   function gameWithDeciders(deciders: Deciders): Game {
-    const g = createGame(STANDARD_DECK, testHeroes, { deciders });
+    const g = createGame(STANDARD_DECK, DEFAULT_HEROES, { deciders });
     for (const p of g.state.players) p.hand = [];
     return g;
   }
