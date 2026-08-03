@@ -8,7 +8,7 @@ import { describe, it, expect } from 'vitest';
 
 import { freshGame, giveHand } from './test-utils.js';
 
-import { useCard } from './game.js';
+import { useCard } from './cardActions.js';
 
 import { triggerSystem } from './events/index.js';
 import { EventType } from './events/index.js';

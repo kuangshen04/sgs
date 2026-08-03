@@ -8,21 +8,10 @@ import { describe, it, expect } from 'vitest';
 import './cards.js'; // 触发卡牌注册（side-effect import）
 import { STANDARD_DECK } from './cards.js';
 
-import {
-  displayNumber,
-  shuffle,
-  lastManStanding,
-  cardRegistry,
-  createDeck,
-  createGame,
-  damage,
-  recover,
-  drawCards,
-  dying,
-  playFromHand,
-  giveCards,
-  discardCards,
-} from './game.js';
+import { displayNumber, cardRegistry, createDeck, shuffle } from './cardRegistry.js';
+import { playFromHand, giveCards, discardCards, drawCards } from './cardActions.js';
+import { damage, recover, dying } from './life.js';
+import { createGame, lastManStanding } from './game.js';
 
 import { freshGame, giveHand, makeCard, makeUniqueCard, testHeroes } from './test-utils.js';
 

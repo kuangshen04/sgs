@@ -12,11 +12,9 @@ import type {
   GameEventData,
   PhaseEventData,
 } from './events/index.js';
-import {
-  drawCards, useCard,
-  printState,
-  cardRegistry, cardEmoji, displayNumber, discardCards,
-} from './game.js';
+import { drawCards, useCard, discardCards } from './cardActions.js';
+import { cardRegistry, cardEmoji, displayNumber } from './cardRegistry.js';
+import { printState } from './display.js';
 import type { Game } from './game.js';
 import { choose } from './choose.js';
 import { pickActiveSkill } from './skills.js';

@@ -6,11 +6,11 @@
 
 import { CardTag, CardType } from './types.js';
 import type { Player } from './types.js';
-import type { CardContentFn, DeckEntry, Game } from './game.js';
-import {
-  cardRegistry, cardEmoji, displayNumber, giveCards, playFromHand, useCard,
-  damage, recover, drawCards,
-} from './game.js';
+import type { CardContentFn, DeckEntry } from './cardRegistry.js';
+import type { Game } from './game.js';
+import { cardRegistry, cardEmoji, displayNumber } from './cardRegistry.js';
+import { drawCards, giveCards, playFromHand, useCard } from './cardActions.js';
+import { damage, recover } from './life.js';
 import { findResponse } from './choose.js';
 import { triggerSystem } from './events/index.js';
 import type {

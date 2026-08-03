@@ -7,7 +7,8 @@ import { describe, it, expect } from 'vitest';
 
 import { freshGame, giveHand, testHeroes } from './test-utils.js';
 
-import { cardRegistry, createGame } from './game.js';
+import { cardRegistry } from './cardRegistry.js';
+import { createGame } from './game.js';
 import { STANDARD_DECK } from './cards.js';
 import type { Game } from './game.js';
 

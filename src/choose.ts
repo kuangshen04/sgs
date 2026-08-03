@@ -9,8 +9,9 @@
 
 import type { Card, Player } from './types.js';
 import { CardType } from './types.js';
-import { cardRegistry } from './game.js';
-import type { CardDef, Game } from './game.js';
+import { cardRegistry } from './cardRegistry.js';
+import type { CardDef } from './cardRegistry.js';
+import type { Game } from './game.js';
 
 // ============================================================
 // Phase 1: 选牌

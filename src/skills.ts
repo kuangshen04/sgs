@@ -6,7 +6,8 @@
 // ============================================================
 
 import type { Game } from './game.js';
-import { drawCards, giveCards, discardCards, damage, recover } from './game.js';
+import { drawCards, giveCards, discardCards } from './cardActions.js';
+import { damage, recover } from './life.js';
 import type { GameEvent } from './events/index.js';
 import { triggerSystem } from './events/index.js';
 import type { DamageEventData, PhaseEventData, TurnEventData } from './events/index.js';

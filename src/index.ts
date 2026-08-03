@@ -5,7 +5,8 @@
 import './cards.js';  // 触发卡牌注册（side-effect import）
 import { STANDARD_DECK } from './cards.js';
 import { registerSkills } from './skills.js';
-import { createGame, printState } from './game.js';
+import { createGame } from './game.js';
+import { printState } from './display.js';
 import { runGame } from './gameFlow.js';
 import type { Hero } from './types.js';
 

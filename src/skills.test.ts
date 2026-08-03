@@ -7,7 +7,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 
 import { freshGame, giveHand, makeUniqueCard } from './test-utils.js';
 
-import { damage } from './game.js';
+import { damage } from './life.js';
 import { drawPhase, playPhase, turn } from './gameFlow.js';
 
 import { activeSkillRegistry, registerSkills, skillRegistry } from './skills.js';
