@@ -9,7 +9,7 @@ import type { Game } from './game.js';
 import { drawCards } from './game.js';
 import type { GameEvent } from './events/index.js';
 import { triggerSystem } from './events/index.js';
-import type { DamageEventData } from './events/index.js';
+import type { DamageEventData, PhaseEventData, TurnEventData } from './events/index.js';
 import type { Player } from './types.js';
 
 // ============================================================
@@ -77,6 +77,28 @@ const yijiContent = async (game: Game, event: GameEvent<any>): Promise<void> => 
   );
 };
 
+/** 英姿：摸牌阶段多摸一张牌 */
+const yingziContent = async (game: Game, event: GameEvent<any>): Promise<void> => {
+  const { player } = event.data as PhaseEventData;
+  const before = player.hand.length;
+  await drawCards(game, { target: player, count: 1 });
+  console.log(
+    `  ✨${player.name} 发动【英姿】！摸牌阶段多摸了 1 张牌` +
+    `（${before} → ${player.hand.length}）`,
+  );
+};
+
+/** 闭月：结束阶段摸一张牌（暂挂在 turn.after，正式结束阶段尚未建模） */
+const biyueContent = async (game: Game, event: GameEvent<any>): Promise<void> => {
+  const { player } = event.data as TurnEventData;
+  const before = player.hand.length;
+  await drawCards(game, { target: player, count: 1 });
+  console.log(
+    `  ✨${player.name} 发动【闭月】！回合结束摸了 1 张牌` +
+    `（${before} → ${player.hand.length}）`,
+  );
+};
+
 // ============================================================
 // 注册
 // ============================================================
@@ -85,4 +107,16 @@ skillRegistry.register({
   name: '遗计',
   trigger: 'damage.after',
   content: yijiContent,
+});
+
+skillRegistry.register({
+  name: '英姿',
+  trigger: 'drawPhase.before',
+  content: yingziContent,
+});
+
+skillRegistry.register({
+  name: '闭月',
+  trigger: 'turn.after',
+  content: biyueContent,
 });

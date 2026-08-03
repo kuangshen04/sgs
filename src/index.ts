@@ -20,6 +20,8 @@ async function main() {
     { name: '刘备', maxHp: 4 },
     { name: '郭嘉', maxHp: 3, skills: ['遗计'] },
     { name: '孙权', maxHp: 4 },
+    { name: '周瑜', maxHp: 3, skills: ['英姿'] },
+    { name: '貂蝉', maxHp: 3, skills: ['闭月'] },
   ];
 
   const game = createGame(STANDARD_DECK, heroes);
