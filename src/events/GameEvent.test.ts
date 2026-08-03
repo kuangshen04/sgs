@@ -1,0 +1,313 @@
+// ============================================================
+// 事件系统 — GameEvent 单元测试
+// 生命周期 / before→content→after / prevent 语义 / 事件栈 / 异常传播
+// ============================================================
+
+import { describe, it, expect, afterEach } from 'vitest';
+
+import {
+  GameEvent,
+  EventPreventError,
+  createEventStack,
+  triggerSystem,
+} from './index.js';
+import type { Game } from '../game.js';
+
+// 本文件内注册的 handler 互不泄漏（triggerSystem 是全局单例）
+afterEach(() => triggerSystem.clear());
+
+/** 最小可用的 Game 假对象：GameEvent 只依赖 eventStack */
+function makeGame(): Game {
+  return { eventStack: createEventStack() } as unknown as Game;
+}
+
+// ============================================================
+// 生命周期
+// ============================================================
+
+describe('GameEvent 生命周期', () => {
+  it('created → executing → completed', async () => {
+    const game = makeGame();
+    const phases: string[] = [];
+    const event = new GameEvent('test', {}, game);
+    expect(event.phase).toBe('created');
+
+    await event.execute(async (e) => {
+      phases.push(e.phase);
+      expect(e.phase).toBe('executing');
+    });
+
+    expect(event.phase).toBe('completed');
+    expect(phases).toEqual(['executing']);
+  });
+
+  it('已执行的事件不能再次执行', async () => {
+    const game = makeGame();
+    const event = new GameEvent('test', {}, game);
+    await event.execute(async () => {});
+
+    await expect(event.execute(async () => {})).rejects.toThrow(/already been completed/);
+  });
+
+  it('事件栈在 execute 前后正确入栈出栈', async () => {
+    const game = makeGame();
+    const event = new GameEvent('test', {}, game);
+    expect(game.eventStack.top).toBeNull();
+
+    await event.execute(async () => {
+      expect(game.eventStack.top).toBe(event);
+      expect(game.eventStack.depth).toBe(1);
+    });
+
+    expect(game.eventStack.top).toBeNull();
+    expect(game.eventStack.depth).toBe(0);
+  });
+});
+
+// ============================================================
+// before → content → after 三段式
+// ============================================================
+
+describe('before → content → after', () => {
+  it('按 before → content → after 顺序执行', async () => {
+    const game = makeGame();
+    const order: string[] = [];
+    triggerSystem.on('test.before', () => { order.push('before'); });
+    triggerSystem.on('test.after', () => { order.push('after'); });
+
+    await new GameEvent('test', {}, game).execute(async () => {
+      order.push('content');
+    });
+
+    expect(order).toEqual(['before', 'content', 'after']);
+  });
+
+  it('多个 handler 按注册顺序执行', async () => {
+    const game = makeGame();
+    const order: string[] = [];
+    triggerSystem.on('test.before', () => { order.push('h1'); });
+    triggerSystem.on('test.before', () => { order.push('h2'); });
+
+    await new GameEvent('test', {}, game).execute(async () => {});
+
+    expect(order).toEqual(['h1', 'h2']);
+  });
+
+  it('before handler 可以修改 event.data（当前过渡方案）', async () => {
+    const game = makeGame();
+    let seen = 0;
+    triggerSystem.on('test.before', (e) => {
+      e.data.amount += 1;
+    });
+
+    await new GameEvent<{ amount: number }>('test', { amount: 1 }, game).execute(async (e) => {
+      seen = e.data.amount;
+    });
+
+    expect(seen).toBe(2);
+  });
+});
+
+// ============================================================
+// prevent 语义
+// ============================================================
+
+describe('prevent', () => {
+  it('prevent 自己 → content 与 after 跳过，execute 正常返回', async () => {
+    const game = makeGame();
+    const executed: string[] = [];
+    triggerSystem.on('test.before', (e) => e.prevent());
+    triggerSystem.on('test.after', () => { executed.push('after'); });
+
+    const event = new GameEvent('test', {}, game);
+    await expect(event.execute(async () => {
+      executed.push('content');
+    })).resolves.toBe(event);
+
+    expect(executed).toEqual([]);
+    expect(event.isPrevented()).toBe(true);
+  });
+
+  it('prevent 抛出 EventPreventError 并携带被阻止的事件', async () => {
+    const game = makeGame();
+    let caught: unknown = null;
+    triggerSystem.on('test.before', (e) => {
+      try {
+        e.prevent();
+      } catch (err) {
+        caught = err;
+      }
+    });
+
+    const event = new GameEvent('test', {}, game);
+    await event.execute(async () => {});
+
+    expect(caught).toBeInstanceOf(EventPreventError);
+    expect((caught as EventPreventError).event).toBe(event);
+    expect(event.isPrevented()).toBe(true);
+  });
+
+  it('created 阶段调用 prevent 抛错', () => {
+    const game = makeGame();
+    const event = new GameEvent('test', {}, game);
+
+    expect(() => event.prevent()).toThrow(/Cannot prevent event "test" in created phase/);
+  });
+
+  it('completed 阶段调用 prevent 抛错', async () => {
+    const game = makeGame();
+    const event = new GameEvent('test', {}, game);
+    await event.execute(async () => {});
+
+    expect(() => event.prevent()).toThrow(/Cannot prevent event "test" in completed phase/);
+  });
+
+  it('prevent 父事件 → 父 content/after 与子 after 都跳过', async () => {
+    const game = makeGame();
+    const executed: string[] = [];
+    triggerSystem.on('parent.after', () => { executed.push('parent.after'); });
+    triggerSystem.on('child.after', () => { executed.push('child.after'); });
+
+    const parent = new GameEvent('parent', {}, game);
+    let childRef: GameEvent | null = null;
+    await parent.execute(async () => {
+      executed.push('parent.content-before');
+      const child = new GameEvent('child', {}, game);
+      childRef = child;
+      await child.execute(async () => {
+        executed.push('child.content');
+        child.getParent('parent')!.prevent();
+        executed.push('child.content-after-prevent'); // 不可达
+      });
+      executed.push('parent.content-after-child'); // 不可达
+    });
+
+    expect(executed).toEqual(['parent.content-before', 'child.content']);
+    expect(parent.isPrevented()).toBe(true);
+    expect(parent.phase).toBe('completed');
+    expect(childRef!.isPrevented()).toBe(false);
+    expect(childRef!.phase).toBe('completed');
+  });
+});
+
+// ============================================================
+// 父事件查找 getParent
+// ============================================================
+
+describe('getParent', () => {
+  it('跨层返回最近的同名父事件', async () => {
+    const game = makeGame();
+    const grandpa = new GameEvent('grandpa', {}, game);
+    let found: GameEvent | null = null;
+
+    await grandpa.execute(async () => {
+      const child = new GameEvent('child', {}, game);
+      await child.execute(async () => {
+        const grandchild = new GameEvent('grandchild', {}, game);
+        await grandchild.execute(async () => {
+          found = grandchild.getParent('grandpa');
+        });
+      });
+    });
+
+    expect(found).toBe(grandpa);
+  });
+
+  it('没有同名父事件 → 返回 null', async () => {
+    const game = makeGame();
+    const parent = new GameEvent('parent', {}, game);
+    let found: GameEvent | null = null;
+
+    await parent.execute(async () => {
+      const child = new GameEvent('child', {}, game);
+      await child.execute(async () => {
+        found = child.getParent('不存在');
+      });
+    });
+
+    expect(found).toBeNull();
+  });
+
+  it('parent 在构造时绑定当前事件栈顶', async () => {
+    const game = makeGame();
+    const parent = new GameEvent('parent', {}, game);
+    let childParent: GameEvent | null = null;
+
+    await parent.execute(async () => {
+      const child = new GameEvent('child', {}, game);
+      childParent = child.parent;
+      expect(game.eventStack.depth).toBe(1); // 构造只读栈顶，不压栈
+      await child.execute(async () => {
+        expect(game.eventStack.depth).toBe(2); // 执行时才压栈
+      });
+    });
+
+    expect(childParent).toBe(parent);
+  });
+});
+
+// ============================================================
+// 异常处理
+// ============================================================
+
+describe('异常处理', () => {
+  it('content 抛普通异常 → 向外传播，事件栈仍正确弹出', async () => {
+    const game = makeGame();
+    const event = new GameEvent('test', {}, game);
+
+    await expect(event.execute(async () => {
+      throw new Error('boom');
+    })).rejects.toThrow('boom');
+
+    expect(game.eventStack.top).toBeNull();
+    expect(game.eventStack.depth).toBe(0);
+    expect(event.phase).toBe('completed');
+  });
+
+  it('子事件普通异常向上传播，父 after 跳过', async () => {
+    const game = makeGame();
+    const executed: string[] = [];
+    triggerSystem.on('parent.after', () => { executed.push('parent.after'); });
+
+    const parent = new GameEvent('parent', {}, game);
+    await expect(parent.execute(async () => {
+      const child = new GameEvent('child', {}, game);
+      await child.execute(async () => {
+        throw new Error('boom');
+      });
+    })).rejects.toThrow('boom');
+
+    expect(executed).toEqual([]);
+  });
+});
+
+// ============================================================
+// TriggerSystem — 发布订阅注册表
+// ============================================================
+
+describe('TriggerSystem', () => {
+  it('on/off 注册与注销', async () => {
+    const game = makeGame();
+    const calls: string[] = [];
+    const handler = () => { calls.push('h'); };
+    triggerSystem.on('test.before', handler);
+
+    await new GameEvent('test', {}, game).execute(async () => {});
+    expect(calls).toEqual(['h']);
+
+    triggerSystem.off('test.before', handler);
+    await new GameEvent('test', {}, game).execute(async () => {});
+    expect(calls).toEqual(['h']); // 注销后不再触发
+  });
+
+  it('clear 清空所有 handler', async () => {
+    const game = makeGame();
+    const calls: string[] = [];
+    triggerSystem.on('test.before', () => { calls.push('x'); });
+    triggerSystem.clear();
+
+    await new GameEvent('test', {}, game).execute(async () => {});
+
+    expect(calls).toEqual([]);
+  });
+});
