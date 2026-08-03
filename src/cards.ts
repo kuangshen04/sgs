@@ -105,6 +105,38 @@ const nanmanContent: CardContentFn = async (game, data, _event) => {
   }
 };
 
+const wanjianContent: CardContentFn = async (game, data, _event) => {
+  const user = data.player;
+  console.log(
+    `  ${user.name} 使用了 🏹万箭齐发 (${data.card.suit}${displayNumber(data.card.number)})！` +
+    `所有其他角色必须打出闪`,
+  );
+
+  for (const target of data.targets) {
+    const shan = findResponse(target, CardType.Shan);
+    if (shan) {
+      playFromHand(game, target, shan);
+      console.log(
+        `  ${target.name} 打出了 🛡️闪 (${shan.suit}${displayNumber(shan.number)})`,
+      );
+    } else {
+      await damage(game, { target, source: user, amount: 1 });
+    }
+  }
+};
+
+const taoyuanContent: CardContentFn = async (game, data, _event) => {
+  const user = data.player;
+  console.log(
+    `  ${user.name} 使用了 🌸桃园结义 (${data.card.suit}${displayNumber(data.card.number)})！` +
+    `所有角色回复 1 点体力`,
+  );
+
+  for (const target of data.targets) {
+    await recover(game, { target, amount: 1 });
+  }
+};
+
 const guoheContent: CardContentFn = async (game, data, _event) => {
   const user = data.player;
   const target = data.targets[0];
@@ -152,6 +184,11 @@ function otherAlive(user: Player, all: Player[]): Player[] {
 /** 有手牌的其他存活角色（装备区/判定区未实现，区域内先只看手牌） */
 function otherAliveWithCards(user: Player, all: Player[]): Player[] {
   return all.filter((p) => p !== user && p.alive && p.hand.length > 0);
+}
+
+/** 全体存活角色（含自己，桃园结义用） */
+function allAlive(user: Player, all: Player[]): Player[] {
+  return all.filter((p) => p.alive);
 }
 
 // ============================================================
@@ -321,6 +358,39 @@ cardRegistry.register({
 });
 
 cardRegistry.register({
+  type: CardType.WanJian,
+  name: '万箭齐发',
+  emoji: '🏹',
+  content: wanjianContent,
+  tags: [CardTag.Trick],
+  canUse: () => true,
+  targetFilter: otherAlive,
+  targetCount: 'all',
+  ai: {
+    shouldUse: () => true,
+    usePriority: 75,
+    discardPriority: 0,
+  },
+});
+
+cardRegistry.register({
+  type: CardType.TaoYuan,
+  name: '桃园结义',
+  emoji: '🌸',
+  content: taoyuanContent,
+  tags: [CardTag.Trick],
+  canUse: () => true,
+  targetFilter: allAlive,
+  targetCount: 'all',
+  ai: {
+    // AI：自己受伤才值得放（也会回敌人的血）
+    shouldUse: (player) => player.hp < player.maxHp,
+    usePriority: 85,
+    discardPriority: 3,
+  },
+});
+
+cardRegistry.register({
   type: CardType.GuoHe,
   name: '过河拆桥',
   emoji: '🌉',
@@ -382,6 +452,8 @@ export const STANDARD_DECK: DeckEntry[] = [
   { type: CardType.Sha,    suit: '♠', numbers: [2,3,4,5,6,8,9,10,12] },
   // ♥
   { type: CardType.Tao,     suit: '♥', numbers: [2] },
+  { type: CardType.WanJian, suit: '♥', numbers: [1] },
+  { type: CardType.TaoYuan, suit: '♥', numbers: [1] },
   { type: CardType.WuZhong, suit: '♥', numbers: [7,8,9,11] },
   { type: CardType.WuXie,   suit: '♥', numbers: [13] },
   { type: CardType.Shan,    suit: '♥', numbers: [1,3,4,5,6,10,12] },
@@ -393,6 +465,7 @@ export const STANDARD_DECK: DeckEntry[] = [
   { type: CardType.Sha,    suit: '♣', numbers: [2,3,4,5,6,8,9,10,11,13] },
   // ♦
   { type: CardType.JueDou, suit: '♦', numbers: [1] },
+  { type: CardType.WanJian, suit: '♦', numbers: [1] },
   { type: CardType.ShunShou, suit: '♦', numbers: [3, 4, 11] },
   { type: CardType.WuXie,  suit: '♦', numbers: [12] },
   { type: CardType.Tao,    suit: '♦', numbers: [2,3,4,5,6,7,8,9,10,11,13] },

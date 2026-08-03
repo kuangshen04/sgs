@@ -154,6 +154,52 @@ describe('useCard — 南蛮入侵', () => {
   });
 });
 
+describe('useCard — 万箭齐发', () => {
+  it('所有敌人必须出闪，否则受伤', async () => {
+    const g = freshGame();
+    const attacker = g.state.players[0];
+    const p2 = g.state.players[1];
+    const p3 = g.state.players[2];
+
+    giveHand(attacker, CardType.WanJian);
+    giveHand(p2, CardType.Shan); // p2 有闪可出
+    giveHand(p3);                 // p3 空手
+
+    const card = attacker.hand[0];
+    const hp2Before = p2.hp;
+    const hp3Before = p3.hp;
+
+    await useCard(g, { player: attacker, card, targets: [p2, p3] });
+
+    // p2 出了闪 → 不受伤
+    expect(p2.hp).toBe(hp2Before);
+    expect(p2.hand.length).toBe(0); // 闪被弃置
+
+    // p3 没闪 → 受伤
+    expect(p3.hp).toBe(hp3Before - 1);
+  });
+});
+
+describe('useCard — 桃园结义', () => {
+  it('所有角色回复 1 点体力（含自己，不超过上限）', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    const p2 = g.state.players[1];
+    const p3 = g.state.players[2];
+    player.hp = 3;
+    p2.hp = 1;
+    p3.hp = p3.maxHp; // 满血 → 封顶不变
+    giveHand(player, CardType.TaoYuan);
+
+    const card = player.hand[0];
+    await useCard(g, { player, card, targets: [player, p2, p3] });
+
+    expect(player.hp).toBe(4); // 3+1
+    expect(p2.hp).toBe(2);     // 1+1
+    expect(p3.hp).toBe(p3.maxHp); // 满血封顶
+  });
+});
+
 describe('useCard — 过河拆桥', () => {
   it('弃置目标一张手牌', async () => {
     const g = freshGame();
