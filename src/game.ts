@@ -325,11 +325,22 @@ export async function die(
  * 用于闪、决斗打出的杀、南蛮打出的杀这类"打出"响应；
  * "使用"路径（桃自救、无懈）应走 useCard。
  */
+/**
+ * 弃置：把一组牌从手牌移入弃牌堆，返回实际移除的牌（供调用方记录）。
+ * 打出（playFromHand）/使用消耗（useCard）/弃牌阶段（doDiscard）/制衡
+ * 共用这一个移动原语；不在手牌的牌自动跳过。
+ */
+export function discardCards(game: Game, player: Player, cards: Card[]): Card[] {
+  const ids = new Set(cards.map((c) => c.id));
+  const removed = player.hand.filter((c) => ids.has(c.id));
+  player.hand = player.hand.filter((c) => !ids.has(c.id));
+  game.state.discardPile.push(...removed);
+  return removed;
+}
+
+/** 打出：把一张牌从手牌移入弃牌堆（不产生使用事件） */
 export function playFromHand(game: Game, player: Player, card: Card): void {
-  const idx = player.hand.findIndex((c) => c.id === card.id);
-  if (idx < 0) return; // 牌不在手牌（已被消耗）→ 不重复入弃牌堆
-  player.hand.splice(idx, 1);
-  game.state.discardPile.push(card);
+  discardCards(game, player, [card]);
 }
 
 /**
@@ -354,14 +365,8 @@ export async function useCard(
 ): Promise<GameEvent<UseCardEventData>> {
   return new GameEvent<UseCardEventData>(EventType.UseCard, data, game)
     .execute(async (event) => {
-      // 从手牌移除 → 移入弃牌堆
-      const idx = event.data.player.hand.findIndex(
-        (c) => c.id === event.data.card.id,
-      );
-      if (idx >= 0) {
-        event.data.player.hand.splice(idx, 1);
-      }
-      game.state.discardPile.push(event.data.card);
+      // 使用的牌移入弃牌堆
+      discardCards(game, event.data.player, [event.data.card]);
 
       // 逐 target 判定（无懈可击等响应在这里）
       let shouldExecute = true;

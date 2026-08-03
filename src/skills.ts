@@ -6,7 +6,7 @@
 // ============================================================
 
 import type { Game } from './game.js';
-import { drawCards, giveCards, damage, recover } from './game.js';
+import { drawCards, giveCards, discardCards, damage, recover } from './game.js';
 import type { GameEvent } from './events/index.js';
 import { triggerSystem } from './events/index.js';
 import type { DamageEventData, PhaseEventData, TurnEventData } from './events/index.js';
@@ -187,8 +187,7 @@ skillRegistry.register({
 const zhihengContent = async (game: Game, player: Player): Promise<void> => {
   const count = player.hand.length;
   if (count === 0) return;
-  game.state.discardPile.push(...player.hand);
-  player.hand = [];
+  discardCards(game, player, [...player.hand]);
   await drawCards(game, { target: player, count });
   console.log(
     `  ✨${player.name} 发动【制衡】！弃置 ${count} 张牌，摸了 ${count} 张牌`,

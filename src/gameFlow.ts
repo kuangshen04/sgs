@@ -15,7 +15,7 @@ import type {
 import {
   drawCards, useCard,
   printState,
-  cardRegistry, cardEmoji, displayNumber,
+  cardRegistry, cardEmoji, displayNumber, discardCards,
 } from './game.js';
 import type { Game } from './game.js';
 import { choose } from './choose.js';
@@ -45,16 +45,10 @@ function doDiscard(game: Game, player: Player): void {
     (a, b) => (cardRegistry.get(a.type)?.ai.discardPriority ?? 0)
             - (cardRegistry.get(b.type)?.ai.discardPriority ?? 0),
   );
-  const toDiscard = new Set(sorted.slice(0, excess).map((c) => c.id));
-
-  player.hand = player.hand.filter((c) => {
-    if (toDiscard.has(c.id)) {
-      state.discardPile.push(c);
-      console.log(`  弃置了 ${cardEmoji(c.type)} (${c.suit}${displayNumber(c.number)})`);
-      return false;
-    }
-    return true;
-  });
+  const discarded = discardCards(game, player, sorted.slice(0, excess));
+  for (const c of discarded) {
+    console.log(`  弃置了 ${cardEmoji(c.type)} (${c.suit}${displayNumber(c.number)})`);
+  }
 }
 
 // ============================================================

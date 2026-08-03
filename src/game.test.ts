@@ -21,6 +21,7 @@ import {
   dying,
   playFromHand,
   giveCards,
+  discardCards,
 } from './game.js';
 
 import { freshGame, giveHand, makeCard, makeUniqueCard, testHeroes } from './test-utils.js';
@@ -427,5 +428,47 @@ describe('giveCards', () => {
 
     expect(from.hand.length).toBe(1);
     expect(to.hand.length).toBe(0);
+  });
+});
+
+// ============================================================
+// discardCards — 弃置原语（手牌 → 弃牌堆）
+// ============================================================
+
+describe('discardCards', () => {
+  it('把一组牌从手牌移入弃牌堆', () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    giveHand(player, CardType.Sha, CardType.Tao);
+    const card = player.hand[0];
+
+    discardCards(g, player, [card]);
+
+    expect(player.hand.map((c) => c.type)).toEqual([CardType.Tao]);
+    expect(g.state.discardPile).toContain(card);
+  });
+
+  it('返回实际移除的牌，不在手牌的牌自动跳过', () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    giveHand(player, CardType.Sha, CardType.Tao);
+    const card = player.hand[0];
+    const phantom = makeUniqueCard(CardType.Shan);
+
+    const removed = discardCards(g, player, [card, phantom]);
+
+    expect(removed).toEqual([card]);
+    expect(player.hand.length).toBe(1);
+    expect(g.state.discardPile).not.toContain(phantom);
+  });
+
+  it('空数组 → 无操作', () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    giveHand(player, CardType.Sha);
+
+    expect(discardCards(g, player, [])).toEqual([]);
+    expect(player.hand.length).toBe(1);
+    expect(g.state.discardPile.length).toBe(0);
   });
 });
