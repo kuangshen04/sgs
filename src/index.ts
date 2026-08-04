@@ -25,6 +25,7 @@ async function main() {
 
   console.log('\n' + '='.repeat(42));
   console.log(`🏆 游戏结束！${game.state.winner!.name} 获胜！`);
+  printState(game.state);
   console.log('='.repeat(42));
 }
 
