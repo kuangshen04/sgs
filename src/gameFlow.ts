@@ -11,6 +11,7 @@ import type {
   RoundEventData,
   GameEventData,
   PhaseEventData,
+  DrawPhaseEventData,
   TargetingEventData,
 } from './events/index.js';
 import { drawCards, useCard, discardCards, judge, moveCards } from './cardActions.js';
@@ -33,7 +34,6 @@ export async function turn(
   return new GameEvent<TurnEventData>(EventType.Turn, data, game)
     .execute(async () => {
       data.player.skipPlayPhase = false; // 回合开始重置瞬时标记
-      data.player.skipDraw = false;
       await preparePhase(game, { player: data.player, round: data.round });
       if (!data.player.alive) return; // 死亡后跳过剩余阶段
       await judgePhase(game, { player: data.player, round: data.round });
@@ -52,16 +52,16 @@ export async function turn(
 export async function drawPhase(
   game: Game,
   data: PhaseEventData,
-): Promise<GameEvent<PhaseEventData>> {
-  return new GameEvent<PhaseEventData>(EventType.DrawPhase, data, game)
+): Promise<GameEvent<DrawPhaseEventData>> {
+  return new GameEvent<DrawPhaseEventData>(EventType.DrawPhase, { ...data, count: 2 }, game)
     .execute(async (event) => {
       const player = event.data.player;
-      if (player.skipDraw) {
-        console.log(`[摸牌阶段] ${player.name} 的摸牌被【突袭】替换，不摸牌`);
+      if (event.data.count <= 0) {
+        console.log(`[摸牌阶段] ${player.name} 本阶段摸牌数被修改为 0，不摸牌`);
         return;
       }
       const before = player.hand.length;
-      await drawCards(game, { target: player, count: 2 });
+      await drawCards(game, { target: player, count: event.data.count });
       const after = player.hand.length;
       console.log(`[摸牌阶段] ${player.name} 摸了 ${after - before} 张牌`);
     });

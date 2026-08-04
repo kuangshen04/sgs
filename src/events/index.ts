@@ -19,4 +19,5 @@ export type {
   RoundEventData,
   GameEventData,
   PhaseEventData,
+  DrawPhaseEventData,
 } from './types.js';

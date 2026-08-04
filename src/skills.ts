@@ -11,7 +11,7 @@ import { damage, recover } from './life.js';
 import { cardEmoji, cardRegistry, displayNumber, shuffle } from './cardRegistry.js';
 import type { GameEvent } from './events/index.js';
 import { triggerSystem, EventType } from './events/index.js';
-import type { DamageEventData, JudgeEventData } from './events/index.js';
+import type { DamageEventData, DrawPhaseEventData, JudgeEventData } from './events/index.js';
 import { CardTag } from './types.js';
 import type { Card, Player } from './types.js';
 
@@ -157,12 +157,9 @@ const yijiContent = async (game: Game, event: GameEvent<any>, owner: Player): Pr
 
 /** 英姿：摸牌阶段多摸一张牌 */
 const yingziContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
-  const before = owner.hand.length;
-  await drawCards(game, { target: owner, count: 1 });
-  console.log(
-    `  ✨${owner.name} 发动【英姿】！摸牌阶段多摸了 1 张牌` +
-    `（${before} → ${owner.hand.length}）`,
-  );
+  const drawPhaseEvent = event as GameEvent<DrawPhaseEventData>;
+  drawPhaseEvent.data.count += 1;
+  console.log(`  ✨${owner.name} 发动【英姿】！摸牌阶段多摸 1 张牌`);
 };
 
 /** 闭月：结束阶段摸一张牌 */
@@ -267,7 +264,8 @@ const jizhiContent = async (game: Game, event: GameEvent<any>, owner: Player): P
 
 /** 突袭：摸牌阶段，改为获得至多两名其他角色的各一张手牌（摸牌数改为 0） */
 const tuxiContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
-  owner.skipDraw = true; // 摸牌阶段的摸牌数改为 0
+  const drawPhaseEvent = event as GameEvent<DrawPhaseEventData>;
+  drawPhaseEvent.data.count = 0; // 摸牌阶段的摸牌数改为 0
   const candidates = game.state.players.filter(
     (p) => p !== owner && p.alive && p.hand.length > 0,
   );

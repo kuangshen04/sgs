@@ -93,3 +93,8 @@ export interface PhaseEventData {
   player: Player;
   round: number;
 }
+
+/** 摸牌阶段事件数据（count 可在 before 中由技能修改，如英姿 +1 / 裸衣 -1 / 突袭 =0） */
+export interface DrawPhaseEventData extends PhaseEventData {
+  count: number;
+}
