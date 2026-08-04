@@ -74,16 +74,30 @@ export async function drawCards(
 // ============================================================
 
 /**
+ * 纯数组级移动：把 cards 中实际位于 from 的牌移入 to，返回实际移走的牌。
+ * 底层移动原语；discardCards / giveCards 等区域语义在其上构建。
+ */
+export function moveCards(from: Card[], to: Card[], cards: Card[]): Card[] {
+  const ids = new Set(cards.map((c) => c.id));
+  const removed: Card[] = [];
+  for (let i = from.length - 1; i >= 0; i--) {
+    if (ids.has(from[i].id)) {
+      removed.push(from[i]);
+      from.splice(i, 1);
+    }
+  }
+  removed.reverse(); // 恢复原顺序
+  to.push(...removed);
+  return removed;
+}
+
+/**
  * 弃置：把一组牌从手牌移入弃牌堆，返回实际移除的牌（供调用方记录）。
  * 打出（playFromHand）/使用消耗（useCard）/弃牌阶段（doDiscard）/制衡
  * 共用这一个移动原语；不在手牌的牌自动跳过。
  */
 export function discardCards(game: Game, player: Player, cards: Card[]): Card[] {
-  const ids = new Set(cards.map((c) => c.id));
-  const removed = player.hand.filter((c) => ids.has(c.id));
-  player.hand = player.hand.filter((c) => !ids.has(c.id));
-  game.state.discardPile.push(...removed);
-  return removed;
+  return moveCards(player.hand, game.state.discardPile, cards);
 }
 
 /** 打出：把一张牌从手牌移入弃牌堆（不产生使用事件） */
@@ -96,11 +110,7 @@ export function playFromHand(game: Game, player: Player, card: Card): void {
  * 用于仁德/反间/顺手牵羊这类"获得/交给"移动（手牌区 ↔ 手牌区）。
  */
 export function giveCards(from: Player, to: Player, cards: Card[]): Card[] {
-  const ids = new Set(cards.map((c) => c.id));
-  const moved = from.hand.filter((c) => ids.has(c.id));
-  from.hand = from.hand.filter((c) => !ids.has(c.id));
-  to.hand.push(...moved);
-  return moved;
+  return moveCards(from.hand, to.hand, cards);
 }
 
 // ============================================================

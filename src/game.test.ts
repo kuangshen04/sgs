@@ -9,7 +9,7 @@ import './cards.js'; // 触发卡牌注册（side-effect import）
 import { STANDARD_DECK } from './cards.js';
 
 import { displayNumber, cardRegistry, createDeck, shuffle } from './cardRegistry.js';
-import { playFromHand, giveCards, discardCards, drawCards } from './cardActions.js';
+import { playFromHand, giveCards, discardCards, drawCards, moveCards } from './cardActions.js';
 import { damage, recover, dying } from './life.js';
 import { createGame, lastManStanding } from './game.js';
 
@@ -500,5 +500,49 @@ describe('discardCards', () => {
     expect(discardCards(g, player, [])).toEqual([]);
     expect(player.hand.length).toBe(1);
     expect(g.state.discardPile.length).toBe(0);
+  });
+});
+
+// ============================================================
+// moveCards — 底层移动原语（纯数组级）
+// ============================================================
+
+describe('moveCards', () => {
+  it('把 cards 中实际位于 from 的牌移到 to，返回实际移走的牌', () => {
+    const g = freshGame();
+    const from = g.state.players[0];
+    const to: Card[] = [];
+    giveHand(from, CardType.Sha, CardType.Tao);
+    const card = from.hand[0];
+
+    const moved = moveCards(from.hand, to, [card]);
+
+    expect(moved).toEqual([card]);
+    expect(from.hand.length).toBe(1);
+    expect(to).toEqual([card]);
+  });
+
+  it('不在 from 中的牌自动跳过', () => {
+    const from: Card[] = [makeUniqueCard(CardType.Sha)];
+    const to: Card[] = [];
+    const phantom = makeUniqueCard(CardType.Tao);
+
+    const moved = moveCards(from, to, [phantom]);
+
+    expect(moved).toEqual([]);
+    expect(from.length).toBe(1);
+    expect(to.length).toBe(0);
+  });
+
+  it('多张牌保持原顺序', () => {
+    const a = makeUniqueCard(CardType.Sha);
+    const b = makeUniqueCard(CardType.Tao);
+    const from = [a, b];
+    const to: Card[] = [];
+
+    const moved = moveCards(from, to, [a, b]);
+
+    expect(moved).toEqual([a, b]);
+    expect(to).toEqual([a, b]);
   });
 });
