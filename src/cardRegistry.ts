@@ -110,7 +110,7 @@ export function createDeck(config: DeckEntry[], startId = 1): Card[] {
 }
 
 /** Fisher-Yates 洗牌 */
-export function shuffle(deck: Card[]): Card[] {
+export function shuffle<T>(deck: T[]): T[] {
   const arr = [...deck];
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));

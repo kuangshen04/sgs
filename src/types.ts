@@ -57,6 +57,8 @@ export interface Player {
   alive: boolean;
   /** 本回合是否被乐不思蜀跳过出牌阶段（回合开始重置） */
   skipPlayPhase?: boolean;
+  /** 本回合摸牌阶段是否被突袭替换（摸牌数改为 0，回合开始重置） */
+  skipDraw?: boolean;
 }
 
 /** 胜利条件：返回获胜者，或 null 表示游戏继续 */

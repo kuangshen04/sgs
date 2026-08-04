@@ -8,10 +8,11 @@
 import type { Game } from './game.js';
 import { drawCards, giveCards, discardCards, judge, takeFromDiscard } from './cardActions.js';
 import { damage, recover } from './life.js';
-import { cardEmoji, displayNumber } from './cardRegistry.js';
+import { cardEmoji, cardRegistry, displayNumber, shuffle } from './cardRegistry.js';
 import type { GameEvent } from './events/index.js';
 import { triggerSystem, EventType } from './events/index.js';
 import type { DamageEventData, JudgeEventData } from './events/index.js';
+import { CardTag } from './types.js';
 import type { Card, Player } from './types.js';
 
 // ============================================================
@@ -249,6 +250,35 @@ const luoshenContent = async (game: Game, event: GameEvent<any>, owner: Player):
   }
 };
 
+/** 反馈：受到伤害后，获得伤害来源的一张牌 */
+const fankuiContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
+  const { source } = event.data as DamageEventData;
+  if (!source || source.hand.length === 0) return; // 无来源伤害或来源无手牌
+  const card = source.hand[Math.floor(Math.random() * source.hand.length)];
+  giveCards(source, owner, [card]);
+  console.log(`  ✨${owner.name} 发动【反馈】！获得 ${source.name} 的一张手牌`);
+};
+
+/** 集智：使用普通锦囊牌时，摸一张牌 */
+const jizhiContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
+  await drawCards(game, { target: owner, count: 1 });
+  console.log(`  ✨${owner.name} 发动【集智】！使用锦囊摸了 1 张牌`);
+};
+
+/** 突袭：摸牌阶段，改为获得至多两名其他角色的各一张手牌（摸牌数改为 0） */
+const tuxiContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
+  owner.skipDraw = true; // 摸牌阶段的摸牌数改为 0
+  const candidates = game.state.players.filter(
+    (p) => p !== owner && p.alive && p.hand.length > 0,
+  );
+  const picks = shuffle(candidates).slice(0, Math.min(2, candidates.length));
+  for (const target of picks) {
+    const card = target.hand[Math.floor(Math.random() * target.hand.length)];
+    giveCards(target, owner, [card]);
+    console.log(`  ✨${owner.name} 发动【突袭】！获得 ${target.name} 的一张手牌`);
+  }
+};
+
 // ============================================================
 // 注册
 // ============================================================
@@ -308,6 +338,33 @@ skillRegistry.register({
   trigger: 'preparePhase.before',
   canTrigger: subjectIsOwner,
   content: luoshenContent,
+});
+
+skillRegistry.register({
+  name: '反馈',
+  trigger: 'damage.after',
+  canTrigger: subjectIsOwner,
+  content: fankuiContent,
+});
+
+skillRegistry.register({
+  name: '集智',
+  trigger: 'useCard.after',
+  canTrigger: (game, event, owner, subject) => {
+    if (subject !== owner) return false;
+    const def = cardRegistry.get(event.data.card.type);
+    return !!def?.tags.includes(CardTag.Trick) && !def.tags.includes(CardTag.Delay);
+  },
+  content: jizhiContent,
+});
+
+skillRegistry.register({
+  name: '突袭',
+  trigger: 'drawPhase.before',
+  canTrigger: (game, event, owner, subject) =>
+    subject === owner &&
+    game.state.players.some((p) => p !== owner && p.alive && p.hand.length > 0),
+  content: tuxiContent,
 });
 
 // ============================================================
@@ -386,6 +443,28 @@ activeSkillRegistry.register({
   ai: {
     // AI：进攻技能，合法就用
     shouldUse: () => true,
+    priority: 0,
+  },
+});
+
+/** 青囊：出牌阶段限一次，弃置一张手牌并令一名角色回复 1 点体力（AI 只给自己回血） */
+const qingnangContent = async (game: Game, player: Player): Promise<void> => {
+  if (player.hand.length === 0) return;
+  discardCards(game, player, [player.hand[0]]);
+  await recover(game, { target: player, amount: 1 });
+  console.log(`  ✨${player.name} 发动【青囊】！弃置 1 张手牌，回复 1 点体力`);
+};
+
+activeSkillRegistry.register({
+  name: '青囊',
+  canUse: (game, player, ctx) =>
+    !ctx.usedSkills.has('青囊') &&                              // 每回合限一次
+    player.hand.length >= 1 &&                                  // 需弃 1 张手牌
+    game.state.players.some((p) => p.alive && p.hp < p.maxHp),  // 需有受伤角色
+  content: qingnangContent,
+  ai: {
+    // AI：只给自己回血
+    shouldUse: (game, player) => player.hp < player.maxHp,
     priority: 0,
   },
 });

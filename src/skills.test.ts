@@ -676,3 +676,157 @@ describe('洛神（甄宓技能）', () => {
     expect(g.state.discardPile.find((c) => c.id === red.id)).toBeDefined();
   });
 });
+
+// ============================================================
+// 反馈（司马懿：受到伤害后，获得伤害来源的一张牌）
+// ============================================================
+
+describe('反馈（司马懿技能）', () => {
+  afterEach(() => triggerSystem.clear());
+
+  it('skillRegistry 已注册反馈', () => {
+    expect(skillRegistry.get('反馈')).toBeDefined();
+  });
+
+  it('受到伤害后获得伤害来源的一张手牌', async () => {
+    registerSkills();
+    const g = freshGame({}, ['刘备', '司马懿', '孙权']);
+    const simayi = g.state.players[1];
+    const source = g.state.players[0];
+    giveHand(source, CardType.Sha, CardType.Tao);
+    const before = source.hand.length;
+
+    await damage(g, { target: simayi, source, amount: 1 });
+
+    expect(simayi.hand.length).toBe(1);
+    expect(source.hand.length).toBe(before - 1);
+  });
+
+  it('无来源伤害（如闪电）→ 不触发', async () => {
+    registerSkills();
+    const g = freshGame({}, ['刘备', '司马懿', '孙权']);
+    const simayi = g.state.players[1];
+
+    await damage(g, { target: simayi, amount: 1 });
+
+    expect(simayi.hand.length).toBe(0);
+  });
+});
+
+// ============================================================
+// 集智（黄月英：使用普通锦囊牌时，摸一张牌）
+// ============================================================
+
+describe('集智（黄月英技能）', () => {
+  afterEach(() => triggerSystem.clear());
+
+  it('skillRegistry 已注册集智', () => {
+    expect(skillRegistry.get('集智')).toBeDefined();
+  });
+
+  it('使用普通锦囊 → 摸 1 张牌', async () => {
+    registerSkills();
+    const g = freshGame({}, ['刘备', '黄月英', '孙权']);
+    const yueying = g.state.players[1];
+    giveHand(yueying, CardType.WuZhong);
+    const card = yueying.hand[0];
+
+    await useCard(g, { player: yueying, card, targets: [yueying] });
+
+    // 无中生有：用 1 摸 2，集智再摸 1 → 3 张
+    expect(yueying.hand.length).toBe(3);
+  });
+
+  it('使用基本牌 → 不触发', async () => {
+    registerSkills();
+    const g = freshGame({}, ['刘备', '黄月英', '孙权']);
+    const yueying = g.state.players[1];
+    giveHand(yueying, CardType.Sha);
+    const card = yueying.hand[0];
+
+    await useCard(g, { player: yueying, card, targets: [g.state.players[0]] });
+
+    expect(yueying.hand.length).toBe(0); // 杀已用，未摸牌
+  });
+
+  it('使用延时锦囊 → 不触发', async () => {
+    registerSkills();
+    const g = freshGame({}, ['刘备', '黄月英', '孙权']);
+    const yueying = g.state.players[1];
+    giveHand(yueying, CardType.LeBu);
+    const card = yueying.hand[0];
+
+    await useCard(g, { player: yueying, card, targets: [g.state.players[2]] });
+
+    expect(yueying.hand.length).toBe(0); // 乐不思蜀置入判定区，未摸牌
+  });
+});
+
+// ============================================================
+// 突袭（张辽：摸牌阶段改为获得至多两名其他角色的各一张手牌）
+// ============================================================
+
+describe('突袭（张辽技能）', () => {
+  afterEach(() => triggerSystem.clear());
+
+  it('skillRegistry 已注册突袭', () => {
+    expect(skillRegistry.get('突袭')).toBeDefined();
+  });
+
+  it('摸牌阶段：摸牌数改为 0，随机获得其他角色手牌', async () => {
+    registerSkills();
+    const g = freshGame({}, ['刘备', '张辽', '孙权']);
+    const zhangliao = g.state.players[1];
+    const p1 = g.state.players[0];
+    const p2 = g.state.players[2];
+    giveHand(p1, CardType.Sha);
+    giveHand(p2, CardType.Tao);
+    const deckBefore = g.state.deck.length;
+
+    await drawPhase(g, { player: zhangliao, round: 1 });
+
+    expect(zhangliao.hand.length).toBe(2); // 各获得一张
+    expect(p1.hand.length).toBe(0);
+    expect(p2.hand.length).toBe(0);
+    expect(g.state.deck.length).toBe(deckBefore); // 未摸牌
+  });
+});
+
+// ============================================================
+// 青囊（华佗：出牌阶段限一次，弃置一张手牌并令一名角色回复 1 点体力）
+// ============================================================
+
+describe('青囊（华佗主动技能）', () => {
+  afterEach(() => triggerSystem.clear());
+
+  it('activeSkillRegistry 已注册青囊', () => {
+    expect(activeSkillRegistry.get('青囊')).toBeDefined();
+  });
+
+  it('自己受伤时出牌阶段 → 弃 1 张手牌回复 1 点体力', async () => {
+    registerSkills();
+    const g = freshGame({}, ['华佗', '刘备', '孙权']);
+    const huatuo = g.state.players[0];
+    huatuo.hp = 2;
+    giveHand(huatuo, CardType.Shan); // 不可出 → 触发主动技能
+
+    await playPhase(g, { player: huatuo, round: 1 });
+
+    expect(huatuo.hp).toBe(3);
+    expect(huatuo.hand.length).toBe(0); // 弃了 1 张
+  });
+
+  it('AI 只给自己回血：自己满血时即使他人受伤也不发动', async () => {
+    registerSkills();
+    const g = freshGame({}, ['华佗', '刘备', '孙权']);
+    const huatuo = g.state.players[0];
+    const liubei = g.state.players[1];
+    liubei.hp = 1; // 他人受伤
+    giveHand(huatuo, CardType.Shan);
+
+    await playPhase(g, { player: huatuo, round: 1 });
+
+    expect(huatuo.hand.length).toBe(1); // 未发动
+    expect(liubei.hp).toBe(1);
+  });
+});
