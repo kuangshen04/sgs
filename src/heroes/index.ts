@@ -14,5 +14,3 @@ import './xiahoudun.js';
 import './zhangliao.js';
 import './zhenji.js';
 import './zhouyu.js';
-
-export { heroRegistry } from '../heroRegistry.js';

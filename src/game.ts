@@ -9,7 +9,8 @@ import type { Deciders } from './choose.js';
 import { createDeck, shuffle } from './cardRegistry.js';
 import type { DeckEntry } from './cardRegistry.js';
 import { drawCardsFromDeck } from './cardActions.js';
-import { heroRegistry } from './heroes/index.js';
+import { heroRegistry } from './heroRegistry.js';
+import './heroes/index.js'; // 副作用：触发全部武将注册
 
 // ============================================================
 // Game — 一局游戏的容器
