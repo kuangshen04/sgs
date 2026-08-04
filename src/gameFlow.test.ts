@@ -5,9 +5,9 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { freshGame, giveHand } from './test-utils.js';
+import { freshGame, giveHand, makeUniqueCard } from './test-utils.js';
 
-import { playPhase } from './gameFlow.js';
+import { judgePhase, playPhase } from './gameFlow.js';
 
 import { CardType } from './types.js';
 
@@ -52,5 +52,67 @@ describe('playPhase', () => {
     // 默认 AI：决斗(70) → 杀(60)，两轮循环
     expect(target.hp).toBe(hpBefore - 2);
     expect(player.hand.length).toBe(0);
+  });
+});
+
+// ============================================================
+// judgePhase — 判定阶段（延时锦囊结算）
+// ============================================================
+
+describe('judgePhase', () => {
+  it('判定为红桃 → 乐不思蜀无事，进弃牌堆', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    const lebu = makeUniqueCard(CardType.LeBu);
+    player.judgment.push(lebu);
+    g.state.deck = [makeUniqueCard(CardType.Tao, '♥', 2)]; // 判定：红桃
+
+    await judgePhase(g, { player, round: 1 });
+
+    expect(player.skipPlayPhase).toBeFalsy();
+    expect(player.judgment.length).toBe(0);
+    expect(g.state.discardPile.find((c) => c.id === lebu.id)).toBeDefined();
+  });
+
+  it('判定为非红桃 → 跳过出牌阶段', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    const lebu = makeUniqueCard(CardType.LeBu);
+    player.judgment.push(lebu);
+    g.state.deck = [makeUniqueCard(CardType.JueDou, '♠', 5)]; // 判定：非红桃
+
+    await judgePhase(g, { player, round: 1 });
+
+    expect(player.skipPlayPhase).toBe(true);
+    expect(player.judgment.length).toBe(0);
+  });
+
+  it('判定前被无懈 → 判定牌无效，不判定', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    const lebu = makeUniqueCard(CardType.LeBu);
+    player.judgment.push(lebu);
+    giveHand(player, CardType.WuXie); // 被判定者出无懈保护自己
+    const deckCard = makeUniqueCard(CardType.Sha, '♠', 5);
+    g.state.deck = [deckCard];
+
+    await judgePhase(g, { player, round: 1 });
+
+    expect(player.skipPlayPhase).toBeFalsy();   // 未生效
+    expect(player.judgment.length).toBe(0);     // 乐不思蜀被弃置
+    expect(g.state.discardPile.find((c) => c.id === lebu.id)).toBeDefined();
+    expect(g.state.deck).toContain(deckCard);   // 未判定，牌堆未动
+    expect(player.hand.length).toBe(0);         // 无懈已打出
+  });
+
+  it('skipPlayPhase 标记 → playPhase 直接跳过', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    player.skipPlayPhase = true;
+    giveHand(player, CardType.Sha);
+
+    await playPhase(g, { player, round: 1 });
+
+    expect(player.hand.length).toBe(1); // 未出牌
   });
 });

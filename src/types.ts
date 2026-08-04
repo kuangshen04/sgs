@@ -14,6 +14,7 @@ export enum CardType {
   WanJian = '万箭齐发',
   TaoYuan = '桃园结义',
   WuGu = '五谷丰登',
+  LeBu = '乐不思蜀',
   GuoHe = '过河拆桥',
   ShunShou = '顺手牵羊',
   WuXie = '无懈可击',
@@ -23,6 +24,7 @@ export enum CardType {
 export enum CardTag {
   Basic = 'basic',   // 基本牌
   Trick = 'trick',   // 锦囊牌
+  Delay = 'delay',   // 延时锦囊
 }
 
 /** 一张卡牌 */
@@ -49,7 +51,11 @@ export interface Player {
   hp: number;
   maxHp: number;
   hand: Card[];
+  /** 判定区（延时锦囊） */
+  judgment: Card[];
   alive: boolean;
+  /** 本回合是否被乐不思蜀跳过出牌阶段（回合开始重置） */
+  skipPlayPhase?: boolean;
 }
 
 /** 胜利条件：返回获胜者，或 null 表示游戏继续 */

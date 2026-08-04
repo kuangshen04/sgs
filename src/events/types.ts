@@ -22,6 +22,7 @@ export const EventType = {
   DrawPhase: 'drawPhase',
   PlayPhase: 'playPhase',
   DiscardPhase: 'discardPhase',
+  JudgePhase: 'judgePhase',
 } as const;
 
 // ============================================================
@@ -62,6 +63,8 @@ export interface TargetingEventData {
   user: Player;
   card: Card;
   target: Player;   // 当前正在指定的单个目标
+  /** 判定阶段的无懈窗口标记（允许被判定者抵消自己的延时锦囊） */
+  judging?: boolean;
 }
 
 export interface UseCardEventData {

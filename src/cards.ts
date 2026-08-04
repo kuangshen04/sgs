@@ -236,7 +236,7 @@ export function installWuxieTrigger(): void {
   _wuxieInstalled = true;
 
   triggerSystem.on(`${EventType.Targeting}.before`, async (targetingEvent) => {
-    const { user, card, target } = targetingEvent.data as TargetingEventData;
+    const { user, card, target, judging } = targetingEvent.data as TargetingEventData;
     const def = cardRegistry.get(card.type);
     if (!def?.tags.includes(CardTag.Trick)) return;
 
@@ -249,8 +249,9 @@ export function installWuxieTrigger(): void {
       const player = state.players[idx];
       if (!player.alive) continue;
 
-      // AI：只保护自己
-      if (target !== player || user === player) continue;
+      // AI：只保护自己（判定阶段的无懈窗口允许被判定者抵消自己的延时锦囊）
+      if (target !== player) continue;
+      if (!judging && user === player) continue;
 
       const wxCard = findResponse(player, CardType.WuXie);
       if (!wxCard) continue;
@@ -419,6 +420,30 @@ cardRegistry.register({
 });
 
 cardRegistry.register({
+  type: CardType.LeBu,
+  name: '乐不思蜀',
+  emoji: '😄',
+  content: async () => {}, // 使用时无效果（置入判定区由 useCard 处理）
+  delayContent: async (game, target, judgeCard) => {
+    if (judgeCard.suit === '♥') {
+      console.log(`  ${target.name} 的乐不思蜀判定为红桃，无事发生`);
+    } else {
+      target.skipPlayPhase = true;
+      console.log(`  ${target.name} 的乐不思蜀生效，跳过出牌阶段`);
+    }
+  },
+  tags: [CardTag.Trick, CardTag.Delay],
+  canUse: () => true,
+  targetFilter: otherAlive,
+  targetCount: 1,
+  ai: {
+    shouldUse: () => true,
+    usePriority: 70,
+    discardPriority: 0,
+  },
+});
+
+cardRegistry.register({
   type: CardType.GuoHe,
   name: '过河拆桥',
   emoji: '🌉',
@@ -486,16 +511,19 @@ export const STANDARD_DECK: DeckEntry[] = [
   { type: CardType.WuZhong, suit: '♥', numbers: [7,8,9,11] },
   { type: CardType.WuXie,   suit: '♥', numbers: [13] },
   { type: CardType.Shan,    suit: '♥', numbers: [1,3,4,5,6,10,12] },
+  { type: CardType.LeBu,    suit: '♥', numbers: [6] },
   // ♣
   { type: CardType.JueDou, suit: '♣', numbers: [1] },
   { type: CardType.NanMan, suit: '♣', numbers: [7] },
   { type: CardType.GuoHe,   suit: '♣', numbers: [3, 4, 12] },
   { type: CardType.WuXie,  suit: '♣', numbers: [12] },
   { type: CardType.Sha,    suit: '♣', numbers: [2,3,4,5,6,8,9,10,11,13] },
+  { type: CardType.LeBu,   suit: '♣', numbers: [6] },
   // ♦
   { type: CardType.JueDou, suit: '♦', numbers: [1] },
   { type: CardType.WanJian, suit: '♦', numbers: [1] },
   { type: CardType.ShunShou, suit: '♦', numbers: [3, 4, 11] },
   { type: CardType.WuXie,  suit: '♦', numbers: [12] },
   { type: CardType.Tao,    suit: '♦', numbers: [2,3,4,5,6,7,8,9,10,11,13] },
+  { type: CardType.LeBu,   suit: '♦', numbers: [6] },
 ];

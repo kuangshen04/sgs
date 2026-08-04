@@ -4,15 +4,16 @@
 // 出牌/弃牌逻辑
 // ============================================================
 
-import { CardType, Player } from './types.js';
+import { CardTag, CardType, Player } from './types.js';
 import { EventType, GameEvent } from './events/index.js';
 import type {
   TurnEventData,
   RoundEventData,
   GameEventData,
   PhaseEventData,
+  TargetingEventData,
 } from './events/index.js';
-import { drawCards, useCard, discardCards } from './cardActions.js';
+import { drawCards, useCard, discardCards, judge, moveCards } from './cardActions.js';
 import { cardRegistry, cardEmoji, displayNumber } from './cardRegistry.js';
 import { printState } from './display.js';
 import type { Game } from './game.js';
@@ -24,13 +25,16 @@ import { pickActiveSkill } from './skills.js';
 // 每个工厂 content 硬编码，不暴露 body 参数
 // ============================================================
 
-/** 回合：依次执行摸牌 → 出牌 → 弃牌三个阶段 */
+/** 回合：判定 → 摸牌 → 出牌 → 弃牌（准备/结束阶段尚未建模） */
 export async function turn(
   game: Game,
   data: TurnEventData,
 ): Promise<GameEvent<TurnEventData>> {
   return new GameEvent<TurnEventData>(EventType.Turn, data, game)
     .execute(async () => {
+      data.player.skipPlayPhase = false; // 回合开始重置瞬时标记
+      await judgePhase(game, { player: data.player, round: data.round });
+      if (!data.player.alive) return; // 死亡后跳过剩余阶段
       await drawPhase(game, { player: data.player, round: data.round });
       if (!data.player.alive) return; // 死亡后跳过剩余阶段
       await playPhase(game, { player: data.player, round: data.round });
@@ -54,6 +58,42 @@ export async function drawPhase(
     });
 }
 
+/** 判定阶段：按放置顺序依次结算判定区的延时锦囊（判定 + 实际效果） */
+export async function judgePhase(
+  game: Game,
+  data: PhaseEventData,
+): Promise<GameEvent<PhaseEventData>> {
+  return new GameEvent<PhaseEventData>(EventType.JudgePhase, data, game)
+    .execute(async (event) => {
+      const player = event.data.player;
+      console.log(`[判定阶段]`);
+
+      // 快照：结算过程中判定区会变化
+      const cards = [...player.judgment];
+      for (const card of cards) {
+        const def = cardRegistry.get(card.type);
+        if (!def?.tags.includes(CardTag.Delay)) continue; // 非延时牌（理论上不会出现）
+
+        // 判定前无懈窗口：可令此判定牌无效（复用 targeting 事件 + 无懈触发器）
+        const windowEvent = await new GameEvent<TargetingEventData>(
+          EventType.Targeting,
+          { user: player, card, target: player, judging: true },
+          game,
+        ).execute(async () => {});
+
+        if (windowEvent.isPrevented()) {
+          console.log(`  🚫${player.name} 判定区的 ${cardEmoji(card.type)} 被无懈可击抵消`);
+          moveCards(player.judgment, game.state.discardPile, [card]);
+          continue;
+        }
+
+        const judgeCard = await judge(game, player);
+        await def.delayContent?.(game, player, judgeCard);
+        moveCards(player.judgment, game.state.discardPile, [card]);
+      }
+    });
+}
+
 /** 出牌阶段：循环 choose → 执行 */
 export async function playPhase(
   game: Game,
@@ -63,6 +103,11 @@ export async function playPhase(
     .execute(async (event) => {
       console.log(`[出牌阶段]`);
       const player = event.data.player;
+
+      if (player.skipPlayPhase) {
+        console.log(`  ⏭️ ${player.name} 被乐不思蜀跳过出牌阶段`);
+        return;
+      }
 
       let shaUsed = false;
       const usedSkills = new Set<string>(); // 本回合已发动的限次技能

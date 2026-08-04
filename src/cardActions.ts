@@ -2,7 +2,7 @@
 // 三国杀最小原型 — 牌的操作（摸牌/出牌/弃置/交给）
 // ============================================================
 
-import { Card, Player } from './types.js';
+import { Card, CardTag, Player } from './types.js';
 import { EventType, GameEvent, triggerSystem } from './events/index.js';
 import type { DrawEventData, JudgeEventData, TargetingEventData, UseCardEventData } from './events/index.js';
 import { cardRegistry, cardEmoji, displayNumber, shuffle } from './cardRegistry.js';
@@ -123,6 +123,23 @@ export async function useCard(
 ): Promise<GameEvent<UseCardEventData>> {
   return new GameEvent<UseCardEventData>(EventType.UseCard, data, game)
     .execute(async (event) => {
+      const def = cardRegistry.get(event.data.card.type);
+      const isDelayed = !!def?.tags.includes(CardTag.Delay);
+
+      if (isDelayed) {
+        // 延时锦囊：使用时直接置入目标判定区（无无懈窗口）
+        const target = event.data.targets[0];
+        if (target) {
+          moveCards(event.data.player.hand, target.judgment, [event.data.card]);
+          console.log(
+            `  ${event.data.player.name} 使用了 ${cardEmoji(event.data.card.type)}` +
+            `(${event.data.card.suit}${displayNumber(event.data.card.number)})，` +
+            `置入 ${target.name} 的判定区`,
+          );
+        }
+        return;
+      }
+
       // 使用的牌移入弃牌堆
       discardCards(game, event.data.player, [event.data.card]);
 

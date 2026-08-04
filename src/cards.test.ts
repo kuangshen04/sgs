@@ -220,6 +220,24 @@ describe('useCard — 五谷丰登', () => {
   });
 });
 
+describe('useCard — 乐不思蜀（延时锦囊）', () => {
+  it('使用时直接置入目标判定区，不能被无懈', async () => {
+    const g = freshGame();
+    const attacker = g.state.players[0];
+    const target = g.state.players[1];
+    giveHand(attacker, CardType.LeBu);
+    giveHand(target, CardType.WuXie); // 目标有无懈也不应响应
+    const card = attacker.hand[0];
+
+    await useCard(g, { player: attacker, card, targets: [target] });
+
+    expect(attacker.hand.length).toBe(0);
+    expect(target.judgment.map((c) => c.id)).toContain(card.id); // 置入判定区
+    expect(target.hand.map((c) => c.type)).toEqual([CardType.WuXie]); // 无懈未打出
+    expect(g.state.discardPile.find((c) => c.id === card.id)).toBeUndefined(); // 不在弃牌堆
+  });
+});
+
 describe('useCard — 过河拆桥', () => {
   it('弃置目标一张手牌', async () => {
     const g = freshGame();

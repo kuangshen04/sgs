@@ -90,6 +90,7 @@ describe('cardRegistry', () => {
     expect(names).toContain('万箭齐发');
     expect(names).toContain('桃园结义');
     expect(names).toContain('五谷丰登');
+    expect(names).toContain('乐不思蜀');
     expect(names).toContain('过河拆桥');
     expect(names).toContain('顺手牵羊');
   });
@@ -107,8 +108,15 @@ describe('cardRegistry', () => {
   });
 
   it('锦囊牌 tag = Trick', () => {
-    for (const t of [CardType.WuZhong, CardType.JueDou, CardType.NanMan, CardType.WanJian, CardType.TaoYuan, CardType.WuGu, CardType.GuoHe, CardType.ShunShou]) {
+    for (const t of [CardType.WuZhong, CardType.JueDou, CardType.NanMan, CardType.WanJian, CardType.TaoYuan, CardType.WuGu, CardType.LeBu, CardType.GuoHe, CardType.ShunShou]) {
       expect(cardRegistry.get(t)!.tags).toContain(CardTag.Trick);
+    }
+  });
+
+  it('延时锦囊 tag = Trick + Delay', () => {
+    for (const t of [CardType.LeBu]) {
+      expect(cardRegistry.get(t)!.tags).toContain(CardTag.Trick);
+      expect(cardRegistry.get(t)!.tags).toContain(CardTag.Delay);
     }
   });
 });
@@ -118,9 +126,9 @@ describe('cardRegistry', () => {
 // ============================================================
 
 describe('createDeck', () => {
-  it('牌堆 138 张（134 + 五谷丰登 4）', () => {
+  it('牌堆 144 张（138 + 乐不思蜀 6）', () => {
     const deck = createDeck(STANDARD_DECK);
-    expect(deck.length).toBe(138);
+    expect(deck.length).toBe(144);
   });
 
   it('每张牌有 id/type/name/suit/number', () => {
@@ -176,6 +184,12 @@ describe('createDeck', () => {
     expect(count).toBe(4);
   });
 
+  it('乐不思蜀数量 = 3×2副本 = 6', () => {
+    const deck = createDeck(STANDARD_DECK);
+    const count = deck.filter((c) => c.type === CardType.LeBu).length;
+    expect(count).toBe(6);
+  });
+
   it('无懈可击数量 = 8', () => {
     const deck = createDeck(STANDARD_DECK);
     const wxCount = deck.filter((c) => c.type === CardType.WuXie).length;
@@ -215,8 +229,8 @@ describe('createGame', () => {
     expect(g.state.currentIndex).toBe(0);
     expect(g.state.gameOver).toBe(false);
     expect(g.state.winner).toBeNull();
-    // 138 - 3人×4 = 126
-    expect(g.state.deck.length).toBe(126);
+    // 144 - 3人×4 = 132
+    expect(g.state.deck.length).toBe(132);
     expect(g.state.discardPile.length).toBe(0);
   });
 
