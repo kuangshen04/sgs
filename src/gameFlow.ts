@@ -32,7 +32,9 @@ export async function turn(
   return new GameEvent<TurnEventData>(EventType.Turn, data, game)
     .execute(async () => {
       await drawPhase(game, { player: data.player, round: data.round });
+      if (!data.player.alive) return; // 死亡后跳过剩余阶段
       await playPhase(game, { player: data.player, round: data.round });
+      if (!data.player.alive) return;
       await discardPhase(game, { player: data.player, round: data.round });
     });
 }
@@ -65,6 +67,7 @@ export async function playPhase(
       let shaUsed = false;
       const usedSkills = new Set<string>(); // 本回合已发动的限次技能
       while (true) {
+        if (!player.alive) break; // 出牌阶段中死亡则终止
         const cardChoice = await choose(game, { player, shaUsed });
         const skill = pickActiveSkill(game, player, {
           shaUsed, usedSkills, cardChoice: cardChoice?.card ?? null,

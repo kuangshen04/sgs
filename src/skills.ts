@@ -98,7 +98,7 @@ export function registerSkills(): void {
   for (const skill of skillRegistry.all()) {
     triggerSystem.on(skill.trigger, async (event) => {
       const owner = eventOwner(event);
-      if (!owner?.hero.skills?.includes(skill.name)) return;
+      if (!owner?.alive || !owner.hero.skills?.includes(skill.name)) return; // 死亡后技能失效
       await skill.content(event.game, event);
     });
   }
@@ -113,6 +113,7 @@ export function pickActiveSkill(
   player: Player,
   ctx: ActiveSkillContext,
 ): ActiveSkillDef | null {
+  if (!player.alive) return null; // 死亡角色不能发动主动技能
   const candidates = (player.hero.skills ?? [])
     .map((name) => activeSkillRegistry.get(name))
     .filter((s): s is ActiveSkillDef => !!s)
