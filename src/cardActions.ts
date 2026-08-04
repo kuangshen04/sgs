@@ -5,30 +5,50 @@
 import { Card, Player } from './types.js';
 import { EventType, GameEvent } from './events/index.js';
 import type { DrawEventData, TargetingEventData, UseCardEventData } from './events/index.js';
-import { cardRegistry, shuffle } from './cardRegistry.js';
+import { cardRegistry, cardEmoji, displayNumber, shuffle } from './cardRegistry.js';
 import type { Game } from './game.js';
 
 // ============================================================
 // 摸牌
 // ============================================================
 
+/** 牌堆为空时把弃牌堆洗回牌堆；返回牌堆是否仍有牌 */
+function refillDeck(deck: Card[], discardPile: Card[]): boolean {
+  if (deck.length > 0) return true;
+  if (discardPile.length === 0) return false;
+  deck.push(...shuffle(discardPile));
+  discardPile.length = 0;
+  console.log('  🔄 弃牌堆重新洗入牌堆');
+  return true;
+}
+
 /** 从牌堆摸牌（牌堆空时自动洗入弃牌堆） */
 export function drawCardsFromDeck(
   player: Player, deck: Card[], discardPile: Card[], count: number,
 ): void {
   for (let i = 0; i < count; i++) {
-    if (deck.length === 0) {
-      if (discardPile.length === 0) {
-        console.log('  ⚠️ 牌堆和弃牌堆都已空，无法摸牌');
-        return;
-      }
-      const reshuffled = shuffle(discardPile);
-      deck.push(...reshuffled);
-      discardPile.length = 0;
-      console.log('  🔄 弃牌堆重新洗入牌堆');
+    if (!refillDeck(deck, discardPile)) {
+      console.log('  ⚠️ 牌堆和弃牌堆都已空，无法摸牌');
+      return;
     }
     player.hand.push(deck.pop()!);
   }
+}
+
+/**
+ * 判定：亮出牌堆顶一张牌（牌堆空则洗回弃牌堆）。
+ * 判定牌生效后进入弃牌堆（天妒将来从这里拿），返回判定牌供检查条件。
+ */
+export function judge(game: Game, player: Player): Card {
+  if (!refillDeck(game.state.deck, game.state.discardPile)) {
+    throw new Error('判定失败：牌堆和弃牌堆都为空');
+  }
+  const card = game.state.deck.pop()!;
+  game.state.discardPile.push(card);
+  console.log(
+    `  ⚡${player.name} 判定：亮出 ${cardEmoji(card.type)} (${card.suit}${displayNumber(card.number)})`,
+  );
+  return card;
 }
 
 export async function drawCards(
