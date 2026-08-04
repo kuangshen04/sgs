@@ -17,8 +17,11 @@ function handDisplay(hand: Card[]): string {
     .join(' ');
 }
 
-function hpBar(current: number, max: number): string {
-  return '❤️'.repeat(current) + '🖤'.repeat(max - current) + ` (${current}/${max})`;
+/** 体力条显示（支持负数/越界血量，数值如实显示） */
+export function hpBar(current: number, max: number): string {
+  const hearts = Math.max(0, Math.min(current, max)); // 实际体力截断到 [0, max]
+  const blacks = Math.max(0, max - hearts);           // 缺失体力
+  return '❤️'.repeat(hearts) + '🖤'.repeat(blacks) + ` (${current}/${max})`;
 }
 
 export function printState(state: GameState): void {
