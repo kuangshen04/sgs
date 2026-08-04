@@ -8,7 +8,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { freshGame, giveHand, makeUniqueCard } from './test-utils.js';
 
 import { damage } from './life.js';
-import { useCard } from './cardActions.js';
+import { useCard, judge } from './cardActions.js';
 import { drawPhase, playPhase, turn } from './gameFlow.js';
 
 import { activeSkillRegistry, pickActiveSkill, registerSkills, skillRegistry } from './skills.js';
@@ -534,5 +534,46 @@ describe('刚烈（夏侯惇技能）', () => {
     expect(sunquan.alive).toBe(false);    // 被刚烈反杀
     expect(xiahou.hp).toBe(hpBefore - 1); // 杀已生效
     expect(sunquan.hand.length).toBe(1);  // 剩余杀未继续打出
+  });
+});
+
+// ============================================================
+// 天妒（郭嘉：当你的判定牌生效后，你可以获得之）
+// ============================================================
+
+describe('天妒（郭嘉技能）', () => {
+  const guojiaHeroes = ['刘备', '郭嘉', '孙权'];
+
+  afterEach(() => triggerSystem.clear());
+
+  it('skillRegistry 已注册天妒', () => {
+    expect(skillRegistry.get('天妒')).toBeDefined();
+  });
+
+  it('郭嘉判定后获得判定牌', async () => {
+    registerSkills();
+    const g = freshGame({}, guojiaHeroes);
+    const guojia = g.state.players[1];
+    const judgeCard = makeUniqueCard(CardType.Sha, '♠', 5);
+    g.state.deck = [judgeCard];
+
+    const card = await judge(g, guojia);
+
+    expect(card.id).toBe(judgeCard.id);
+    expect(guojia.hand.map((c) => c.id)).toContain(judgeCard.id); // 天妒拿回判定牌
+    expect(g.state.discardPile.find((c) => c.id === judgeCard.id)).toBeUndefined();
+  });
+
+  it('非郭嘉判定 → 不获得判定牌', async () => {
+    registerSkills();
+    const g = freshGame({}, guojiaHeroes);
+    const liubei = g.state.players[0];
+    const judgeCard = makeUniqueCard(CardType.Sha, '♠', 5);
+    g.state.deck = [judgeCard];
+
+    await judge(g, liubei);
+
+    expect(liubei.hand.length).toBe(0);
+    expect(g.state.discardPile.find((c) => c.id === judgeCard.id)).toBeDefined(); // 判定牌留在弃牌堆
   });
 });

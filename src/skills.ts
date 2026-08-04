@@ -11,7 +11,7 @@ import { damage, recover } from './life.js';
 import { cardEmoji, displayNumber } from './cardRegistry.js';
 import type { GameEvent } from './events/index.js';
 import { triggerSystem, EventType } from './events/index.js';
-import type { DamageEventData, PhaseEventData, TurnEventData } from './events/index.js';
+import type { DamageEventData, JudgeEventData, PhaseEventData, TurnEventData } from './events/index.js';
 import type { Card, Player } from './types.js';
 
 // ============================================================
@@ -181,7 +181,7 @@ const jianxiongContent = async (game: Game, event: GameEvent<any>): Promise<void
 /** 刚烈：受到伤害后判定，非红桃则伤害来源弃两张手牌或受 1 点伤害 */
 const ganglieContent = async (game: Game, event: GameEvent<any>): Promise<void> => {
   const { target, source } = event.data as DamageEventData;
-  const card = judge(game, target);
+  const card = await judge(game, target);
   if (card.suit === '♥') return; // 红桃 → 无事发生
 
   // 伤害来源：手牌足够则弃两张，否则受到来自你的 1 点伤害
@@ -191,6 +191,22 @@ const ganglieContent = async (game: Game, event: GameEvent<any>): Promise<void> 
   } else {
     await damage(game, { target: source, source: target, amount: 1 });
   }
+};
+
+/** 天妒：当你的判定牌生效后，你可以获得之 */
+const tianduContent = async (game: Game, event: GameEvent<any>): Promise<void> => {
+  const { player, card } = event.data as JudgeEventData;
+  if (!card) return;
+
+  // 判定牌已进弃牌堆：找回并收入手牌
+  const idx = game.state.discardPile.findIndex((c) => c.id === card.id);
+  if (idx < 0) return;
+  const [found] = game.state.discardPile.splice(idx, 1);
+  player.hand.push(found);
+  console.log(
+    `  ✨${player.name} 发动【天妒】！获得判定牌 ${cardEmoji(found.type)} ` +
+    `(${found.suit}${displayNumber(found.number)})`,
+  );
 };
 
 // ============================================================
@@ -225,6 +241,12 @@ skillRegistry.register({
   name: '刚烈',
   trigger: 'damage.after',
   content: ganglieContent,
+});
+
+skillRegistry.register({
+  name: '天妒',
+  trigger: 'judge.after',
+  content: tianduContent,
 });
 
 // ============================================================

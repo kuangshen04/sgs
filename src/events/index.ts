@@ -11,6 +11,7 @@ export type {
   RecoverEventData,
   DrawEventData,
   DyingEventData,
+  JudgeEventData,
   DieEventData,
   TargetingEventData,
   UseCardEventData,

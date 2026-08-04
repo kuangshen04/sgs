@@ -4,7 +4,7 @@
 
 import { Card, Player } from './types.js';
 import { EventType, GameEvent } from './events/index.js';
-import type { DrawEventData, TargetingEventData, UseCardEventData } from './events/index.js';
+import type { DrawEventData, JudgeEventData, TargetingEventData, UseCardEventData } from './events/index.js';
 import { cardRegistry, cardEmoji, displayNumber, shuffle } from './cardRegistry.js';
 import type { Game } from './game.js';
 
@@ -36,19 +36,23 @@ export function drawCardsFromDeck(
 }
 
 /**
- * 判定：亮出牌堆顶一张牌（牌堆空则洗回弃牌堆）。
- * 判定牌生效后进入弃牌堆（天妒将来从这里拿），返回判定牌供检查条件。
+ * 判定：亮出牌堆顶一张牌（牌堆空则洗回弃牌堆）作为判定事件。
+ * 判定牌生效后进入弃牌堆（天妒从这里拿），返回最终判定牌供检查条件。
  */
-export function judge(game: Game, player: Player): Card {
-  if (!refillDeck(game.state.deck, game.state.discardPile)) {
-    throw new Error('判定失败：牌堆和弃牌堆都为空');
-  }
-  const card = game.state.deck.pop()!;
-  game.state.discardPile.push(card);
-  console.log(
-    `  ⚡${player.name} 判定：亮出 ${cardEmoji(card.type)} (${card.suit}${displayNumber(card.number)})`,
-  );
-  return card;
+export async function judge(game: Game, player: Player): Promise<Card> {
+  const event = await new GameEvent<JudgeEventData>(EventType.Judge, { player }, game)
+    .execute(async (event) => {
+      if (!refillDeck(game.state.deck, game.state.discardPile)) {
+        throw new Error('判定失败：牌堆和弃牌堆都为空');
+      }
+      const card = game.state.deck.pop()!;
+      event.data.card = card;
+      game.state.discardPile.push(card);
+      console.log(
+        `  ⚡${player.name} 判定：亮出 ${cardEmoji(card.type)} (${card.suit}${displayNumber(card.number)})`,
+      );
+    });
+  return event.data.card!;
 }
 
 export async function drawCards(

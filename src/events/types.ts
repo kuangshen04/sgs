@@ -12,6 +12,7 @@ export const EventType = {
   Draw: 'draw',
   Die: 'die',
   Dying: 'dying',
+  Judge: 'judge',
   Targeting: 'targeting',
   UseCard: 'useCard',
   // Boundary 事件 — 游戏/轮/回合/阶段的分界标记
@@ -45,6 +46,12 @@ export interface DrawEventData {
 
 export interface DyingEventData {
   player: Player;
+}
+
+export interface JudgeEventData {
+  player: Player;
+  /** 亮出的判定牌；鬼才将来可在 judging 阶段替换 */
+  card?: Card;
 }
 
 export interface DieEventData {
