@@ -27,6 +27,7 @@ export const heroRegistry = {
 heroRegistry.register({ name: '刘备', maxHp: 4, skills: ['仁德'] });
 heroRegistry.register({ name: '曹操', maxHp: 4, skills: ['奸雄'] });
 heroRegistry.register({ name: '夏侯惇', maxHp: 4, skills: ['刚烈'] });
+heroRegistry.register({ name: '司马懿', maxHp: 3, skills: ['鬼才'] });
 heroRegistry.register({ name: '郭嘉', maxHp: 3, skills: ['遗计', '天妒'] });
 heroRegistry.register({ name: '孙权', maxHp: 4, skills: ['制衡'] });
 heroRegistry.register({ name: '周瑜', maxHp: 3, skills: ['英姿', '反间'] });

@@ -16,7 +16,7 @@ import { runGame } from './gameFlow.js';
 async function main() {
   registerSkills(); // 把技能挂到事件系统
 
-  const game = createGame(STANDARD_DECK, ['刘备', '曹操', '夏侯惇', '郭嘉', '孙权', '周瑜', '貂蝉']);
+  const game = createGame(STANDARD_DECK, ['刘备', '曹操', '夏侯惇', '司马懿', '郭嘉', '孙权', '周瑜', '貂蝉']);
 
   console.clear();
   printState(game.state);

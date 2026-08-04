@@ -577,3 +577,49 @@ describe('天妒（郭嘉技能）', () => {
     expect(g.state.discardPile.find((c) => c.id === judgeCard.id)).toBeDefined(); // 判定牌留在弃牌堆
   });
 });
+
+// ============================================================
+// 鬼才（司马懿：判定牌生效前，打出一张手牌代替之）
+// ============================================================
+
+describe('鬼才（司马懿技能）', () => {
+  afterEach(() => triggerSystem.clear());
+
+  it('skillRegistry 已注册鬼才', () => {
+    expect(skillRegistry.get('鬼才')).toBeDefined();
+  });
+
+  it('打出一张手牌代替判定牌（响应型：任何角色的判定都可替换）', async () => {
+    registerSkills();
+    const g = freshGame({}, ['刘备', '夏侯惇', '司马懿']);
+    const liubei = g.state.players[0];
+    const xiahou = g.state.players[1];
+    const simayi = g.state.players[2];
+    g.state.deck = [makeUniqueCard(CardType.Sha, '♠', 5)]; // 原判定：黑桃
+    simayi.hand = [makeUniqueCard(CardType.Tao, '♥', 2)];  // 替换牌：红桃
+    const hpBefore = liubei.hp;
+
+    await damage(g, { target: xiahou, source: liubei, amount: 1 });
+
+    expect(simayi.hand.length).toBe(0);   // 鬼才已打出
+    expect(liubei.hp).toBe(hpBefore);     // 判定被替换成红桃 → 刚烈无事
+    expect(g.state.discardPile.some((c) => c.suit === '♥')).toBe(true); // 替换牌进弃牌堆
+  });
+
+  it('无手牌 → 不替换，原判定生效', async () => {
+    registerSkills();
+    const g = freshGame({}, ['刘备', '夏侯惇', '司马懿']);
+    const liubei = g.state.players[0];
+    const xiahou = g.state.players[1];
+    const simayi = g.state.players[2];
+    g.state.deck = [makeUniqueCard(CardType.JueDou, '♠', 5)]; // 判定：黑桃
+    giveHand(liubei, CardType.Sha, CardType.Sha); // 来源有 2 张
+    const hpBefore = liubei.hp;
+
+    await damage(g, { target: xiahou, source: liubei, amount: 1 });
+
+    expect(simayi.hand.length).toBe(0);      // 司马懿无手牌，鬼才无法发动
+    expect(liubei.hp).toBe(hpBefore);        // 来源不受伤
+    expect(liubei.hand.length).toBe(0);      // 但弃了两张响应刚烈
+  });
+});

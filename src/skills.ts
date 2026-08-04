@@ -11,7 +11,7 @@ import { damage, recover } from './life.js';
 import { cardEmoji, displayNumber } from './cardRegistry.js';
 import type { GameEvent } from './events/index.js';
 import { triggerSystem, EventType } from './events/index.js';
-import type { DamageEventData, JudgeEventData, PhaseEventData, TurnEventData } from './events/index.js';
+import type { DamageEventData, JudgeEventData } from './events/index.js';
 import type { Card, Player } from './types.js';
 
 // ============================================================
@@ -22,7 +22,14 @@ export interface SkillDef {
   name: string;
   /** 触发时点，如 'damage.after'（事件类型 + before/after 阶段） */
   trigger: string;
-  content: (game: Game, event: GameEvent<any>) => Promise<void>;
+  /**
+   * 角色匹配谓词（FreeKill can_trigger 风格）：
+   * 引擎按座次询问所有存活角色，对每个拥有此技能的角色调用本函数决定是否发动。
+   * subject 为事件主体（event.data.target 优先，其次 player）。
+   */
+  canTrigger: (game: Game, event: GameEvent<any>, owner: Player, subject: Player | undefined) => boolean;
+  /** 发动效果（owner 为被询问且通过 canTrigger 的角色） */
+  content: (game: Game, event: GameEvent<any>, owner: Player) => Promise<void>;
 }
 
 const _skills = new Map<string, SkillDef>();
@@ -84,11 +91,14 @@ export const activeSkillRegistry = {
 // 分发
 // ============================================================
 
-/** 从事件数据推断技能拥有者：优先 target，其次 player */
-function eventOwner(event: GameEvent<any>): Player | undefined {
+/** 事件主体：优先 target，其次 player（FreeKill 的 target 参数） */
+function eventSubject(event: GameEvent<any>): Player | undefined {
   const data = event.data as { target?: Player; player?: Player };
   return data.target ?? data.player;
 }
+
+/** 最常见的角色匹配：事件主体是自己时发动 */
+const subjectIsOwner: SkillDef['canTrigger'] = (_game, _event, owner, subject) => subject === owner;
 
 /**
  * 把 skillRegistry 中所有技能挂到 triggerSystem（按 trigger 分发）。
@@ -97,9 +107,15 @@ function eventOwner(event: GameEvent<any>): Player | undefined {
 export function registerSkills(): void {
   for (const skill of skillRegistry.all()) {
     triggerSystem.on(skill.trigger, async (event) => {
-      const owner = eventOwner(event);
-      if (!owner?.alive || !owner.hero.skills?.includes(skill.name)) return; // 死亡后技能失效
-      await skill.content(event.game, event);
+      const game = event.game;
+      const subject = eventSubject(event);
+      // 按座次询问所有存活角色（FreeKill 模型）
+      for (const player of game.state.players) {
+        if (!player.alive) continue; // 死亡后技能失效
+        if (!player.hero.skills?.includes(skill.name)) continue;
+        if (!skill.canTrigger(game, event, player, subject)) continue;
+        await skill.content(game, event, player);
+      }
     });
   }
 }
@@ -128,41 +144,38 @@ export function pickActiveSkill(
 // ============================================================
 
 /** 遗计：受到伤害后，每 1 点伤害摸 2 张牌 */
-const yijiContent = async (game: Game, event: GameEvent<any>): Promise<void> => {
-  const { target, amount } = event.data as DamageEventData;
-  const before = target.hand.length;
-  await drawCards(game, { target, count: amount * 2 });
+const yijiContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
+  const { amount } = event.data as DamageEventData;
+  const before = owner.hand.length;
+  await drawCards(game, { target: owner, count: amount * 2 });
   console.log(
-    `  ✨${target.name} 发动【遗计】！受到 ${amount} 点伤害，摸了 ${amount * 2} 张牌` +
-    `（${before} → ${target.hand.length}）`,
+    `  ✨${owner.name} 发动【遗计】！受到 ${amount} 点伤害，摸了 ${amount * 2} 张牌` +
+    `（${before} → ${owner.hand.length}）`,
   );
 };
 
 /** 英姿：摸牌阶段多摸一张牌 */
-const yingziContent = async (game: Game, event: GameEvent<any>): Promise<void> => {
-  const { player } = event.data as PhaseEventData;
-  const before = player.hand.length;
-  await drawCards(game, { target: player, count: 1 });
+const yingziContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
+  const before = owner.hand.length;
+  await drawCards(game, { target: owner, count: 1 });
   console.log(
-    `  ✨${player.name} 发动【英姿】！摸牌阶段多摸了 1 张牌` +
-    `（${before} → ${player.hand.length}）`,
+    `  ✨${owner.name} 发动【英姿】！摸牌阶段多摸了 1 张牌` +
+    `（${before} → ${owner.hand.length}）`,
   );
 };
 
 /** 闭月：结束阶段摸一张牌（暂挂在 turn.after，正式结束阶段尚未建模） */
-const biyueContent = async (game: Game, event: GameEvent<any>): Promise<void> => {
-  const { player } = event.data as TurnEventData;
-  const before = player.hand.length;
-  await drawCards(game, { target: player, count: 1 });
+const biyueContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
+  const before = owner.hand.length;
+  await drawCards(game, { target: owner, count: 1 });
   console.log(
-    `  ✨${player.name} 发动【闭月】！回合结束摸了 1 张牌` +
-    `（${before} → ${player.hand.length}）`,
+    `  ✨${owner.name} 发动【闭月】！回合结束摸了 1 张牌` +
+    `（${before} → ${owner.hand.length}）`,
   );
 };
 
 /** 奸雄：受到伤害后，若伤害由使用牌造成，获得该牌 */
-const jianxiongContent = async (game: Game, event: GameEvent<any>): Promise<void> => {
-  const { target } = event.data as DamageEventData;
+const jianxiongContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
   const useCardEvent = event.getParent(EventType.UseCard);
   if (!useCardEvent) return; // 非使用牌造成的伤害（如技能伤害）
   const card = useCardEvent.data.card as Card;
@@ -171,17 +184,17 @@ const jianxiongContent = async (game: Game, event: GameEvent<any>): Promise<void
   const idx = game.state.discardPile.findIndex((c) => c.id === card.id);
   if (idx < 0) return;
   const [found] = game.state.discardPile.splice(idx, 1);
-  target.hand.push(found);
+  owner.hand.push(found);
   console.log(
-    `  ✨${target.name} 发动【奸雄】！获得造成伤害的 ${cardEmoji(found.type)} ` +
+    `  ✨${owner.name} 发动【奸雄】！获得造成伤害的 ${cardEmoji(found.type)} ` +
     `(${found.suit}${displayNumber(found.number)})`,
   );
 };
 
 /** 刚烈：受到伤害后判定，非红桃则伤害来源弃两张手牌或受 1 点伤害 */
-const ganglieContent = async (game: Game, event: GameEvent<any>): Promise<void> => {
-  const { target, source } = event.data as DamageEventData;
-  const card = await judge(game, target);
+const ganglieContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
+  const { source } = event.data as DamageEventData;
+  const card = await judge(game, owner);
   if (card.suit === '♥') return; // 红桃 → 无事发生
 
   // 伤害来源：手牌足够则弃两张，否则受到来自你的 1 点伤害
@@ -189,23 +202,35 @@ const ganglieContent = async (game: Game, event: GameEvent<any>): Promise<void> 
     const discarded = discardCards(game, source, source.hand.slice(0, 2));
     console.log(`  ${source.name} 弃置 ${discarded.length} 张手牌以响应【刚烈】`);
   } else {
-    await damage(game, { target: source, source: target, amount: 1 });
+    await damage(game, { target: source, source: owner, amount: 1 });
   }
 };
 
 /** 天妒：当你的判定牌生效后，你可以获得之 */
-const tianduContent = async (game: Game, event: GameEvent<any>): Promise<void> => {
-  const { player, card } = event.data as JudgeEventData;
+const tianduContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
+  const { card } = event.data as JudgeEventData;
   if (!card) return;
 
   // 判定牌已进弃牌堆：找回并收入手牌
   const idx = game.state.discardPile.findIndex((c) => c.id === card.id);
   if (idx < 0) return;
   const [found] = game.state.discardPile.splice(idx, 1);
-  player.hand.push(found);
+  owner.hand.push(found);
   console.log(
-    `  ✨${player.name} 发动【天妒】！获得判定牌 ${cardEmoji(found.type)} ` +
+    `  ✨${owner.name} 发动【天妒】！获得判定牌 ${cardEmoji(found.type)} ` +
     `(${found.suit}${displayNumber(found.number)})`,
+  );
+};
+
+/** 鬼才：一名角色的判定牌生效前，你可以打出一张手牌代替之 */
+const guicaiContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
+  const judgeEvent = event as GameEvent<JudgeEventData>;
+  const card = owner.hand[0];
+  discardCards(game, owner, [card]);
+  judgeEvent.data.card = card;
+  console.log(
+    `  ✨${owner.name} 发动【鬼才】！打出 ${cardEmoji(card.type)} ` +
+    `(${card.suit}${displayNumber(card.number)}) 代替判定牌`,
   );
 };
 
@@ -216,37 +241,51 @@ const tianduContent = async (game: Game, event: GameEvent<any>): Promise<void> =
 skillRegistry.register({
   name: '遗计',
   trigger: 'damage.after',
+  canTrigger: subjectIsOwner,
   content: yijiContent,
 });
 
 skillRegistry.register({
   name: '英姿',
   trigger: 'drawPhase.before',
+  canTrigger: subjectIsOwner,
   content: yingziContent,
 });
 
 skillRegistry.register({
   name: '闭月',
   trigger: 'turn.after',
+  canTrigger: subjectIsOwner,
   content: biyueContent,
 });
 
 skillRegistry.register({
   name: '奸雄',
   trigger: 'damage.after',
+  canTrigger: subjectIsOwner,
   content: jianxiongContent,
 });
 
 skillRegistry.register({
   name: '刚烈',
   trigger: 'damage.after',
+  canTrigger: subjectIsOwner,
   content: ganglieContent,
 });
 
 skillRegistry.register({
   name: '天妒',
   trigger: 'judge.after',
+  canTrigger: subjectIsOwner,
   content: tianduContent,
+});
+
+skillRegistry.register({
+  name: '鬼才',
+  trigger: 'judge.judging',
+  // 响应型：任何角色的判定都可响应，不看事件主体
+  canTrigger: (_game, _event, owner) => owner.hand.length > 0,
+  content: guicaiContent,
 });
 
 // ============================================================
