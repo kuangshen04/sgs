@@ -17,7 +17,7 @@ import { freshGame, giveHand, makeCard, makeUniqueCard, DEFAULT_HEROES } from '.
 
 import { CardTag, CardType } from './types.js';
 import type { Card } from './types.js';
-import { heroRegistry } from './heroes.js';
+import { heroRegistry } from './heroRegistry.js';
 
 // ============================================================
 // 纯函数

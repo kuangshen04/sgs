@@ -9,7 +9,7 @@ import type { Deciders } from './choose.js';
 import { createDeck, shuffle } from './cardRegistry.js';
 import type { DeckEntry } from './cardRegistry.js';
 import { drawCardsFromDeck } from './cardActions.js';
-import { heroRegistry } from './heroes.js';
+import { heroRegistry } from './heroes/index.js';
 
 // ============================================================
 // Game — 一局游戏的容器
