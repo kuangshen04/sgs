@@ -23,7 +23,7 @@ describe('playPhase', () => {
     giveHand(player, CardType.Sha);
     const hpBefore = target.hp;
 
-    await playPhase(g, { player, round: 1 });
+    await playPhase(g, { player });
 
     // 默认 AI 出杀
     expect(player.hand.length).toBe(0);
@@ -35,7 +35,7 @@ describe('playPhase', () => {
     const player = g.state.players[0];
     giveHand(player, CardType.Shan); // 闪不可主动使用
 
-    await playPhase(g, { player, round: 1 });
+    await playPhase(g, { player });
 
     expect(player.hand.length).toBe(1);
   });
@@ -47,7 +47,7 @@ describe('playPhase', () => {
     giveHand(player, CardType.JueDou, CardType.Sha);
     const hpBefore = target.hp;
 
-    await playPhase(g, { player, round: 1 });
+    await playPhase(g, { player });
 
     // 默认 AI：决斗(70) → 杀(60)，两轮循环
     expect(target.hp).toBe(hpBefore - 2);
@@ -67,7 +67,7 @@ describe('judgePhase', () => {
     player.judgment.push(lebu);
     g.state.deck = [makeUniqueCard(CardType.Tao, '♥', 2)]; // 判定：红桃
 
-    await judgePhase(g, { player, round: 1 });
+    await judgePhase(g, { player });
 
     expect(player.skipPlayPhase).toBeFalsy();
     expect(player.judgment.length).toBe(0);
@@ -81,7 +81,7 @@ describe('judgePhase', () => {
     player.judgment.push(lebu);
     g.state.deck = [makeUniqueCard(CardType.JueDou, '♠', 5)]; // 判定：非红桃
 
-    await judgePhase(g, { player, round: 1 });
+    await judgePhase(g, { player });
 
     expect(player.skipPlayPhase).toBe(true);
     expect(player.judgment.length).toBe(0);
@@ -96,7 +96,7 @@ describe('judgePhase', () => {
     const deckCard = makeUniqueCard(CardType.Sha, '♠', 5);
     g.state.deck = [deckCard];
 
-    await judgePhase(g, { player, round: 1 });
+    await judgePhase(g, { player });
 
     expect(player.skipPlayPhase).toBeFalsy();   // 未生效
     expect(player.judgment.length).toBe(0);     // 乐不思蜀被弃置
@@ -111,7 +111,7 @@ describe('judgePhase', () => {
     player.skipPlayPhase = true;
     giveHand(player, CardType.Sha);
 
-    await playPhase(g, { player, round: 1 });
+    await playPhase(g, { player });
 
     expect(player.hand.length).toBe(1); // 未出牌
   });
@@ -124,7 +124,7 @@ describe('judgePhase', () => {
     g.state.deck = [makeUniqueCard(CardType.JueDou, '♠', 5)]; // 黑桃5
     const hpBefore = player.hp;
 
-    await judgePhase(g, { player, round: 1 });
+    await judgePhase(g, { player });
 
     expect(player.hp).toBe(hpBefore - 3);
     expect(player.judgment.length).toBe(0);
@@ -139,7 +139,7 @@ describe('judgePhase', () => {
     player.judgment.push(shandian);
     g.state.deck = [makeUniqueCard(CardType.Tao, '♥', 5)]; // 红桃 → 不爆
 
-    await judgePhase(g, { player, round: 1 });
+    await judgePhase(g, { player });
 
     expect(player.judgment.length).toBe(0);
     expect(next.judgment.map((c) => c.id)).toContain(shandian.id);

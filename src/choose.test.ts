@@ -426,7 +426,7 @@ describe('全局注入 decider', () => {
     giveHand(player, CardType.Sha);
     const hpBefore = target.hp;
 
-    await playPhase(g, { player, round: 1 });
+    await playPhase(g, { player });
 
     expect(player.hand.length).toBe(0);
     expect(target.hp).toBe(hpBefore - 1);
@@ -440,7 +440,7 @@ describe('全局注入 decider', () => {
     const player = g.state.players[0];
     giveHand(player, CardType.NanMan);
 
-    await playPhase(g, { player, round: 1 });
+    await playPhase(g, { player });
 
     expect(player.hand.length).toBe(1);
   });

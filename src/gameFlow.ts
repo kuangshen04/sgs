@@ -34,17 +34,17 @@ export async function turn(
   return new GameEvent<TurnEventData>(EventType.Turn, data, game)
     .execute(async () => {
       data.player.skipPlayPhase = false; // 回合开始重置瞬时标记
-      await preparePhase(game, { player: data.player, round: data.round });
+      await preparePhase(game, { player: data.player });
       if (!data.player.alive) return; // 死亡后跳过剩余阶段
-      await judgePhase(game, { player: data.player, round: data.round });
+      await judgePhase(game, { player: data.player });
       if (!data.player.alive) return; // 死亡后跳过剩余阶段
-      await drawPhase(game, { player: data.player, round: data.round });
+      await drawPhase(game, { player: data.player });
       if (!data.player.alive) return; // 死亡后跳过剩余阶段
-      await playPhase(game, { player: data.player, round: data.round });
+      await playPhase(game, { player: data.player });
       if (!data.player.alive) return;
-      await discardPhase(game, { player: data.player, round: data.round });
+      await discardPhase(game, { player: data.player });
       if (!data.player.alive) return;
-      await endPhase(game, { player: data.player, round: data.round });
+      await endPhase(game, { player: data.player });
     });
 }
 
@@ -221,7 +221,7 @@ export async function round(
           console.log(`${player.name} 已阵亡，跳过回合`);
         } else {
           console.log(`\n━━━ 第 ${data.round} 轮 · ${player.name} 的回合 ━━━`);
-          await turn(game, { player, round: state.round });
+          await turn(game, { player });
           printState(state);
         }
       }

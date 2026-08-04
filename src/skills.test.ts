@@ -104,7 +104,7 @@ describe('英姿（周瑜技能）', () => {
     const zhouyu = g.state.players[1];
     const before = zhouyu.hand.length;
 
-    await drawPhase(g, { player: zhouyu, round: 1 });
+    await drawPhase(g, { player: zhouyu });
 
     expect(zhouyu.hand.length).toBe(before + 3);
   });
@@ -115,7 +115,7 @@ describe('英姿（周瑜技能）', () => {
     const liubei = g.state.players[0];
     const before = liubei.hand.length;
 
-    await drawPhase(g, { player: liubei, round: 1 });
+    await drawPhase(g, { player: liubei });
 
     expect(liubei.hand.length).toBe(before + 2);
   });
@@ -140,7 +140,7 @@ describe('闭月（貂蝉技能）', () => {
     const diaochan = g.state.players[1];
     const before = diaochan.hand.length;
 
-    await endPhase(g, { player: diaochan, round: 1 });
+    await endPhase(g, { player: diaochan });
 
     expect(diaochan.hand.length).toBe(before + 1);
   });
@@ -152,7 +152,7 @@ describe('闭月（貂蝉技能）', () => {
     const diaochan = g.state.players[1];
     const before = diaochan.hand.length;
 
-    await turn(g, { player: diaochan, round: 1 });
+    await turn(g, { player: diaochan });
 
     // 摸牌阶段 2 张 + 闭月 1 张
     expect(diaochan.hand.length).toBe(before + 3);
@@ -165,7 +165,7 @@ describe('闭月（貂蝉技能）', () => {
     const liubei = g.state.players[0];
     const before = liubei.hand.length;
 
-    await turn(g, { player: liubei, round: 1 });
+    await turn(g, { player: liubei });
 
     // 只有摸牌阶段 2 张
     expect(liubei.hand.length).toBe(before + 2);
@@ -242,7 +242,7 @@ describe('制衡（孙权主动技能）', () => {
     const deckShan2 = makeUniqueCard(CardType.Shan, '♦', 6);
     g.state.deck = [deckShan1, deckShan2]; // pop 顺序：deckShan2 先出
 
-    await playPhase(g, { player: sunquan, round: 1 });
+    await playPhase(g, { player: sunquan });
 
     // 原手牌（含无懈）被弃置
     expect(g.state.discardPile.some((c) => c.type === CardType.WuXie)).toBe(true);
@@ -259,7 +259,7 @@ describe('制衡（孙权主动技能）', () => {
     giveHand(sunquan, CardType.Sha);
     const hpBefore = target.hp;
 
-    await playPhase(g, { player: sunquan, round: 1 });
+    await playPhase(g, { player: sunquan });
 
     // 杀正常打出（若先制衡，杀会被弃置、目标不受伤）
     expect(target.hp).toBe(hpBefore - 1);
@@ -275,7 +275,7 @@ describe('制衡（孙权主动技能）', () => {
     g.state.deck = [makeUniqueCard(CardType.Sha, '♠', 2)]; // 摸到杀
     const hpBefore = target.hp;
 
-    await playPhase(g, { player: sunquan, round: 1 });
+    await playPhase(g, { player: sunquan });
 
     // 制衡换到杀 → 打出杀
     expect(target.hp).toBe(hpBefore - 1);
@@ -289,7 +289,7 @@ describe('制衡（孙权主动技能）', () => {
     giveHand(sunquan, CardType.Shan);
     g.state.deck = [makeUniqueCard(CardType.Shan, '♥', 7)]; // 摸到的还是闪
 
-    await playPhase(g, { player: sunquan, round: 1 });
+    await playPhase(g, { player: sunquan });
 
     // 制衡一次：手牌换成牌堆那张 ♥7 闪
     expect(sunquan.hand.length).toBe(1);
@@ -306,7 +306,7 @@ describe('制衡（孙权主动技能）', () => {
     giveHand(liubei, CardType.Shan);
     g.state.deck = [makeUniqueCard(CardType.Shan, '♥', 7)];
 
-    await playPhase(g, { player: liubei, round: 1 });
+    await playPhase(g, { player: liubei });
 
     expect(liubei.hand.length).toBe(1);
     expect(liubei.hand[0].suit).toBe('♠'); // 还是原来的闪，没摸牌
@@ -336,7 +336,7 @@ describe('仁德（刘备主动技能）', () => {
     giveHand(liubei, CardType.Shan, CardType.WuXie); // 不可出 → 触发主动技能
     const givenIds = liubei.hand.map((c) => c.id);
 
-    await playPhase(g, { player: liubei, round: 1 });
+    await playPhase(g, { player: liubei });
 
     expect(liubei.hp).toBe(4);
     expect(liubei.hand.length).toBe(0);
@@ -380,7 +380,7 @@ describe('反间（周瑜主动技能）', () => {
     const givenId = zhouyu.hand[0].id;
     const hpBefore = target.hp;
 
-    await playPhase(g, { player: zhouyu, round: 1 });
+    await playPhase(g, { player: zhouyu });
 
     expect(target.hp).toBe(hpBefore - 1);
     expect(zhouyu.hand.length).toBe(0);
@@ -540,7 +540,7 @@ describe('刚烈（夏侯惇技能）', () => {
     g.state.deck = [makeUniqueCard(CardType.JueDou, '♠', 5)]; // 刚烈判定：黑桃
     const hpBefore = xiahou.hp;
 
-    await playPhase(g, { player: sunquan, round: 1 });
+    await playPhase(g, { player: sunquan });
 
     expect(sunquan.alive).toBe(false);    // 被刚烈反杀
     expect(xiahou.hp).toBe(hpBefore - 1); // 杀已生效
@@ -655,7 +655,7 @@ describe('洛神（甄宓技能）', () => {
     const red = makeUniqueCard(CardType.Shan, '♥', 1);
     g.state.deck = [red, black2, black1]; // pop 顺序：black1 → black2 → red
 
-    await preparePhase(g, { player: zhenji, round: 1 });
+    await preparePhase(g, { player: zhenji });
 
     expect(zhenji.hand.map((c) => c.id).sort((a, b) => a - b))
       .toEqual([black1.id, black2.id].sort((a, b) => a - b));
@@ -670,7 +670,7 @@ describe('洛神（甄宓技能）', () => {
     const red = makeUniqueCard(CardType.Shan, '♥', 1);
     g.state.deck = [red];
 
-    await preparePhase(g, { player: zhenji, round: 1 });
+    await preparePhase(g, { player: zhenji });
 
     expect(zhenji.hand.length).toBe(0);
     expect(g.state.discardPile.find((c) => c.id === red.id)).toBeDefined();
@@ -783,7 +783,7 @@ describe('突袭（张辽技能）', () => {
     giveHand(p2, CardType.Tao);
     const deckBefore = g.state.deck.length;
 
-    await drawPhase(g, { player: zhangliao, round: 1 });
+    await drawPhase(g, { player: zhangliao });
 
     expect(zhangliao.hand.length).toBe(2); // 各获得一张
     expect(p1.hand.length).toBe(0);
@@ -810,7 +810,7 @@ describe('青囊（华佗主动技能）', () => {
     huatuo.hp = 2;
     giveHand(huatuo, CardType.Shan); // 不可出 → 触发主动技能
 
-    await playPhase(g, { player: huatuo, round: 1 });
+    await playPhase(g, { player: huatuo });
 
     expect(huatuo.hp).toBe(3);
     expect(huatuo.hand.length).toBe(0); // 弃了 1 张
@@ -824,7 +824,7 @@ describe('青囊（华佗主动技能）', () => {
     liubei.hp = 1; // 他人受伤
     giveHand(huatuo, CardType.Shan);
 
-    await playPhase(g, { player: huatuo, round: 1 });
+    await playPhase(g, { player: huatuo });
 
     expect(huatuo.hand.length).toBe(1); // 未发动
     expect(liubei.hp).toBe(1);
