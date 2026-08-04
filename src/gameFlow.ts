@@ -20,36 +20,6 @@ import { choose } from './choose.js';
 import { pickActiveSkill } from './skills.js';
 
 // ============================================================
-// 弃牌阶段逻辑
-// ============================================================
-
-function doDiscard(game: Game, player: Player): void {
-  const state = game.state;
-
-  if (player.hand.length <= player.hp) {
-    if (player.hand.length > 0) {
-      console.log(`[弃牌阶段] ${player.name} 手牌数(${player.hand.length}) ≤ 体力(${player.hp})，无需弃牌`);
-    }
-    return;
-  }
-
-  const excess = player.hand.length - player.hp;
-  console.log(
-    `[弃牌阶段] ${player.name} 手牌数(${player.hand.length}) > 体力(${player.hp})，需要弃置 ${excess} 张`,
-  );
-
-  // 按 discardPriority 升序排列（越小越先弃）
-  const sorted = [...player.hand].sort(
-    (a, b) => (cardRegistry.get(a.type)?.ai.discardPriority ?? 0)
-            - (cardRegistry.get(b.type)?.ai.discardPriority ?? 0),
-  );
-  const discarded = discardCards(game, player, sorted.slice(0, excess));
-  for (const c of discarded) {
-    console.log(`  弃置了 ${cardEmoji(c.type)} (${c.suit}${displayNumber(c.number)})`);
-  }
-}
-
-// ============================================================
 // Boundary 工厂函数（轮/回合/阶段）
 // 每个工厂 content 硬编码，不暴露 body 参数
 // ============================================================
@@ -122,7 +92,29 @@ export async function discardPhase(
 ): Promise<GameEvent<PhaseEventData>> {
   return new GameEvent<PhaseEventData>(EventType.DiscardPhase, data, game)
     .execute(async (event) => {
-      doDiscard(game, event.data.player);
+      const player = event.data.player;
+
+      if (player.hand.length <= player.hp) {
+        if (player.hand.length > 0) {
+          console.log(`[弃牌阶段] ${player.name} 手牌数(${player.hand.length}) ≤ 体力(${player.hp})，无需弃牌`);
+        }
+        return;
+      }
+
+      const excess = player.hand.length - player.hp;
+      console.log(
+        `[弃牌阶段] ${player.name} 手牌数(${player.hand.length}) > 体力(${player.hp})，需要弃置 ${excess} 张`,
+      );
+
+      // 按 discardPriority 升序排列（越小越先弃）
+      const sorted = [...player.hand].sort(
+        (a, b) => (cardRegistry.get(a.type)?.ai.discardPriority ?? 0)
+                - (cardRegistry.get(b.type)?.ai.discardPriority ?? 0),
+      );
+      const discarded = discardCards(game, player, sorted.slice(0, excess));
+      for (const c of discarded) {
+        console.log(`  弃置了 ${cardEmoji(c.type)} (${c.suit}${displayNumber(c.number)})`);
+      }
     });
 }
 
@@ -150,26 +142,13 @@ export async function round(
         state.currentIndex = i;
         const player = state.players[i];
 
-        console.log(`\n━━━ 第 ${data.round} 轮 · ${player.name} 的回合 ━━━`);
-        await playerTurn(game);
-        printState(state);
+        if (!player.alive) {
+          console.log(`${player.name} 已阵亡，跳过回合`);
+        } else {
+          console.log(`\n━━━ 第 ${data.round} 轮 · ${player.name} 的回合 ━━━`);
+          await turn(game, { player, round: state.round });
+          printState(state);
+        }
       }
     });
-}
-
-// ============================================================
-// 回合入口
-// ============================================================
-
-/** 执行一个玩家的完整回合 */
-export async function playerTurn(game: Game): Promise<void> {
-  const state = game.state;
-  const player = state.players[state.currentIndex];
-
-  if (!player.alive) {
-    console.log(`${player.name} 已阵亡，跳过回合`);
-    return;
-  }
-
-  await turn(game, { player, round: state.round });
 }
