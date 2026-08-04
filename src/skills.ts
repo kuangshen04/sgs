@@ -164,7 +164,7 @@ const yingziContent = async (game: Game, event: GameEvent<any>, owner: Player): 
   );
 };
 
-/** 闭月：结束阶段摸一张牌（暂挂在 turn.after，正式结束阶段尚未建模） */
+/** 闭月：结束阶段摸一张牌 */
 const biyueContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
   const before = owner.hand.length;
   await drawCards(game, { target: owner, count: 1 });
@@ -269,7 +269,7 @@ skillRegistry.register({
 
 skillRegistry.register({
   name: '闭月',
-  trigger: 'turn.after',
+  trigger: 'endPhase.before',
   canTrigger: subjectIsOwner,
   content: biyueContent,
 });

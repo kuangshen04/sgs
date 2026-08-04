@@ -24,6 +24,7 @@ export const EventType = {
   PlayPhase: 'playPhase',
   DiscardPhase: 'discardPhase',
   JudgePhase: 'judgePhase',
+  EndPhase: 'endPhase',
 } as const;
 
 // ============================================================

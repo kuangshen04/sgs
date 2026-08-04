@@ -25,7 +25,7 @@ import { pickActiveSkill } from './skills.js';
 // 每个工厂 content 硬编码，不暴露 body 参数
 // ============================================================
 
-/** 回合：准备 → 判定 → 摸牌 → 出牌 → 弃牌（结束阶段尚未建模） */
+/** 回合：准备 → 判定 → 摸牌 → 出牌 → 弃牌 → 结束 */
 export async function turn(
   game: Game,
   data: TurnEventData,
@@ -42,6 +42,8 @@ export async function turn(
       await playPhase(game, { player: data.player, round: data.round });
       if (!data.player.alive) return;
       await discardPhase(game, { player: data.player, round: data.round });
+      if (!data.player.alive) return;
+      await endPhase(game, { player: data.player, round: data.round });
     });
 }
 
@@ -175,6 +177,15 @@ export async function discardPhase(
         console.log(`  弃置了 ${cardEmoji(c.type)} (${c.suit}${displayNumber(c.number)})`);
       }
     });
+}
+
+/** 结束阶段：边界事件（闭月等技能的触发点） */
+export async function endPhase(
+  game: Game,
+  data: PhaseEventData,
+): Promise<GameEvent<PhaseEventData>> {
+  return new GameEvent<PhaseEventData>(EventType.EndPhase, data, game)
+    .execute(async () => {});
 }
 
 /** 一整局游戏：主循环 */

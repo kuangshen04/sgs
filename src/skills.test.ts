@@ -9,7 +9,7 @@ import { freshGame, giveHand, makeUniqueCard } from './test-utils.js';
 
 import { damage } from './life.js';
 import { useCard, judge } from './cardActions.js';
-import { drawPhase, playPhase, preparePhase, turn } from './gameFlow.js';
+import { drawPhase, endPhase, playPhase, preparePhase, turn } from './gameFlow.js';
 
 import { activeSkillRegistry, pickActiveSkill, registerSkills, skillRegistry } from './skills.js';
 import { triggerSystem } from './events/index.js';
@@ -132,6 +132,17 @@ describe('闭月（貂蝉技能）', () => {
 
   it('skillRegistry 已注册闭月', () => {
     expect(skillRegistry.get('闭月')).toBeDefined();
+  });
+
+  it('结束阶段 → 摸 1 张牌', async () => {
+    registerSkills();
+    const g = freshGame({}, diaochanHeroes);
+    const diaochan = g.state.players[1];
+    const before = diaochan.hand.length;
+
+    await endPhase(g, { player: diaochan, round: 1 });
+
+    expect(diaochan.hand.length).toBe(before + 1);
   });
 
   it('回合结束 → 摸 1 张牌', async () => {
