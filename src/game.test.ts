@@ -91,6 +91,7 @@ describe('cardRegistry', () => {
     expect(names).toContain('桃园结义');
     expect(names).toContain('五谷丰登');
     expect(names).toContain('乐不思蜀');
+    expect(names).toContain('闪电');
     expect(names).toContain('过河拆桥');
     expect(names).toContain('顺手牵羊');
   });
@@ -114,7 +115,7 @@ describe('cardRegistry', () => {
   });
 
   it('延时锦囊 tag = Trick + Delay', () => {
-    for (const t of [CardType.LeBu]) {
+    for (const t of [CardType.LeBu, CardType.ShanDian]) {
       expect(cardRegistry.get(t)!.tags).toContain(CardTag.Trick);
       expect(cardRegistry.get(t)!.tags).toContain(CardTag.Delay);
     }
@@ -126,9 +127,9 @@ describe('cardRegistry', () => {
 // ============================================================
 
 describe('createDeck', () => {
-  it('牌堆 144 张（138 + 乐不思蜀 6）', () => {
+  it('牌堆 146 张（144 + 闪电 2）', () => {
     const deck = createDeck(STANDARD_DECK);
-    expect(deck.length).toBe(144);
+    expect(deck.length).toBe(146);
   });
 
   it('每张牌有 id/type/name/suit/number', () => {
@@ -190,6 +191,12 @@ describe('createDeck', () => {
     expect(count).toBe(6);
   });
 
+  it('闪电数量 = 1×2副本 = 2', () => {
+    const deck = createDeck(STANDARD_DECK);
+    const count = deck.filter((c) => c.type === CardType.ShanDian).length;
+    expect(count).toBe(2);
+  });
+
   it('无懈可击数量 = 8', () => {
     const deck = createDeck(STANDARD_DECK);
     const wxCount = deck.filter((c) => c.type === CardType.WuXie).length;
@@ -229,8 +236,8 @@ describe('createGame', () => {
     expect(g.state.currentIndex).toBe(0);
     expect(g.state.gameOver).toBe(false);
     expect(g.state.winner).toBeNull();
-    // 144 - 3人×4 = 132
-    expect(g.state.deck.length).toBe(132);
+    // 146 - 3人×4 = 134
+    expect(g.state.deck.length).toBe(134);
     expect(g.state.discardPile.length).toBe(0);
   });
 

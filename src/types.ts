@@ -15,6 +15,7 @@ export enum CardType {
   TaoYuan = '桃园结义',
   WuGu = '五谷丰登',
   LeBu = '乐不思蜀',
+  ShanDian = '闪电',
   GuoHe = '过河拆桥',
   ShunShou = '顺手牵羊',
   WuXie = '无懈可击',

@@ -115,4 +115,34 @@ describe('judgePhase', () => {
 
     expect(player.hand.length).toBe(1); // 未出牌
   });
+
+  it('闪电判定为黑桃2~9 → 受到 3 点伤害', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    const shandian = makeUniqueCard(CardType.ShanDian);
+    player.judgment.push(shandian);
+    g.state.deck = [makeUniqueCard(CardType.JueDou, '♠', 5)]; // 黑桃5
+    const hpBefore = player.hp;
+
+    await judgePhase(g, { player, round: 1 });
+
+    expect(player.hp).toBe(hpBefore - 3);
+    expect(player.judgment.length).toBe(0);
+    expect(g.state.discardPile.find((c) => c.id === shandian.id)).toBeDefined();
+  });
+
+  it('闪电判定非黑桃2~9 → 移到下家判定区', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    const next = g.state.players[1];
+    const shandian = makeUniqueCard(CardType.ShanDian);
+    player.judgment.push(shandian);
+    g.state.deck = [makeUniqueCard(CardType.Tao, '♥', 5)]; // 红桃 → 不爆
+
+    await judgePhase(g, { player, round: 1 });
+
+    expect(player.judgment.length).toBe(0);
+    expect(next.judgment.map((c) => c.id)).toContain(shandian.id);
+    expect(g.state.discardPile.find((c) => c.id === shandian.id)).toBeUndefined();
+  });
 });

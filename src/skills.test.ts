@@ -9,7 +9,7 @@ import { freshGame, giveHand, makeUniqueCard } from './test-utils.js';
 
 import { damage } from './life.js';
 import { useCard, judge } from './cardActions.js';
-import { drawPhase, playPhase, turn } from './gameFlow.js';
+import { drawPhase, playPhase, preparePhase, turn } from './gameFlow.js';
 
 import { activeSkillRegistry, pickActiveSkill, registerSkills, skillRegistry } from './skills.js';
 import { triggerSystem } from './events/index.js';
@@ -621,5 +621,47 @@ describe('鬼才（司马懿技能）', () => {
     expect(simayi.hand.length).toBe(0);      // 司马懿无手牌，鬼才无法发动
     expect(liubei.hp).toBe(hpBefore);        // 来源不受伤
     expect(liubei.hand.length).toBe(0);      // 但弃了两张响应刚烈
+  });
+});
+
+// ============================================================
+// 洛神（甄宓：准备阶段判定，黑色获得判定牌并继续，红色停止）
+// ============================================================
+
+describe('洛神（甄宓技能）', () => {
+  afterEach(() => triggerSystem.clear());
+
+  it('skillRegistry 已注册洛神', () => {
+    expect(skillRegistry.get('洛神')).toBeDefined();
+  });
+
+  it('连续判定黑色 → 获得判定牌，红色停止', async () => {
+    registerSkills();
+    const g = freshGame({}, ['刘备', '甄宓', '孙权']);
+    const zhenji = g.state.players[1];
+    const black1 = makeUniqueCard(CardType.JueDou, '♣', 7);
+    const black2 = makeUniqueCard(CardType.Sha, '♠', 5);
+    const red = makeUniqueCard(CardType.Shan, '♥', 1);
+    g.state.deck = [red, black2, black1]; // pop 顺序：black1 → black2 → red
+
+    await preparePhase(g, { player: zhenji, round: 1 });
+
+    expect(zhenji.hand.map((c) => c.id).sort((a, b) => a - b))
+      .toEqual([black1.id, black2.id].sort((a, b) => a - b));
+    expect(g.state.discardPile.find((c) => c.id === red.id)).toBeDefined(); // 红色判定牌留弃牌堆
+    expect(g.state.deck.length).toBe(0); // 三张都被判定
+  });
+
+  it('判定为红色 → 不获得', async () => {
+    registerSkills();
+    const g = freshGame({}, ['刘备', '甄宓', '孙权']);
+    const zhenji = g.state.players[1];
+    const red = makeUniqueCard(CardType.Shan, '♥', 1);
+    g.state.deck = [red];
+
+    await preparePhase(g, { player: zhenji, round: 1 });
+
+    expect(zhenji.hand.length).toBe(0);
+    expect(g.state.discardPile.find((c) => c.id === red.id)).toBeDefined();
   });
 });

@@ -19,6 +19,7 @@ export const EventType = {
   Game: 'game',
   Round: 'round',
   Turn: 'turn',
+  PreparePhase: 'preparePhase',
   DrawPhase: 'drawPhase',
   PlayPhase: 'playPhase',
   DiscardPhase: 'discardPhase',
@@ -31,7 +32,8 @@ export const EventType = {
 
 export interface DamageEventData {
   target: Player;
-  source: Player;
+  /** 伤害来源；无来源伤害（如闪电）为 undefined */
+  source?: Player;
   amount: number;
 }
 

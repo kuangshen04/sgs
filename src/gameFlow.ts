@@ -25,7 +25,7 @@ import { pickActiveSkill } from './skills.js';
 // 每个工厂 content 硬编码，不暴露 body 参数
 // ============================================================
 
-/** 回合：判定 → 摸牌 → 出牌 → 弃牌（准备/结束阶段尚未建模） */
+/** 回合：准备 → 判定 → 摸牌 → 出牌 → 弃牌（结束阶段尚未建模） */
 export async function turn(
   game: Game,
   data: TurnEventData,
@@ -33,6 +33,8 @@ export async function turn(
   return new GameEvent<TurnEventData>(EventType.Turn, data, game)
     .execute(async () => {
       data.player.skipPlayPhase = false; // 回合开始重置瞬时标记
+      await preparePhase(game, { player: data.player, round: data.round });
+      if (!data.player.alive) return; // 死亡后跳过剩余阶段
       await judgePhase(game, { player: data.player, round: data.round });
       if (!data.player.alive) return; // 死亡后跳过剩余阶段
       await drawPhase(game, { player: data.player, round: data.round });
@@ -56,6 +58,15 @@ export async function drawPhase(
       const after = player.hand.length;
       console.log(`[摸牌阶段] ${player.name} 摸了 ${after - before} 张牌`);
     });
+}
+
+/** 准备阶段：边界事件（洛神/观星等技能的触发点） */
+export async function preparePhase(
+  game: Game,
+  data: PhaseEventData,
+): Promise<GameEvent<PhaseEventData>> {
+  return new GameEvent<PhaseEventData>(EventType.PreparePhase, data, game)
+    .execute(async () => {});
 }
 
 /** 判定阶段：按放置顺序依次结算判定区的延时锦囊（判定 + 实际效果） */
@@ -88,7 +99,7 @@ export async function judgePhase(
         }
 
         const judgeCard = await judge(game, player);
-        await def.delayContent?.(game, player, judgeCard);
+        await def.delayContent?.(game, player, judgeCard, card);
         moveCards(player.judgment, game.state.discardPile, [card]);
       }
     });

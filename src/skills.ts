@@ -6,7 +6,7 @@
 // ============================================================
 
 import type { Game } from './game.js';
-import { drawCards, giveCards, discardCards, judge } from './cardActions.js';
+import { drawCards, giveCards, discardCards, judge, takeFromDiscard } from './cardActions.js';
 import { damage, recover } from './life.js';
 import { cardEmoji, displayNumber } from './cardRegistry.js';
 import type { GameEvent } from './events/index.js';
@@ -181,10 +181,8 @@ const jianxiongContent = async (game: Game, event: GameEvent<any>, owner: Player
   const card = useCardEvent.data.card as Card;
 
   // 使用的牌已进弃牌堆：从弃牌堆找回并收入手牌
-  const idx = game.state.discardPile.findIndex((c) => c.id === card.id);
-  if (idx < 0) return;
-  const [found] = game.state.discardPile.splice(idx, 1);
-  owner.hand.push(found);
+  const found = takeFromDiscard(game, owner, card);
+  if (!found) return;
   console.log(
     `  ✨${owner.name} 发动【奸雄】！获得造成伤害的 ${cardEmoji(found.type)} ` +
     `(${found.suit}${displayNumber(found.number)})`,
@@ -194,6 +192,7 @@ const jianxiongContent = async (game: Game, event: GameEvent<any>, owner: Player
 /** 刚烈：受到伤害后判定，非红桃则伤害来源弃两张手牌或受 1 点伤害 */
 const ganglieContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
   const { source } = event.data as DamageEventData;
+  if (!source) return; // 无来源伤害（如闪电）无法结算刚烈
   const card = await judge(game, owner);
   if (card.suit === '♥') return; // 红桃 → 无事发生
 
@@ -212,10 +211,8 @@ const tianduContent = async (game: Game, event: GameEvent<any>, owner: Player): 
   if (!card) return;
 
   // 判定牌已进弃牌堆：找回并收入手牌
-  const idx = game.state.discardPile.findIndex((c) => c.id === card.id);
-  if (idx < 0) return;
-  const [found] = game.state.discardPile.splice(idx, 1);
-  owner.hand.push(found);
+  const found = takeFromDiscard(game, owner, card);
+  if (!found) return;
   console.log(
     `  ✨${owner.name} 发动【天妒】！获得判定牌 ${cardEmoji(found.type)} ` +
     `(${found.suit}${displayNumber(found.number)})`,
@@ -232,6 +229,24 @@ const guicaiContent = async (game: Game, event: GameEvent<any>, owner: Player): 
     `  ✨${owner.name} 发动【鬼才】！打出 ${cardEmoji(card.type)} ` +
     `(${card.suit}${displayNumber(card.number)}) 代替判定牌`,
   );
+};
+
+/** 洛神：准备阶段判定，黑色获得判定牌并继续，红色停止 */
+const luoshenContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
+  console.log(`  ✨${owner.name} 发动【洛神】！`);
+  while (true) {
+    const card = await judge(game, owner);
+    if (card.suit !== '♠' && card.suit !== '♣') {
+      console.log(`  ${owner.name} 洛神判定为红色，停止`);
+      break;
+    }
+    const found = takeFromDiscard(game, owner, card);
+    if (!found) break;
+    console.log(
+      `  ${owner.name} 洛神获得 ${cardEmoji(found.type)} ` +
+      `(${found.suit}${displayNumber(found.number)})`,
+    );
+  }
 };
 
 // ============================================================
@@ -286,6 +301,13 @@ skillRegistry.register({
   // 响应型：任何角色的判定都可响应，不看事件主体
   canTrigger: (_game, _event, owner) => owner.hand.length > 0,
   content: guicaiContent,
+});
+
+skillRegistry.register({
+  name: '洛神',
+  trigger: 'preparePhase.before',
+  canTrigger: subjectIsOwner,
+  content: luoshenContent,
 });
 
 // ============================================================

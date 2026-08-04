@@ -23,8 +23,8 @@ export interface CardDef {
   name: string;
   emoji: string;
   content: CardContentFn;
-  /** 延时锦囊在判定阶段的结算效果（收到判定结果后执行） */
-  delayContent?: (game: Game, target: Player, judgeCard: Card) => Promise<void>;
+  /** 延时锦囊在判定阶段的结算效果（收到判定结果与延时牌本身；可自行移动延时牌，如闪电移给下家） */
+  delayContent?: (game: Game, target: Player, judgeCard: Card, card: Card) => Promise<void>;
   /** 卡牌标签（基本牌/锦囊牌等） */
   tags: CardTag[];
   /** 规则层面：出牌阶段是否合法可用 */

@@ -113,6 +113,15 @@ export function giveCards(from: Player, to: Player, cards: Card[]): Card[] {
   return moveCards(from.hand, to.hand, cards);
 }
 
+/** 从弃牌堆按 id 取回一张牌到手牌；不在弃牌堆返回 null */
+export function takeFromDiscard(game: Game, player: Player, card: Card): Card | null {
+  const idx = game.state.discardPile.findIndex((c) => c.id === card.id);
+  if (idx < 0) return null;
+  const [found] = game.state.discardPile.splice(idx, 1);
+  player.hand.push(found);
+  return found;
+}
+
 // ============================================================
 // useCard — 通过 cardRegistry 分发
 // ============================================================

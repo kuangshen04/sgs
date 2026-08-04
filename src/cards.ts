@@ -9,7 +9,7 @@ import type { Player } from './types.js';
 import type { CardContentFn, DeckEntry } from './cardRegistry.js';
 import type { Game } from './game.js';
 import { cardRegistry, cardEmoji, displayNumber } from './cardRegistry.js';
-import { drawCards, giveCards, playFromHand, useCard } from './cardActions.js';
+import { drawCards, giveCards, moveCards, playFromHand, useCard } from './cardActions.js';
 import { damage, recover } from './life.js';
 import { findResponse } from './choose.js';
 import { triggerSystem } from './events/index.js';
@@ -444,6 +444,42 @@ cardRegistry.register({
 });
 
 cardRegistry.register({
+  type: CardType.ShanDian,
+  name: '闪电',
+  emoji: '⚡',
+  content: async () => {}, // 使用时无效果（置入判定区由 useCard 处理）
+  delayContent: async (game, target, judgeCard, card) => {
+    const explode = judgeCard.suit === '♠' && judgeCard.number >= 2 && judgeCard.number <= 9;
+    if (explode) {
+      console.log(
+        `  ⚡${target.name} 的闪电判定为黑桃${displayNumber(judgeCard.number)}，受到 3 点雷电伤害`,
+      );
+      await damage(game, { target, amount: 3 }); // 雷电伤害无来源
+    } else {
+      // 判定非黑桃2~9 → 移动到下家（座位顺序中下一名存活角色）的判定区
+      const players = game.state.players;
+      const start = players.indexOf(target);
+      for (let i = 1; i <= players.length; i++) {
+        const next = players[(start + i) % players.length];
+        if (!next.alive) continue;
+        moveCards(target.judgment, next.judgment, [card]);
+        console.log(`  ${target.name} 的闪电判定非黑桃2~9，移到 ${next.name} 的判定区`);
+        break;
+      }
+    }
+  },
+  tags: [CardTag.Trick, CardTag.Delay],
+  canUse: () => true,
+  targetFilter: (user) => [user],
+  targetCount: 1,
+  ai: {
+    shouldUse: () => true,
+    usePriority: 70,
+    discardPriority: 0,
+  },
+});
+
+cardRegistry.register({
   type: CardType.GuoHe,
   name: '过河拆桥',
   emoji: '🌉',
@@ -498,6 +534,7 @@ cardRegistry.register({
 export const STANDARD_DECK: DeckEntry[] = [
   // ♠
   { type: CardType.JueDou, suit: '♠', numbers: [1] },
+  { type: CardType.ShanDian, suit: '♠', numbers: [1] },
   { type: CardType.NanMan, suit: '♠', numbers: [7, 13] },
   { type: CardType.GuoHe,   suit: '♠', numbers: [3, 4, 12] },
   { type: CardType.ShunShou, suit: '♠', numbers: [3, 4, 11] },
