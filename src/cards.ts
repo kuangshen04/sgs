@@ -17,6 +17,7 @@ import type {
   TargetingEventData,
 } from './events/index.js';
 import { EventType } from './events/index.js';
+import { effectRegistry } from './persistentEffects.js';
 
 // ============================================================
 // 卡牌效果
@@ -280,7 +281,8 @@ cardRegistry.register({
   emoji: '🗡️',
   content: shaContent,
   tags: [CardTag.Basic],
-  canUse: (_, __, shaUsed) => !shaUsed, // 规则：每回合限一次杀
+  canUse: (player, _allPlayers, shaUsed) =>
+    !shaUsed || effectRegistry.has(player, 'unlimitedSha'), // 规则：每回合限一次（咆哮/诸葛连弩可无视）
   targetFilter: otherAlive,
   targetCount: 1,
   ai: {
@@ -531,7 +533,7 @@ cardRegistry.register({
   type: CardType.ZhugeLianNu,
   name: '诸葛连弩',
   emoji: '🪓',
-  content: async () => {}, // 白板：持续效果（杀无次数限制）待常驻效果系统
+  content: async () => {}, // 无使用效果（持续效果在 effectRegistry 注册）
   tags: [CardTag.Equip, CardTag.Weapon],
   canUse: () => true,
   targetFilter: (user) => [user],
@@ -541,6 +543,11 @@ cardRegistry.register({
     usePriority: 45,
     discardPriority: 100, // 装备尽量保留
   },
+});
+
+effectRegistry.register({
+  kind: 'unlimitedSha',
+  value: (player) => (player.equipment.weapon?.type === CardType.ZhugeLianNu ? 1 : 0),
 });
 
 cardRegistry.register({
