@@ -8,6 +8,7 @@ import './guojia.js';
 import './huangyueying.js';
 import './huatuo.js';
 import './liubei.js';
+import './machao.js';
 import './simayi.js';
 import './sunquan.js';
 import './xiahoudun.js';

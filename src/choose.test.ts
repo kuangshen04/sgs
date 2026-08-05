@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { freshGame, giveHand, DEFAULT_HEROES } from './test-utils.js';
+import { freshGame, giveHand, makeUniqueCard, DEFAULT_HEROES } from './test-utils.js';
 
 import { cardRegistry } from './cardRegistry.js';
 import { createGame } from './game.js';
@@ -199,6 +199,58 @@ describe('computeTargetOptions', () => {
     const targets = computeTargetOptions(g, card, player);
     expect(targets.length).toBe(1);
     expect(targets[0].player).toBe(player);
+  });
+
+  it('4人局：杀只能攻击距离 1 的角色（默认攻击范围 1）', () => {
+    const g = freshGame({}, ['刘备', '曹操', '孙权', '郭嘉']);
+    const player = g.state.players[0];
+    giveHand(player, CardType.Sha);
+
+    const targets = computeTargetOptions(g, player.hand[0], player);
+    expect(targets.map((t) => t.index)).toEqual([1, 3]); // 对位（索引 2）距离 2 排除
+  });
+
+  it('4人局：马术使距离-1，可攻击对位角色', () => {
+    const g = freshGame({}, ['马超', '曹操', '孙权', '郭嘉']);
+    const player = g.state.players[0];
+    giveHand(player, CardType.Sha);
+
+    const targets = computeTargetOptions(g, player.hand[0], player);
+    expect(targets.map((t) => t.index)).toEqual([1, 2, 3]);
+  });
+
+  it('4人局：进攻马扩展杀的目标', () => {
+    const g = freshGame({}, ['刘备', '曹操', '孙权', '郭嘉']);
+    const players = g.state.players;
+    players[0].equipment.offensiveHorse = makeUniqueCard(CardType.ChiTu); // 刘备进攻马
+    giveHand(players[0], CardType.Sha);
+
+    const targets = computeTargetOptions(g, players[0].hand[0], players[0]);
+    // 曹操 1，孙权 2-1=1，郭嘉 1-1=1 → 全部可打
+    expect(targets.map((t) => t.index)).toEqual([1, 2, 3]);
+  });
+
+  it('4人局：防御马使杀无法攻击该角色', () => {
+    const g = freshGame({}, ['刘备', '曹操', '孙权', '郭嘉']);
+    const players = g.state.players;
+    players[3].equipment.defensiveHorse = makeUniqueCard(CardType.JueYing); // 郭嘉防御马
+    giveHand(players[0], CardType.Sha);
+
+    const targets = computeTargetOptions(g, players[0].hand[0], players[0]);
+    // 曹操 1 ✓，孙权 2 排除，郭嘉 1+1=2 排除
+    expect(targets.map((t) => t.index)).toEqual([1]);
+  });
+
+  it('4人局：顺手牵羊只能对距离 1 的角色使用', () => {
+    const g = freshGame({}, ['刘备', '曹操', '孙权', '郭嘉']);
+    const player = g.state.players[0];
+    giveHand(player, CardType.ShunShou);
+    giveHand(g.state.players[1], CardType.Sha);
+    giveHand(g.state.players[2], CardType.Tao);  // 距离 2 但有牌 → 排除
+    giveHand(g.state.players[3], CardType.Shan);
+
+    const targets = computeTargetOptions(g, player.hand[0], player);
+    expect(targets.map((t) => t.index)).toEqual([1, 3]);
   });
 
   it('过河拆桥/顺手牵羊的合法目标是有手牌的其他存活角色', () => {

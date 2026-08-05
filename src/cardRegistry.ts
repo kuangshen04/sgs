@@ -25,6 +25,8 @@ export interface CardDef {
   content: CardContentFn;
   /** 延时锦囊在判定阶段的结算效果（收到判定结果与延时牌本身；可自行移动延时牌，如闪电移给下家） */
   delayContent?: (game: Game, target: Player, judgeCard: Card, card: Card) => Promise<void>;
+  /** 攻击范围（装备牌中的武器） */
+  range?: number;
   /** 卡牌标签（基本牌/锦囊牌等） */
   tags: CardTag[];
   /** 规则层面：出牌阶段是否合法可用 */

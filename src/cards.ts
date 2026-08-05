@@ -11,6 +11,7 @@ import type { Game } from './game.js';
 import { cardRegistry, cardEmoji, displayNumber } from './cardRegistry.js';
 import { drawCards, giveCards, moveCards, playFromHand, useCard } from './cardActions.js';
 import { damage, recover } from './life.js';
+import { distanceTo, attackRange } from './distance.js';
 import { findResponse } from './choose.js';
 import { triggerSystem } from './events/index.js';
 import type {
@@ -282,8 +283,13 @@ cardRegistry.register({
   content: shaContent,
   tags: [CardTag.Basic],
   canUse: (player, _allPlayers, shaUsed) =>
-    !shaUsed || effectRegistry.has(player, 'unlimitedSha'), // 规则：每回合限一次（咆哮/诸葛连弩可无视）
-  targetFilter: otherAlive,
+    // 规则：每回合限一次（咆哮/诸葛连弩可无视），且存在攻击范围内目标
+    (!shaUsed || effectRegistry.has(player, 'unlimitedSha')) &&
+    _allPlayers.some((p) => p !== player && p.alive
+      && distanceTo(_allPlayers, player, p) <= attackRange(player)),
+  targetFilter: (user, allPlayers) =>
+    allPlayers.filter((p) => p !== user && p.alive
+      && distanceTo(allPlayers, user, p) <= attackRange(user)),
   targetCount: 1,
   ai: {
     shouldUse: () => true,
@@ -503,8 +509,13 @@ cardRegistry.register({
   emoji: '🐑',
   content: shunshouContent,
   tags: [CardTag.Trick],
-  canUse: (player, allPlayers) => otherAliveWithCards(player, allPlayers).length > 0, // 规则：需要有牌目标
-  targetFilter: otherAliveWithCards,
+  canUse: (player, allPlayers) =>
+    // 规则：存在距离为 1 且有牌的目标
+    allPlayers.some((p) => p !== player && p.alive && p.hand.length > 0
+      && distanceTo(allPlayers, player, p) <= 1),
+  targetFilter: (user, allPlayers) =>
+    allPlayers.filter((p) => p !== user && p.alive && p.hand.length > 0
+      && distanceTo(allPlayers, user, p) <= 1),
   targetCount: 1,
   ai: {
     shouldUse: () => true,
@@ -535,6 +546,7 @@ cardRegistry.register({
   emoji: '🪓',
   content: async () => {}, // 无使用效果（持续效果在 effectRegistry 注册）
   tags: [CardTag.Equip, CardTag.Weapon],
+  range: 1,
   canUse: () => true,
   targetFilter: (user) => [user],
   targetCount: 1,
@@ -586,7 +598,7 @@ cardRegistry.register({
   type: CardType.ChiTu,
   name: '赤兔',
   emoji: '🐴',
-  content: async () => {}, // 白板：进攻马（你与其他角色距离-1）
+  content: async () => {}, // 无使用效果（持续效果在 effectRegistry 注册）
   tags: [CardTag.Equip, CardTag.OffensiveHorse],
   canUse: () => true,
   targetFilter: (user) => [user],
@@ -596,6 +608,16 @@ cardRegistry.register({
     usePriority: 45,
     discardPriority: 100,
   },
+});
+
+// 马匹槽位距离修正（按槽位注册，将来大宛/紫骍/的卢等自动覆盖）
+effectRegistry.register({
+  kind: 'defensiveDistance',
+  value: (player) => (player.equipment.defensiveHorse ? 1 : 0),
+});
+effectRegistry.register({
+  kind: 'offensiveDistance',
+  value: (player) => (player.equipment.offensiveHorse ? 1 : 0),
 });
 
 // ============================================================
