@@ -96,6 +96,8 @@ describe('cardRegistry', () => {
     expect(names).toContain('八卦阵');
     expect(names).toContain('绝影');
     expect(names).toContain('赤兔');
+    expect(names).toContain('麒麟弓');
+    expect(names).toContain('寒冰剑');
     expect(names).toContain('过河拆桥');
     expect(names).toContain('顺手牵羊');
   });
@@ -146,9 +148,9 @@ describe('cardRegistry', () => {
 // ============================================================
 
 describe('createDeck', () => {
-  it('牌堆 154 张（146 + 装备 8）', () => {
+  it('牌堆 158 张（154 + 麒麟弓/寒冰剑各 2）', () => {
     const deck = createDeck(STANDARD_DECK);
-    expect(deck.length).toBe(154);
+    expect(deck.length).toBe(158);
   });
 
   it('每张牌有 id/type/name/suit/number', () => {
@@ -225,6 +227,12 @@ describe('createDeck', () => {
     expect(count).toBe(8);
   });
 
+  it('麒麟弓/寒冰剑数量 = 各 2', () => {
+    const deck = createDeck(STANDARD_DECK);
+    expect(deck.filter((c) => c.type === CardType.QiLinGong).length).toBe(2);
+    expect(deck.filter((c) => c.type === CardType.HanBingJian).length).toBe(2);
+  });
+
   it('无懈可击数量 = 8', () => {
     const deck = createDeck(STANDARD_DECK);
     const wxCount = deck.filter((c) => c.type === CardType.WuXie).length;
@@ -264,8 +272,8 @@ describe('createGame', () => {
     expect(g.state.currentIndex).toBe(0);
     expect(g.state.gameOver).toBe(false);
     expect(g.state.winner).toBeNull();
-    // 154 - 3人×4 = 142
-    expect(g.state.deck.length).toBe(142);
+    // 158 - 3人×4 = 146
+    expect(g.state.deck.length).toBe(146);
     expect(g.state.discardPile.length).toBe(0);
   });
 

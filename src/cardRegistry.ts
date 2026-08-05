@@ -27,6 +27,12 @@ export interface CardDef {
   delayContent?: (game: Game, target: Player, judgeCard: Card, card: Card) => Promise<void>;
   /** 攻击范围（装备牌中的武器） */
   range?: number;
+  /** 装备触发效果（麒麟弓/寒冰剑等：装备在对应栏位时对事件响应） */
+  equipTrigger?: {
+    trigger: string;
+    canTrigger?: (game: Game, event: GameEvent<any>, owner: Player) => boolean;
+    content: (game: Game, event: GameEvent<any>, owner: Player) => Promise<void>;
+  };
   /** 卡牌标签（基本牌/锦囊牌等） */
   tags: CardTag[];
   /** 规则层面：出牌阶段是否合法可用 */

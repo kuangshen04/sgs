@@ -5,7 +5,7 @@
 // ============================================================
 
 import { CardTag, CardType } from './types.js';
-import type { Player } from './types.js';
+import type { Card, Player } from './types.js';
 import type { CardContentFn, DeckEntry } from './cardRegistry.js';
 import type { Game } from './game.js';
 import { cardRegistry, cardEmoji, displayNumber } from './cardRegistry.js';
@@ -17,6 +17,7 @@ import { triggerSystem } from './events/index.js';
 import type {
   TargetingEventData,
 } from './events/index.js';
+import type { DamageEventData } from './events/index.js';
 import { EventType } from './events/index.js';
 import { effectRegistry } from './persistentEffects.js';
 
@@ -620,6 +621,104 @@ effectRegistry.register({
   value: (player) => (player.equipment.offensiveHorse ? 1 : 0),
 });
 
+cardRegistry.register({
+  type: CardType.QiLinGong,
+  name: '麒麟弓',
+  emoji: '🎯',
+  content: async () => {}, // 无使用效果（触发效果在 equipTrigger）
+  equipTrigger: {
+    trigger: 'damage.after',
+    canTrigger: (game, event, owner) => {
+      const useCard = event.getParent(EventType.UseCard);
+      if (!useCard || useCard.data.player !== owner) return false;
+      if (useCard.data.card.type !== CardType.Sha) return false;
+      const { target } = event.data as DamageEventData;
+      return !!target && !!(target.equipment.defensiveHorse || target.equipment.offensiveHorse);
+    },
+    content: async (game, event, owner) => {
+      const { target } = event.data as DamageEventData;
+      if (!target) return;
+      // 弃置目标一张坐骑（简化：优先防御马）
+      const eq = target.equipment;
+      const mount = eq.defensiveHorse ?? eq.offensiveHorse;
+      if (!mount) return;
+      if (eq.defensiveHorse === mount) eq.defensiveHorse = undefined;
+      else eq.offensiveHorse = undefined;
+      game.state.discardPile.push(mount);
+      console.log(
+        `  ✨${owner.name} 的麒麟弓发动！弃置 ${target.name} 的坐骑 ${cardEmoji(mount.type)}`,
+      );
+    },
+  },
+  tags: [CardTag.Equip, CardTag.Weapon],
+  range: 5,
+  canUse: () => true,
+  targetFilter: (user) => [user],
+  targetCount: 1,
+  ai: {
+    shouldUse: () => true,
+    usePriority: 45,
+    discardPriority: 100,
+  },
+});
+
+cardRegistry.register({
+  type: CardType.HanBingJian,
+  name: '寒冰剑',
+  emoji: '❄️',
+  content: async () => {}, // 无使用效果（触发效果在 equipTrigger）
+  equipTrigger: {
+    trigger: 'damage.before',
+    canTrigger: (game, event, owner) => {
+      const useCard = event.getParent(EventType.UseCard);
+      if (!useCard || useCard.data.player !== owner) return false;
+      if (useCard.data.card.type !== CardType.Sha) return false;
+      const { target } = event.data as DamageEventData;
+      if (!target) return false;
+      // 目标有能被弃置的牌（手牌/装备区/判定区）
+      return target.hand.length > 0
+        || !!target.equipment.weapon || !!target.equipment.armor
+        || !!target.equipment.defensiveHorse || !!target.equipment.offensiveHorse
+        || target.judgment.length > 0;
+    },
+    content: async (game, event, owner) => {
+      const { target } = event.data as DamageEventData;
+      if (!target) return;
+      // 依次弃置两张牌（简化：手牌 → 装备区 → 判定区），然后防止伤害。
+      // prevent() 抛异常，之后的代码不会执行，所以必须先弃牌再 prevent。
+      const discarded: Card[] = [];
+      discarded.push(...target.hand.splice(0, 2));
+      const slots = ['weapon', 'armor', 'defensiveHorse', 'offensiveHorse'] as const;
+      for (const slot of slots) {
+        if (discarded.length >= 2) break;
+        const card = target.equipment[slot];
+        if (card) {
+          target.equipment[slot] = undefined;
+          discarded.push(card);
+        }
+      }
+      while (discarded.length < 2 && target.judgment.length > 0) {
+        discarded.push(target.judgment.shift()!);
+      }
+      game.state.discardPile.push(...discarded);
+      console.log(
+        `  ✨${owner.name} 的寒冰剑发动！防止 ${target.name} 受到伤害，弃置 ${discarded.length} 张牌`,
+      );
+      event.prevent();
+    },
+  },
+  tags: [CardTag.Equip, CardTag.Weapon],
+  range: 2,
+  canUse: () => true,
+  targetFilter: (user) => [user],
+  targetCount: 1,
+  ai: {
+    shouldUse: () => true,
+    usePriority: 45,
+    discardPriority: 100,
+  },
+});
+
 // ============================================================
 // 标准牌堆配置
 // ============================================================
@@ -630,6 +729,7 @@ export const STANDARD_DECK: DeckEntry[] = [
   { type: CardType.ShanDian, suit: '♠', numbers: [1] },
   { type: CardType.BaGuaZhen, suit: '♠', numbers: [2] },
   { type: CardType.JueYing, suit: '♠', numbers: [5] },
+  { type: CardType.QiLinGong, suit: '♠', numbers: [5] },
   { type: CardType.NanMan, suit: '♠', numbers: [7, 13] },
   { type: CardType.GuoHe,   suit: '♠', numbers: [3, 4, 12] },
   { type: CardType.ShunShou, suit: '♠', numbers: [3, 4, 11] },
@@ -648,6 +748,7 @@ export const STANDARD_DECK: DeckEntry[] = [
   // ♣
   { type: CardType.JueDou, suit: '♣', numbers: [1] },
   { type: CardType.ZhugeLianNu, suit: '♣', numbers: [1] },
+  { type: CardType.HanBingJian, suit: '♣', numbers: [2] },
   { type: CardType.NanMan, suit: '♣', numbers: [7] },
   { type: CardType.GuoHe,   suit: '♣', numbers: [3, 4, 12] },
   { type: CardType.WuXie,  suit: '♣', numbers: [12] },

@@ -20,6 +20,8 @@ export enum CardType {
   BaGuaZhen = '八卦阵',
   JueYing = '绝影',
   ChiTu = '赤兔',
+  QiLinGong = '麒麟弓',
+  HanBingJian = '寒冰剑',
   GuoHe = '过河拆桥',
   ShunShou = '顺手牵羊',
   WuXie = '无懈可击',

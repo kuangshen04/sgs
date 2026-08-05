@@ -6,6 +6,8 @@
 import type { Game } from './game.js';
 import type { GameEvent } from './events/index.js';
 import { triggerSystem } from './events/index.js';
+import { cardRegistry } from './cardRegistry.js';
+import { CardType } from './types.js';
 import type { Card, Player } from './types.js';
 
 // ============================================================
@@ -94,11 +96,21 @@ function eventSubject(event: GameEvent<any>): Player | undefined {
 /** 最常见的角色匹配：事件主体是自己时发动 */
 export const subjectIsOwner: SkillDef['canTrigger'] = (_game, _event, owner, subject) => subject === owner;
 
+/** 玩家装备区是否装备了指定类型的牌 */
+function hasEquipped(player: Player, cardType: CardType): boolean {
+  const eq = player.equipment;
+  return eq.weapon?.type === cardType
+    || eq.armor?.type === cardType
+    || eq.defensiveHorse?.type === cardType
+    || eq.offensiveHorse?.type === cardType;
+}
+
 /**
  * 把 skillRegistry 中所有技能挂到 triggerSystem（按 trigger 分发）。
  * 每个进程调用一次；重复调用会重复注册 handler。
  */
 export function registerSkills(): void {
+  // 技能触发器
   for (const skill of skillRegistry.all()) {
     triggerSystem.on(skill.trigger, async (event) => {
       const game = event.game;
@@ -109,6 +121,21 @@ export function registerSkills(): void {
         if (!player.hero.skills?.includes(skill.name)) continue;
         if (!skill.canTrigger(game, event, player, subject)) continue;
         await skill.content(game, event, player);
+      }
+    });
+  }
+
+  // 装备触发器（CardDef.equipTrigger）：装备在对应栏位时对事件响应
+  for (const def of cardRegistry.all()) {
+    const et = def.equipTrigger;
+    if (!et) continue;
+    triggerSystem.on(et.trigger, async (event) => {
+      const game = event.game;
+      for (const player of game.state.players) {
+        if (!player.alive) continue;
+        if (!hasEquipped(player, def.type)) continue;
+        if (et.canTrigger && !et.canTrigger(game, event, player)) continue;
+        await et.content(game, event, player);
       }
     });
   }
