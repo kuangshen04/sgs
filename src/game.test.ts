@@ -92,6 +92,10 @@ describe('cardRegistry', () => {
     expect(names).toContain('五谷丰登');
     expect(names).toContain('乐不思蜀');
     expect(names).toContain('闪电');
+    expect(names).toContain('诸葛连弩');
+    expect(names).toContain('八卦阵');
+    expect(names).toContain('绝影');
+    expect(names).toContain('赤兔');
     expect(names).toContain('过河拆桥');
     expect(names).toContain('顺手牵羊');
   });
@@ -120,6 +124,21 @@ describe('cardRegistry', () => {
       expect(cardRegistry.get(t)!.tags).toContain(CardTag.Delay);
     }
   });
+
+  it('装备牌 tag = Equip + 子类', () => {
+    expect(cardRegistry.get(CardType.ZhugeLianNu)!.tags).toEqual(
+      [CardTag.Equip, CardTag.Weapon],
+    );
+    expect(cardRegistry.get(CardType.BaGuaZhen)!.tags).toEqual(
+      [CardTag.Equip, CardTag.Armor],
+    );
+    expect(cardRegistry.get(CardType.JueYing)!.tags).toEqual(
+      [CardTag.Equip, CardTag.DefensiveHorse],
+    );
+    expect(cardRegistry.get(CardType.ChiTu)!.tags).toEqual(
+      [CardTag.Equip, CardTag.OffensiveHorse],
+    );
+  });
 });
 
 // ============================================================
@@ -127,9 +146,9 @@ describe('cardRegistry', () => {
 // ============================================================
 
 describe('createDeck', () => {
-  it('牌堆 146 张（144 + 闪电 2）', () => {
+  it('牌堆 154 张（146 + 装备 8）', () => {
     const deck = createDeck(STANDARD_DECK);
-    expect(deck.length).toBe(146);
+    expect(deck.length).toBe(154);
   });
 
   it('每张牌有 id/type/name/suit/number', () => {
@@ -197,6 +216,15 @@ describe('createDeck', () => {
     expect(count).toBe(2);
   });
 
+  it('装备牌数量 = 4种×2副本 = 8', () => {
+    const deck = createDeck(STANDARD_DECK);
+    const count = deck.filter((c) => c.type === CardType.ZhugeLianNu
+      || c.type === CardType.BaGuaZhen
+      || c.type === CardType.JueYing
+      || c.type === CardType.ChiTu).length;
+    expect(count).toBe(8);
+  });
+
   it('无懈可击数量 = 8', () => {
     const deck = createDeck(STANDARD_DECK);
     const wxCount = deck.filter((c) => c.type === CardType.WuXie).length;
@@ -236,8 +264,8 @@ describe('createGame', () => {
     expect(g.state.currentIndex).toBe(0);
     expect(g.state.gameOver).toBe(false);
     expect(g.state.winner).toBeNull();
-    // 146 - 3人×4 = 134
-    expect(g.state.deck.length).toBe(134);
+    // 154 - 3人×4 = 142
+    expect(g.state.deck.length).toBe(142);
     expect(g.state.discardPile.length).toBe(0);
   });
 

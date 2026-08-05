@@ -527,6 +527,70 @@ cardRegistry.register({
   },
 });
 
+cardRegistry.register({
+  type: CardType.ZhugeLianNu,
+  name: '诸葛连弩',
+  emoji: '🪓',
+  content: async () => {}, // 白板：持续效果（杀无次数限制）待常驻效果系统
+  tags: [CardTag.Equip, CardTag.Weapon],
+  canUse: () => true,
+  targetFilter: (user) => [user],
+  targetCount: 1,
+  ai: {
+    shouldUse: () => true,
+    usePriority: 45,
+    discardPriority: 100, // 装备尽量保留
+  },
+});
+
+cardRegistry.register({
+  type: CardType.BaGuaZhen,
+  name: '八卦阵',
+  emoji: '☯️',
+  content: async () => {}, // 白板：持续效果（判定出闪）待常驻效果系统
+  tags: [CardTag.Equip, CardTag.Armor],
+  canUse: () => true,
+  targetFilter: (user) => [user],
+  targetCount: 1,
+  ai: {
+    shouldUse: () => true,
+    usePriority: 45,
+    discardPriority: 100,
+  },
+});
+
+cardRegistry.register({
+  type: CardType.JueYing,
+  name: '绝影',
+  emoji: '🐎',
+  content: async () => {}, // 白板：防御马（其他角色与你距离+1）
+  tags: [CardTag.Equip, CardTag.DefensiveHorse],
+  canUse: () => true,
+  targetFilter: (user) => [user],
+  targetCount: 1,
+  ai: {
+    shouldUse: () => true,
+    usePriority: 45,
+    discardPriority: 100,
+  },
+});
+
+cardRegistry.register({
+  type: CardType.ChiTu,
+  name: '赤兔',
+  emoji: '🐴',
+  content: async () => {}, // 白板：进攻马（你与其他角色距离-1）
+  tags: [CardTag.Equip, CardTag.OffensiveHorse],
+  canUse: () => true,
+  targetFilter: (user) => [user],
+  targetCount: 1,
+  ai: {
+    shouldUse: () => true,
+    usePriority: 45,
+    discardPriority: 100,
+  },
+});
+
 // ============================================================
 // 标准牌堆配置
 // ============================================================
@@ -535,6 +599,8 @@ export const STANDARD_DECK: DeckEntry[] = [
   // ♠
   { type: CardType.JueDou, suit: '♠', numbers: [1] },
   { type: CardType.ShanDian, suit: '♠', numbers: [1] },
+  { type: CardType.BaGuaZhen, suit: '♠', numbers: [2] },
+  { type: CardType.JueYing, suit: '♠', numbers: [5] },
   { type: CardType.NanMan, suit: '♠', numbers: [7, 13] },
   { type: CardType.GuoHe,   suit: '♠', numbers: [3, 4, 12] },
   { type: CardType.ShunShou, suit: '♠', numbers: [3, 4, 11] },
@@ -549,8 +615,10 @@ export const STANDARD_DECK: DeckEntry[] = [
   { type: CardType.WuXie,   suit: '♥', numbers: [13] },
   { type: CardType.Shan,    suit: '♥', numbers: [1,3,4,5,6,10,12] },
   { type: CardType.LeBu,    suit: '♥', numbers: [6] },
+  { type: CardType.ChiTu,   suit: '♥', numbers: [5] },
   // ♣
   { type: CardType.JueDou, suit: '♣', numbers: [1] },
+  { type: CardType.ZhugeLianNu, suit: '♣', numbers: [1] },
   { type: CardType.NanMan, suit: '♣', numbers: [7] },
   { type: CardType.GuoHe,   suit: '♣', numbers: [3, 4, 12] },
   { type: CardType.WuXie,  suit: '♣', numbers: [12] },

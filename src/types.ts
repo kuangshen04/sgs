@@ -16,6 +16,10 @@ export enum CardType {
   WuGu = '五谷丰登',
   LeBu = '乐不思蜀',
   ShanDian = '闪电',
+  ZhugeLianNu = '诸葛连弩',
+  BaGuaZhen = '八卦阵',
+  JueYing = '绝影',
+  ChiTu = '赤兔',
   GuoHe = '过河拆桥',
   ShunShou = '顺手牵羊',
   WuXie = '无懈可击',
@@ -26,6 +30,11 @@ export enum CardTag {
   Basic = 'basic',   // 基本牌
   Trick = 'trick',   // 锦囊牌
   Delay = 'delay',   // 延时锦囊
+  Equip = 'equip',   // 装备牌
+  Weapon = 'weapon',
+  Armor = 'armor',
+  DefensiveHorse = 'defensiveHorse',  // 防御马：其他角色计算与你的距离+1
+  OffensiveHorse = 'offensiveHorse',  // 进攻马：你计算与其他角色的距离-1
 }
 
 /** 一张卡牌 */
@@ -54,9 +63,19 @@ export interface Player {
   hand: Card[];
   /** 判定区（延时锦囊） */
   judgment: Card[];
+  /** 装备区 */
+  equipment: PlayerEquipment;
   alive: boolean;
   /** 本回合是否被乐不思蜀跳过出牌阶段（回合开始重置） */
   skipPlayPhase?: boolean;
+}
+
+/** 装备区：武器 / 防具 / 防御马 / 进攻马 四个栏位 */
+export interface PlayerEquipment {
+  weapon?: Card;
+  armor?: Card;
+  defensiveHorse?: Card; // 防御马（其他角色与你距离+1）
+  offensiveHorse?: Card; // 进攻马（你与其他角色距离-1）
 }
 
 /** 胜利条件：返回获胜者，或 null 表示游戏继续 */

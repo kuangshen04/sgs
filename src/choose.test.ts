@@ -190,6 +190,17 @@ describe('computeTargetOptions', () => {
     expect(targets.map((t) => t.player)).toContain(player);
   });
 
+  it('装备牌的合法目标是使用者自己', () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    giveHand(player, CardType.ZhugeLianNu);
+    const card = player.hand[0];
+
+    const targets = computeTargetOptions(g, card, player);
+    expect(targets.length).toBe(1);
+    expect(targets[0].player).toBe(player);
+  });
+
   it('过河拆桥/顺手牵羊的合法目标是有手牌的其他存活角色', () => {
     const g = freshGame();
     const player = g.state.players[0];

@@ -56,7 +56,7 @@ export function createGame(
     return {
       name: hero.name, hero: { ...hero }, // 副本：同名英雄各自独立
       hp: hero.maxHp, maxHp: hero.maxHp,
-      hand: [], judgment: [], alive: true,
+      hand: [], judgment: [], equipment: {}, alive: true,
     };
   });
 

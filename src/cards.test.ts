@@ -6,7 +6,7 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { freshGame, giveHand } from './test-utils.js';
+import { freshGame, giveHand, makeUniqueCard } from './test-utils.js';
 
 import { useCard } from './cardActions.js';
 
@@ -235,6 +235,58 @@ describe('useCard — 乐不思蜀（延时锦囊）', () => {
     expect(target.judgment.map((c) => c.id)).toContain(card.id); // 置入判定区
     expect(target.hand.map((c) => c.type)).toEqual([CardType.WuXie]); // 无懈未打出
     expect(g.state.discardPile.find((c) => c.id === card.id)).toBeUndefined(); // 不在弃牌堆
+  });
+});
+
+describe('useCard — 装备', () => {
+  it('装备置入对应栏位，不进弃牌堆', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    giveHand(player, CardType.ZhugeLianNu);
+    const card = player.hand[0];
+
+    await useCard(g, { player, card, targets: [player] });
+
+    expect(player.hand.length).toBe(0);
+    expect(player.equipment.weapon).toBe(card);
+    expect(g.state.discardPile.find((c) => c.id === card.id)).toBeUndefined();
+  });
+
+  it('四种装备各进各的槽位，互不冲突', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    const cards = [
+      makeUniqueCard(CardType.ZhugeLianNu),
+      makeUniqueCard(CardType.BaGuaZhen),
+      makeUniqueCard(CardType.JueYing),
+      makeUniqueCard(CardType.ChiTu),
+    ];
+    player.hand = [...cards];
+
+    for (const c of cards) {
+      await useCard(g, { player, card: c, targets: [player] });
+    }
+
+    expect(player.equipment.weapon).toBe(cards[0]);
+    expect(player.equipment.armor).toBe(cards[1]);
+    expect(player.equipment.defensiveHorse).toBe(cards[2]);
+    expect(player.equipment.offensiveHorse).toBe(cards[3]);
+    expect(player.hand.length).toBe(0);
+  });
+
+  it('同槽顶掉：旧装备进弃牌堆', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    const w1 = makeUniqueCard(CardType.ZhugeLianNu);
+    const w2 = makeUniqueCard(CardType.ZhugeLianNu);
+    player.hand = [w1, w2];
+
+    await useCard(g, { player, card: w1, targets: [player] });
+    await useCard(g, { player, card: w2, targets: [player] });
+
+    expect(player.equipment.weapon).toBe(w2);
+    expect(player.hand.length).toBe(0);
+    expect(g.state.discardPile.find((c) => c.id === w1.id)).toBeDefined(); // w1 被顶掉
   });
 });
 

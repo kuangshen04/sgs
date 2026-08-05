@@ -3,6 +3,7 @@
 // ============================================================
 
 import { Card, GameState } from './types.js';
+import type { PlayerEquipment } from './types.js';
 import { cardRegistry, cardEmoji, displayNumber } from './cardRegistry.js';
 
 function handDisplay(hand: Card[]): string {
@@ -24,6 +25,15 @@ export function hpBar(current: number, max: number): string {
   return '❤️'.repeat(hearts) + '🖤'.repeat(blacks) + ` (${current}/${max})`;
 }
 
+function equipDisplay(e: PlayerEquipment): string {
+  const parts: string[] = [];
+  if (e.weapon) parts.push(`武器:${cardEmoji(e.weapon.type)}`);
+  if (e.armor) parts.push(`防具:${cardEmoji(e.armor.type)}`);
+  if (e.defensiveHorse) parts.push(`防御马:${cardEmoji(e.defensiveHorse.type)}`);
+  if (e.offensiveHorse) parts.push(`进攻马:${cardEmoji(e.offensiveHorse.type)}`);
+  return parts.length > 0 ? parts.join(' ') : '（无）';
+}
+
 export function printState(state: GameState): void {
   const alive = state.players.filter((p) => p.alive).length;
   const W = 42; // 内容区宽度
@@ -35,6 +45,7 @@ export function printState(state: GameState): void {
     const hpCol = hpBar(p.hp, p.maxHp);
     body += `║ ${nameCol} ${padEnd(hpCol, W - 7 - 5)}║\n`;
     body += `║   手牌: ${padEnd(handDisplay(p.hand), W - 10)}║\n`;
+    body += `║   装备: ${padEnd(equipDisplay(p.equipment), W - 10)}║\n`;
     body += `║${' '.repeat(W)}║\n`;
   }
 

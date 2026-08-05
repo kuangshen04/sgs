@@ -3,6 +3,7 @@
 // ============================================================
 
 import { Card, CardTag, Player } from './types.js';
+import type { PlayerEquipment } from './types.js';
 import { EventType, GameEvent, triggerSystem } from './events/index.js';
 import type { DrawEventData, JudgeEventData, TargetingEventData, UseCardEventData } from './events/index.js';
 import { cardRegistry, cardEmoji, displayNumber, shuffle } from './cardRegistry.js';
@@ -122,6 +123,28 @@ export function takeFromDiscard(game: Game, player: Player, card: Card): Card | 
   return found;
 }
 
+/** 卡牌 tag → 装备槽位 */
+function equipSlotOf(card: Card): keyof PlayerEquipment {
+  const def = cardRegistry.get(card.type);
+  if (def?.tags.includes(CardTag.Weapon)) return 'weapon';
+  if (def?.tags.includes(CardTag.Armor)) return 'armor';
+  if (def?.tags.includes(CardTag.DefensiveHorse)) return 'defensiveHorse';
+  return 'offensiveHorse';
+}
+
+/**
+ * 装备：把牌置入对应栏位，旧装备顶掉进弃牌堆；返回被顶掉的旧装备。
+ */
+export function equipCard(game: Game, player: Player, card: Card): Card | undefined {
+  const slot = equipSlotOf(card);
+  const old = player.equipment[slot];
+  if (old) game.state.discardPile.push(old); // 顶掉
+  const idx = player.hand.findIndex((c) => c.id === card.id);
+  if (idx >= 0) player.hand.splice(idx, 1);
+  player.equipment[slot] = card;
+  return old;
+}
+
 // ============================================================
 // useCard — 通过 cardRegistry 分发
 // ============================================================
@@ -146,6 +169,20 @@ export async function useCard(
             `置入 ${target.name} 的判定区`,
           );
         }
+        return;
+      }
+
+      const isEquip = !!def?.tags.includes(CardTag.Equip);
+
+      if (isEquip) {
+        // 装备：置入对应栏位（顶掉旧装备），无响应窗口
+        const target = event.data.targets[0] ?? event.data.player;
+        const replaced = equipCard(game, target, event.data.card);
+        console.log(
+          `  ${event.data.player.name} 装备了 ${cardEmoji(event.data.card.type)}` +
+          `(${event.data.card.suit}${displayNumber(event.data.card.number)})` +
+          (replaced ? `，顶掉 ${cardEmoji(replaced.type)}` : ''),
+        );
         return;
       }
 
