@@ -3,7 +3,7 @@
 // ============================================================
 
 import { Card, GameState, Player, VictoryCondition } from './types.js';
-import { createEventStack } from './events/index.js';
+import { TriggerSystem, createEventStack } from './events/index.js';
 import type { EventStack } from './events/index.js';
 import type { Deciders } from './choose.js';
 import { createDeck, shuffle } from './cardRegistry.js';
@@ -23,6 +23,8 @@ export interface Game {
   deciders: Deciders;
   /** 本局的事件执行栈（随局隔离） */
   eventStack: EventStack;
+  /** 本局的触发器注册表（随局隔离） */
+  triggerSystem: TriggerSystem;
 }
 
 // ============================================================
@@ -78,5 +80,6 @@ export function createGame(
     },
     deciders: options?.deciders ?? {},
     eventStack: createEventStack(),
+    triggerSystem: new TriggerSystem(),
   };
 }

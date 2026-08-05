@@ -2,18 +2,15 @@
 // 司马懿 — 反馈 / 鬼才
 // ============================================================
 
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 import { freshGame, giveHand, makeUniqueCard } from '../test-utils.js';
 
 import { damage } from '../life.js';
 
 import { registerSkills, skillRegistry } from '../skills.js';
-import { triggerSystem } from '../events/index.js';
 
 import { CardType } from '../types.js';
-
-afterEach(() => triggerSystem.clear());
 
 describe('反馈（司马懿技能）', () => {
   it('skillRegistry 已注册反馈', () => {
@@ -21,8 +18,8 @@ describe('反馈（司马懿技能）', () => {
   });
 
   it('受到伤害后获得伤害来源的一张手牌', async () => {
-    registerSkills();
     const g = freshGame({}, ['刘备', '司马懿', '孙权']);
+    registerSkills(g);
     const simayi = g.state.players[1];
     const source = g.state.players[0];
     giveHand(source, CardType.Sha, CardType.Tao);
@@ -35,8 +32,8 @@ describe('反馈（司马懿技能）', () => {
   });
 
   it('无来源伤害（如闪电）→ 不触发', async () => {
-    registerSkills();
     const g = freshGame({}, ['刘备', '司马懿', '孙权']);
+    registerSkills(g);
     const simayi = g.state.players[1];
 
     await damage(g, { target: simayi, amount: 1 });
@@ -51,8 +48,8 @@ describe('鬼才（司马懿技能）', () => {
   });
 
   it('打出一张手牌代替判定牌（响应型：任何角色的判定都可替换）', async () => {
-    registerSkills();
     const g = freshGame({}, ['刘备', '夏侯惇', '司马懿']);
+    registerSkills(g);
     const liubei = g.state.players[0];
     const xiahou = g.state.players[1];
     const simayi = g.state.players[2];
@@ -68,8 +65,8 @@ describe('鬼才（司马懿技能）', () => {
   });
 
   it('无手牌 → 不替换，原判定生效', async () => {
-    registerSkills();
     const g = freshGame({}, ['刘备', '夏侯惇', '司马懿']);
+    registerSkills(g);
     const liubei = g.state.players[0];
     const xiahou = g.state.players[1];
     const simayi = g.state.players[2];

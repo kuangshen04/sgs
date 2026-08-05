@@ -2,18 +2,15 @@
 // 张辽 — 突袭
 // ============================================================
 
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 import { freshGame, giveHand } from '../test-utils.js';
 
 import { drawPhase } from '../gameFlow.js';
 
 import { registerSkills, skillRegistry } from '../skills.js';
-import { triggerSystem } from '../events/index.js';
 
 import { CardType } from '../types.js';
-
-afterEach(() => triggerSystem.clear());
 
 describe('突袭（张辽技能）', () => {
   it('skillRegistry 已注册突袭', () => {
@@ -21,8 +18,8 @@ describe('突袭（张辽技能）', () => {
   });
 
   it('摸牌阶段：摸牌数改为 0，随机获得其他角色手牌', async () => {
-    registerSkills();
     const g = freshGame({}, ['刘备', '张辽', '孙权']);
+    registerSkills(g);
     const zhangliao = g.state.players[1];
     const p1 = g.state.players[0];
     const p2 = g.state.players[2];

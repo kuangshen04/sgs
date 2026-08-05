@@ -13,7 +13,6 @@ import { drawCards, giveCards, moveCards, playFromHand, useCard } from './cardAc
 import { damage, recover } from './life.js';
 import { distanceTo, attackRange } from './distance.js';
 import { findResponse } from './choose.js';
-import { triggerSystem } from './events/index.js';
 import type {
   TargetingEventData,
 } from './events/index.js';
@@ -231,14 +230,9 @@ const wuxieContent: CardContentFn = async (_game, _data, event) => {
  * 从当前回合角色开始轮询无懈可击。
  * AI 策略：只对目标为自己、且使用者不为自己的锦囊牌出无懈。
  */
-let _wuxieInstalled = false;
-
-/** 注册无懈可击 trigger handler（可重复调用，仅首次生效） */
-export function installWuxieTrigger(): void {
-  if (_wuxieInstalled) return;
-  _wuxieInstalled = true;
-
-  triggerSystem.on(`${EventType.Targeting}.before`, async (targetingEvent) => {
+/** 注册无懈可击 trigger handler（挂到指定对局的触发器注册表） */
+export function installWuxieTrigger(game: Game): void {
+  game.triggerSystem.on(`${EventType.Targeting}.before`, async (targetingEvent) => {
     const { user, card, target, judging } = targetingEvent.data as TargetingEventData;
     const def = cardRegistry.get(card.type);
     if (!def?.tags.includes(CardTag.Trick)) return;
@@ -269,9 +263,6 @@ export function installWuxieTrigger(): void {
     }
   });
 }
-
-// 进程启动时注册
-installWuxieTrigger();
 
 // ============================================================
 // 注册

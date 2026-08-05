@@ -2,20 +2,17 @@
 // 夏侯惇 — 刚烈
 // ============================================================
 
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 import { freshGame, giveHand, makeUniqueCard } from '../test-utils.js';
 
 import { damage } from '../life.js';
 
 import { registerSkills, skillRegistry } from '../skills.js';
-import { triggerSystem } from '../events/index.js';
 
 import { CardType } from '../types.js';
 
 const xiahoudunHeroes = ['刘备', '夏侯惇', '孙权'];
-
-afterEach(() => triggerSystem.clear());
 
 describe('刚烈（夏侯惇技能）', () => {
   it('skillRegistry 已注册刚烈', () => {
@@ -23,8 +20,8 @@ describe('刚烈（夏侯惇技能）', () => {
   });
 
   it('判定为红桃 → 无事发生，判定牌进弃牌堆', async () => {
-    registerSkills();
     const g = freshGame({}, xiahoudunHeroes);
+    registerSkills(g);
     const xiahoudun = g.state.players[1];
     const source = g.state.players[0];
     g.state.deck = [makeUniqueCard(CardType.Tao, '♥', 2)]; // 判定牌：红桃
@@ -39,8 +36,8 @@ describe('刚烈（夏侯惇技能）', () => {
   });
 
   it('判定为非红桃且来源手牌充足 → 来源弃两张', async () => {
-    registerSkills();
     const g = freshGame({}, xiahoudunHeroes);
+    registerSkills(g);
     const xiahoudun = g.state.players[1];
     const source = g.state.players[0];
     g.state.deck = [makeUniqueCard(CardType.JueDou, '♠', 5)]; // 判定牌：黑桃
@@ -55,8 +52,8 @@ describe('刚烈（夏侯惇技能）', () => {
   });
 
   it('判定为非红桃且来源手牌不足 → 来源受到 1 点伤害', async () => {
-    registerSkills();
     const g = freshGame({}, xiahoudunHeroes);
+    registerSkills(g);
     const xiahoudun = g.state.players[1];
     const source = g.state.players[0];
     g.state.deck = [makeUniqueCard(CardType.Shan, '♠', 5)]; // 判定牌：黑桃
@@ -69,8 +66,8 @@ describe('刚烈（夏侯惇技能）', () => {
   });
 
   it('非夏侯惇受伤 → 不触发', async () => {
-    registerSkills();
     const g = freshGame({}, xiahoudunHeroes);
+    registerSkills(g);
     const liubei = g.state.players[0];
     const source = g.state.players[1];
     g.state.deck = [makeUniqueCard(CardType.JueDou, '♠', 5)];

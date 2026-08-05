@@ -7,7 +7,6 @@
 // 直到被匹配的父事件 execute() 捕获。
 // ============================================================
 
-import { triggerSystem } from './TriggerSystem.js';
 import type { Game } from '../game.js';
 
 // ============================================================
@@ -134,9 +133,9 @@ export class GameEvent<T = Record<string, unknown>> {
     this.game.eventStack.push(this);
 
     try {
-      await triggerSystem.trigger(`${this.type}.before`, this);
+      await this.game.triggerSystem.trigger(`${this.type}.before`, this);
       await content(this);
-      await triggerSystem.trigger(`${this.type}.after`, this);
+      await this.game.triggerSystem.trigger(`${this.type}.after`, this);
     } catch (e) {
       if (e instanceof EventPreventError && e.event === this) {
         // 本事件被 prevent — after 跳过，父事件不受影响

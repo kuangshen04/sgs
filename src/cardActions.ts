@@ -4,7 +4,7 @@
 
 import { Card, CardTag, Player } from './types.js';
 import type { PlayerEquipment } from './types.js';
-import { EventType, GameEvent, triggerSystem } from './events/index.js';
+import { EventType, GameEvent } from './events/index.js';
 import type { DrawEventData, JudgeEventData, TargetingEventData, UseCardEventData } from './events/index.js';
 import { cardRegistry, cardEmoji, displayNumber, shuffle } from './cardRegistry.js';
 import type { Game } from './game.js';
@@ -53,7 +53,7 @@ export async function judge(game: Game, player: Player): Promise<Card> {
         `  ⚡${player.name} 判定：亮出 ${cardEmoji(card.type)} (${card.suit}${displayNumber(card.number)})`,
       );
       // 判定牌生效前：鬼才等响应技能可替换判定牌
-      await triggerSystem.trigger(`${EventType.Judge}.judging`, event);
+      await game.triggerSystem.trigger(`${EventType.Judge}.judging`, event);
     });
   return event.data.card!;
 }

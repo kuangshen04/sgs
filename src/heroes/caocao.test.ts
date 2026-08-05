@@ -2,7 +2,7 @@
 // 曹操 — 奸雄
 // ============================================================
 
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 import { freshGame, giveHand } from '../test-utils.js';
 
@@ -10,13 +10,10 @@ import { damage } from '../life.js';
 import { useCard } from '../cardActions.js';
 
 import { registerSkills, skillRegistry } from '../skills.js';
-import { triggerSystem } from '../events/index.js';
 
 import { CardType } from '../types.js';
 
 const caocaoHeroes = ['刘备', '曹操', '孙权'];
-
-afterEach(() => triggerSystem.clear());
 
 describe('奸雄（曹操技能）', () => {
   it('skillRegistry 已注册奸雄', () => {
@@ -24,8 +21,8 @@ describe('奸雄（曹操技能）', () => {
   });
 
   it('受到杀造成的伤害 → 获得那张杀', async () => {
-    registerSkills();
     const g = freshGame({}, caocaoHeroes);
+    registerSkills(g);
     const attacker = g.state.players[0];
     const caocao = g.state.players[1];
     giveHand(attacker, CardType.Sha);
@@ -39,8 +36,8 @@ describe('奸雄（曹操技能）', () => {
   });
 
   it('受到决斗造成的伤害 → 获得那张决斗', async () => {
-    registerSkills();
     const g = freshGame({}, caocaoHeroes);
+    registerSkills(g);
     const attacker = g.state.players[0];
     const caocao = g.state.players[1];
     giveHand(attacker, CardType.JueDou);
@@ -53,8 +50,8 @@ describe('奸雄（曹操技能）', () => {
   });
 
   it('非使用牌造成的伤害 → 不获得', async () => {
-    registerSkills();
     const g = freshGame({}, caocaoHeroes);
+    registerSkills(g);
     const caocao = g.state.players[1];
 
     await damage(g, { target: caocao, source: g.state.players[0], amount: 1 });
@@ -63,8 +60,8 @@ describe('奸雄（曹操技能）', () => {
   });
 
   it('非曹操受伤 → 不触发', async () => {
-    registerSkills();
     const g = freshGame({}, caocaoHeroes);
+    registerSkills(g);
     const liubei = g.state.players[0];
     const attacker = g.state.players[1];
     giveHand(attacker, CardType.Sha);

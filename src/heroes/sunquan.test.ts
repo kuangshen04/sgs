@@ -2,20 +2,17 @@
 // 孙权 — 制衡
 // ============================================================
 
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 import { freshGame, giveHand, makeUniqueCard } from '../test-utils.js';
 
 import { playPhase } from '../gameFlow.js';
 
 import { activeSkillRegistry, registerSkills, skillRegistry } from '../skills.js';
-import { triggerSystem } from '../events/index.js';
 
 import { CardType } from '../types.js';
 
 const sunquanHeroes = ['刘备', '孙权', '曹操'];
-
-afterEach(() => triggerSystem.clear());
 
 describe('制衡（孙权主动技能）', () => {
   it('activeSkillRegistry 已注册制衡', () => {
@@ -56,8 +53,8 @@ describe('制衡（孙权主动技能）', () => {
   });
 
   it('手牌全部不可出 → 制衡发动，弃置所有手牌并摸等量', async () => {
-    registerSkills();
     const g = freshGame({}, sunquanHeroes);
+    registerSkills(g);
     const sunquan = g.state.players[1];
     giveHand(sunquan, CardType.Shan, CardType.WuXie); // 闪/无懈不可主动出
 
@@ -76,8 +73,8 @@ describe('制衡（孙权主动技能）', () => {
   });
 
   it('有牌可出 → 出牌优先，制衡不发动', async () => {
-    registerSkills();
     const g = freshGame({}, sunquanHeroes);
+    registerSkills(g);
     const sunquan = g.state.players[1];
     const target = g.state.players[0];
     giveHand(sunquan, CardType.Sha);
@@ -91,8 +88,8 @@ describe('制衡（孙权主动技能）', () => {
   });
 
   it('制衡后摸到可出的牌 → 继续出牌', async () => {
-    registerSkills();
     const g = freshGame({}, sunquanHeroes);
+    registerSkills(g);
     const sunquan = g.state.players[1];
     const target = g.state.players[0];
     giveHand(sunquan, CardType.WuXie); // 不可出 → 制衡换牌
@@ -107,8 +104,8 @@ describe('制衡（孙权主动技能）', () => {
   });
 
   it('每回合限一次：制衡后仍无牌可出 → 不二次发动', async () => {
-    registerSkills();
     const g = freshGame({}, sunquanHeroes);
+    registerSkills(g);
     const sunquan = g.state.players[1];
     giveHand(sunquan, CardType.Shan);
     g.state.deck = [makeUniqueCard(CardType.Shan, '♥', 7)]; // 摸到的还是闪
@@ -124,8 +121,8 @@ describe('制衡（孙权主动技能）', () => {
   });
 
   it('非孙权（无制衡技能）→ 不发动', async () => {
-    registerSkills();
     const g = freshGame({}, sunquanHeroes);
+    registerSkills(g);
     const liubei = g.state.players[0];
     giveHand(liubei, CardType.Shan);
     g.state.deck = [makeUniqueCard(CardType.Shan, '♥', 7)];

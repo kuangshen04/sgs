@@ -2,18 +2,15 @@
 // 甄宓 — 洛神
 // ============================================================
 
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 import { freshGame, makeUniqueCard } from '../test-utils.js';
 
 import { preparePhase } from '../gameFlow.js';
 
 import { registerSkills, skillRegistry } from '../skills.js';
-import { triggerSystem } from '../events/index.js';
 
 import { CardType } from '../types.js';
-
-afterEach(() => triggerSystem.clear());
 
 describe('洛神（甄宓技能）', () => {
   it('skillRegistry 已注册洛神', () => {
@@ -21,8 +18,8 @@ describe('洛神（甄宓技能）', () => {
   });
 
   it('连续判定黑色 → 获得判定牌，红色停止', async () => {
-    registerSkills();
     const g = freshGame({}, ['刘备', '甄宓', '孙权']);
+    registerSkills(g);
     const zhenji = g.state.players[1];
     const black1 = makeUniqueCard(CardType.JueDou, '♣', 7);
     const black2 = makeUniqueCard(CardType.Sha, '♠', 5);
@@ -38,8 +35,8 @@ describe('洛神（甄宓技能）', () => {
   });
 
   it('判定为红色 → 不获得', async () => {
-    registerSkills();
     const g = freshGame({}, ['刘备', '甄宓', '孙权']);
+    registerSkills(g);
     const zhenji = g.state.players[1];
     const red = makeUniqueCard(CardType.Shan, '♥', 1);
     g.state.deck = [red];

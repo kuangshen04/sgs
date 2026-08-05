@@ -5,8 +5,8 @@
 
 import type { Game } from './game.js';
 import type { GameEvent } from './events/index.js';
-import { triggerSystem } from './events/index.js';
 import { cardRegistry } from './cardRegistry.js';
+import { installWuxieTrigger } from './cards.js';
 import { CardType } from './types.js';
 import type { Card, Player } from './types.js';
 
@@ -106,13 +106,13 @@ function hasEquipped(player: Player, cardType: CardType): boolean {
 }
 
 /**
- * 把 skillRegistry 中所有技能挂到 triggerSystem（按 trigger 分发）。
- * 每个进程调用一次；重复调用会重复注册 handler。
+ * 本局的触发器接线入口：把技能、装备触发器、无懈响应全部注册到 game.triggerSystem。
+ * 每个对局调用一次。
  */
-export function registerSkills(): void {
+export function registerSkills(game: Game): void {
   // 技能触发器
   for (const skill of skillRegistry.all()) {
-    triggerSystem.on(skill.trigger, async (event) => {
+    game.triggerSystem.on(skill.trigger, async (event) => {
       const game = event.game;
       const subject = eventSubject(event);
       // 按座次询问所有存活角色（FreeKill 模型）
@@ -129,7 +129,7 @@ export function registerSkills(): void {
   for (const def of cardRegistry.all()) {
     const et = def.equipTrigger;
     if (!et) continue;
-    triggerSystem.on(et.trigger, async (event) => {
+    game.triggerSystem.on(et.trigger, async (event) => {
       const game = event.game;
       for (const player of game.state.players) {
         if (!player.alive) continue;
@@ -139,6 +139,9 @@ export function registerSkills(): void {
       }
     });
   }
+
+  // 无懈可击响应（卡牌响应机制）
+  installWuxieTrigger(game);
 }
 
 /**

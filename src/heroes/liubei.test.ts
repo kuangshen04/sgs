@@ -2,20 +2,17 @@
 // 刘备 — 仁德
 // ============================================================
 
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 import { freshGame, giveHand } from '../test-utils.js';
 
 import { playPhase } from '../gameFlow.js';
 
 import { activeSkillRegistry, registerSkills } from '../skills.js';
-import { triggerSystem } from '../events/index.js';
 
 import { CardType } from '../types.js';
 
 const liubeiHeroes = ['刘备', '曹操', '孙权'];
-
-afterEach(() => triggerSystem.clear());
 
 describe('仁德（刘备主动技能）', () => {
   it('activeSkillRegistry 已注册仁德', () => {
@@ -23,8 +20,8 @@ describe('仁德（刘备主动技能）', () => {
   });
 
   it('交给目标 2 张牌并回复 1 点体力', async () => {
-    registerSkills();
     const g = freshGame({}, liubeiHeroes);
+    registerSkills(g);
     const liubei = g.state.players[0];
     const target = g.state.players[1];
     liubei.hp = 3; // 受伤
@@ -41,8 +38,8 @@ describe('仁德（刘备主动技能）', () => {
   });
 
   it('满血时不发动（AI 策略：交牌换血不划算）', async () => {
-    registerSkills();
     const g = freshGame({}, liubeiHeroes);
+    registerSkills(g);
     const liubei = g.state.players[0];
     giveHand(liubei, CardType.Shan, CardType.WuXie);
     const skill = activeSkillRegistry.get('仁德')!;

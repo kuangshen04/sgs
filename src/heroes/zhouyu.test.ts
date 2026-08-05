@@ -2,20 +2,17 @@
 // 周瑜 — 英姿 / 反间
 // ============================================================
 
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 import { freshGame, giveHand } from '../test-utils.js';
 
 import { drawPhase, playPhase } from '../gameFlow.js';
 
 import { activeSkillRegistry, registerSkills, skillRegistry } from '../skills.js';
-import { triggerSystem } from '../events/index.js';
 
 import { CardType } from '../types.js';
 
 const zhouyuHeroes = ['刘备', '周瑜', '孙权'];
-
-afterEach(() => triggerSystem.clear());
 
 describe('英姿（周瑜技能）', () => {
   it('skillRegistry 已注册英姿', () => {
@@ -23,8 +20,8 @@ describe('英姿（周瑜技能）', () => {
   });
 
   it('摸牌阶段 → 正常 2 张 + 英姿 1 张', async () => {
-    registerSkills();
     const g = freshGame({}, zhouyuHeroes);
+    registerSkills(g);
     const zhouyu = g.state.players[1];
     const before = zhouyu.hand.length;
 
@@ -34,8 +31,8 @@ describe('英姿（周瑜技能）', () => {
   });
 
   it('非周瑜摸牌阶段 → 只摸 2 张', async () => {
-    registerSkills();
     const g = freshGame({}, zhouyuHeroes);
+    registerSkills(g);
     const liubei = g.state.players[0];
     const before = liubei.hand.length;
 
@@ -51,8 +48,8 @@ describe('反间（周瑜主动技能）', () => {
   });
 
   it('交给目标 1 张牌并造成 1 点伤害', async () => {
-    registerSkills();
     const g = freshGame({}, zhouyuHeroes);
+    registerSkills(g);
     const zhouyu = g.state.players[1];
     const target = g.state.players[0];
     giveHand(zhouyu, CardType.Shan); // 不可出 → 触发主动技能

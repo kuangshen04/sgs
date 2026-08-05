@@ -3,7 +3,7 @@
 // ============================================================
 
 import { skillRegistry, subjectIsOwner } from '../skills.js';
-import { triggerSystem, EventType } from '../events/index.js';
+import { EventType } from '../events/index.js';
 import type { GameEvent } from '../events/index.js';
 import type { DrawPhaseEventData } from '../events/index.js';
 import { CardType } from '../types.js';
@@ -34,13 +34,13 @@ const luoyiContent = async (game: Game, event: GameEvent<any>, owner: Player): P
   // 回合结束清理：取消两个临时注册
   const cleanup = async (turnEvent: GameEvent<any>): Promise<void> => {
     if (turnEvent.data.player !== owner) return;
-    triggerSystem.off('damage.before', damageBuff);
-    triggerSystem.off('turn.after', cleanup);
+    game.triggerSystem.off('damage.before', damageBuff);
+    game.triggerSystem.off('turn.after', cleanup);
     console.log(`  ${owner.name} 的【裸衣】效果结束`);
   };
 
-  triggerSystem.on('damage.before', damageBuff);
-  triggerSystem.on('turn.after', cleanup);
+  game.triggerSystem.on('damage.before', damageBuff);
+  game.triggerSystem.on('turn.after', cleanup);
   console.log(`  ✨${owner.name} 发动【裸衣】！少摸 1 张牌，本回合杀/决斗伤害+1`);
 };
 

@@ -4,7 +4,7 @@
 
 export { GameEvent, createEventStack, EventPreventError } from './GameEvent.js';
 export type { EventStack } from './GameEvent.js';
-export { TriggerSystem, triggerSystem } from './TriggerSystem.js';
+export { TriggerSystem } from './TriggerSystem.js';
 export { EventType } from './types.js';
 export type {
   DamageEventData,

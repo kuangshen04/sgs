@@ -1,26 +1,22 @@
 // ============================================================
 // 三国杀最小原型 — 装备触发效果测试（麒麟弓/寒冰剑）
-// 独立文件：这些测试需要 registerSkills 接线，用 afterEach 隔离，
-// 避免把技能 handler 泄漏到其他测试文件。
+// 独立文件：这些测试需要 registerSkills(g) 接线（触发器随局隔离）。
 // ============================================================
 
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 import { freshGame, giveHand, makeUniqueCard } from './test-utils.js';
 
 import { useCard } from './cardActions.js';
 
 import { registerSkills } from './skills.js';
-import { triggerSystem } from './events/index.js';
 
 import { CardType } from './types.js';
 
-afterEach(() => triggerSystem.clear());
-
 describe('麒麟弓（装备触发）', () => {
   it('使用杀造成伤害后弃置目标一张坐骑牌', async () => {
-    registerSkills();
     const g = freshGame();
+    registerSkills(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1];
     attacker.equipment.weapon = makeUniqueCard(CardType.QiLinGong);
@@ -36,8 +32,8 @@ describe('麒麟弓（装备触发）', () => {
   });
 
   it('目标无坐骑 → 不发动', async () => {
-    registerSkills();
     const g = freshGame();
+    registerSkills(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1];
     attacker.equipment.weapon = makeUniqueCard(CardType.QiLinGong);
@@ -53,8 +49,8 @@ describe('麒麟弓（装备触发）', () => {
 
 describe('寒冰剑（装备触发）', () => {
   it('使用杀造成伤害时：防止伤害并弃置两张牌', async () => {
-    registerSkills();
     const g = freshGame();
+    registerSkills(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1];
     attacker.equipment.weapon = makeUniqueCard(CardType.HanBingJian);
@@ -69,8 +65,8 @@ describe('寒冰剑（装备触发）', () => {
   });
 
   it('决斗伤害不发动（仅杀）', async () => {
-    registerSkills();
     const g = freshGame();
+    registerSkills(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1];
     attacker.equipment.weapon = makeUniqueCard(CardType.HanBingJian);

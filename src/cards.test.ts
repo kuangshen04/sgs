@@ -10,7 +10,7 @@ import { freshGame, giveHand, makeUniqueCard } from './test-utils.js';
 
 import { useCard } from './cardActions.js';
 
-import { triggerSystem } from './events/index.js';
+import { registerSkills } from './skills.js';
 import { EventType } from './events/index.js';
 
 import { CardType } from './types.js';
@@ -223,6 +223,7 @@ describe('useCard — 五谷丰登', () => {
 describe('useCard — 乐不思蜀（延时锦囊）', () => {
   it('使用时直接置入目标判定区，不能被无懈', async () => {
     const g = freshGame();
+    registerSkills(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1];
     giveHand(attacker, CardType.LeBu);
@@ -327,6 +328,7 @@ describe('useCard — 顺手牵羊', () => {
 
   it('可以被无懈可击抵消', async () => {
     const g = freshGame();
+    registerSkills(g);
     const attacker = g.state.players[0];
     const p2 = g.state.players[1];
     giveHand(attacker, CardType.ShunShou);
@@ -350,6 +352,7 @@ describe('useCard — 顺手牵羊', () => {
 describe('无懈可击', () => {
   it('抵消南蛮入侵对单个目标的效果', async () => {
     const g = freshGame();
+    registerSkills(g);
     const attacker = g.state.players[0];
     const p2 = g.state.players[1];
     const p3 = g.state.players[2];
@@ -374,7 +377,8 @@ describe('无懈可击', () => {
   });
 
   it('不抵消基本牌', async () => {
-    const g = freshGame();
+    const g = freshGame({}, ['刘备', '孙权', '曹操']); // 防御方用孙权，避免奸雄拿牌干扰手牌断言
+    registerSkills(g);
     const attacker = g.state.players[0];
     const defender = g.state.players[1];
 
@@ -391,6 +395,7 @@ describe('无懈可击', () => {
 
   it('不抵消自己对自己的牌', async () => {
     const g = freshGame();
+    registerSkills(g);
     const player = g.state.players[0];
     player.hp = 2;
     giveHand(player, CardType.Tao, CardType.WuXie);
@@ -404,6 +409,7 @@ describe('无懈可击', () => {
 
   it('无懈可击可以被反无懈（手动模拟反无懈）', async () => {
     const g = freshGame();
+    registerSkills(g);
     const attacker = g.state.players[0];
     const p1 = g.state.players[1];
     const p2 = g.state.players[2];
@@ -419,7 +425,7 @@ describe('无懈可击', () => {
         await useCard(g, { player: p2, card: wx, targets: [] });
       }
     };
-    triggerSystem.on(`${EventType.Targeting}.before`, counterHandler);
+    g.triggerSystem.on(`${EventType.Targeting}.before`, counterHandler);
 
     const hpBefore = p1.hp;
     await useCard(g, { player: attacker, card: attacker.hand[0], targets: [p1] });
@@ -428,7 +434,7 @@ describe('无懈可击', () => {
     expect(p1.hp).toBe(hpBefore - 1);
 
     // 只移除自定义 handler，不影响默认无懈 handler
-    triggerSystem.off(`${EventType.Targeting}.before`, counterHandler);
+    g.triggerSystem.off(`${EventType.Targeting}.before`, counterHandler);
   });
 });
 
@@ -447,14 +453,13 @@ describe('targeting', () => {
     giveHand(p3, CardType.Sha);
 
     const targets: string[] = [];
-    triggerSystem.on(`${EventType.Targeting}.before`, (e) => {
+    g.triggerSystem.on(`${EventType.Targeting}.before`, (e) => {
       targets.push(e.data.target.name);
     });
 
     await useCard(g, { player: attacker, card: attacker.hand[0], targets: [p2, p3] });
 
     expect(targets).toEqual(['曹操', '孙权']);
-    triggerSystem.clear();
   });
 
   it('prevent targeting → 该 target 被跳过', async () => {
@@ -467,7 +472,7 @@ describe('targeting', () => {
     giveHand(p3); // 空手 — 本应受伤
 
     // 抵消 p2 的目标指定
-    triggerSystem.on(`${EventType.Targeting}.before`, (e) => {
+    g.triggerSystem.on(`${EventType.Targeting}.before`, (e) => {
       if (e.data.target === p2) e.prevent();
     });
 
@@ -477,7 +482,6 @@ describe('targeting', () => {
 
     expect(p2.hp).toBe(hp2Before);    // p2 被抵消，不受伤
     expect(p3.hp).toBe(hp3Before - 1); // p3 未被抵消，受伤
-    triggerSystem.clear();
   });
 
   it('全部 target 被 prevent → content 不执行，所有目标不受伤', async () => {
@@ -489,7 +493,7 @@ describe('targeting', () => {
     giveHand(p2);
     giveHand(p3);
 
-    triggerSystem.on(`${EventType.Targeting}.before`, (e) => e.prevent());
+    g.triggerSystem.on(`${EventType.Targeting}.before`, (e) => e.prevent());
 
     const hp2Before = p2.hp;
     const hp3Before = p3.hp;
@@ -497,7 +501,6 @@ describe('targeting', () => {
 
     expect(p2.hp).toBe(hp2Before);   // 被抵消
     expect(p3.hp).toBe(hp3Before);   // 被抵消
-    triggerSystem.clear();
   });
 
   it('无目标牌触发单次 targeting(target = user)', async () => {
@@ -506,14 +509,13 @@ describe('targeting', () => {
     giveHand(player, CardType.Shan);
 
     const triggered: string[] = [];
-    triggerSystem.on(`${EventType.Targeting}.before`, (e) => {
+    g.triggerSystem.on(`${EventType.Targeting}.before`, (e) => {
       triggered.push(e.data.target.name);
     });
 
     await useCard(g, { player, card: player.hand[0], targets: [] });
 
     expect(triggered).toEqual([player.name]);
-    triggerSystem.clear();
   });
 
   it('无目标牌的 targeting 被 prevent → content 不执行', async () => {
@@ -521,14 +523,13 @@ describe('targeting', () => {
     const player = g.state.players[0];
     giveHand(player, CardType.WuZhong); // 本来会摸 2 张
 
-    triggerSystem.on(`${EventType.Targeting}.before`, (e) => e.prevent());
+    g.triggerSystem.on(`${EventType.Targeting}.before`, (e) => e.prevent());
 
     const before = player.hand.length;
     await useCard(g, { player, card: player.hand[0], targets: [] });
 
     expect(player.hand.length).toBe(before - 1); // 牌已消耗
     expect(g.state.discardPile.length).toBe(1);   // 牌在弃牌堆
-    triggerSystem.clear();
   });
 
   it('牌被全部抵消时仍进入弃牌堆', async () => {
@@ -536,7 +537,7 @@ describe('targeting', () => {
     const attacker = g.state.players[0];
     giveHand(attacker, CardType.NanMan);
 
-    triggerSystem.on(`${EventType.Targeting}.before`, (e) => e.prevent());
+    g.triggerSystem.on(`${EventType.Targeting}.before`, (e) => e.prevent());
 
     const card = attacker.hand[0];
     await useCard(g, { player: attacker, card, targets: [g.state.players[1], g.state.players[2]] });
@@ -545,6 +546,5 @@ describe('targeting', () => {
     expect(attacker.hand.length).toBe(0);
     // 牌在弃牌堆
     expect(g.state.discardPile.find((c) => c.id === card.id)).toBeDefined();
-    triggerSystem.clear();
   });
 });

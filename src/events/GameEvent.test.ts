@@ -3,22 +3,22 @@
 // 生命周期 / before→content→after / prevent 语义 / 事件栈 / 异常传播
 // ============================================================
 
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 import {
   GameEvent,
   EventPreventError,
   createEventStack,
-  triggerSystem,
+  TriggerSystem,
 } from './index.js';
 import type { Game } from '../game.js';
 
-// 本文件内注册的 handler 互不泄漏（triggerSystem 是全局单例）
-afterEach(() => triggerSystem.clear());
-
-/** 最小可用的 Game 假对象：GameEvent 只依赖 eventStack */
+/** 最小可用的 Game 假对象：GameEvent 依赖 eventStack 与 triggerSystem */
 function makeGame(): Game {
-  return { eventStack: createEventStack() } as unknown as Game;
+  return {
+    eventStack: createEventStack(),
+    triggerSystem: new TriggerSystem(),
+  } as unknown as Game;
 }
 
 // ============================================================
@@ -95,8 +95,8 @@ describe('before → content → after', () => {
   it('按 before → content → after 顺序执行', async () => {
     const game = makeGame();
     const order: string[] = [];
-    triggerSystem.on('test.before', () => { order.push('before'); });
-    triggerSystem.on('test.after', () => { order.push('after'); });
+    game.triggerSystem.on('test.before', () => { order.push('before'); });
+    game.triggerSystem.on('test.after', () => { order.push('after'); });
 
     await new GameEvent('test', {}, game).execute(async () => {
       order.push('content');
@@ -108,8 +108,8 @@ describe('before → content → after', () => {
   it('多个 handler 按注册顺序执行', async () => {
     const game = makeGame();
     const order: string[] = [];
-    triggerSystem.on('test.before', () => { order.push('h1'); });
-    triggerSystem.on('test.before', () => { order.push('h2'); });
+    game.triggerSystem.on('test.before', () => { order.push('h1'); });
+    game.triggerSystem.on('test.before', () => { order.push('h2'); });
 
     await new GameEvent('test', {}, game).execute(async () => {});
 
@@ -119,7 +119,7 @@ describe('before → content → after', () => {
   it('before handler 可以修改 event.data（当前过渡方案）', async () => {
     const game = makeGame();
     let seen = 0;
-    triggerSystem.on('test.before', (e) => {
+    game.triggerSystem.on('test.before', (e) => {
       e.data.amount += 1;
     });
 
@@ -139,8 +139,8 @@ describe('prevent', () => {
   it('prevent 自己 → content 与 after 跳过，execute 正常返回', async () => {
     const game = makeGame();
     const executed: string[] = [];
-    triggerSystem.on('test.before', (e) => e.prevent());
-    triggerSystem.on('test.after', () => { executed.push('after'); });
+    game.triggerSystem.on('test.before', (e) => e.prevent());
+    game.triggerSystem.on('test.after', () => { executed.push('after'); });
 
     const event = new GameEvent('test', {}, game);
     await expect(event.execute(async () => {
@@ -154,7 +154,7 @@ describe('prevent', () => {
   it('prevent 抛出 EventPreventError 并携带被阻止的事件', async () => {
     const game = makeGame();
     let caught: unknown = null;
-    triggerSystem.on('test.before', (e) => {
+    game.triggerSystem.on('test.before', (e) => {
       try {
         e.prevent();
       } catch (err) {
@@ -188,8 +188,8 @@ describe('prevent', () => {
   it('prevent 父事件 → 父 content/after 与子 after 都跳过', async () => {
     const game = makeGame();
     const executed: string[] = [];
-    triggerSystem.on('parent.after', () => { executed.push('parent.after'); });
-    triggerSystem.on('child.after', () => { executed.push('child.after'); });
+    game.triggerSystem.on('parent.after', () => { executed.push('parent.after'); });
+    game.triggerSystem.on('child.after', () => { executed.push('child.after'); });
 
     const parent = new GameEvent('parent', {}, game);
     let childRef: GameEvent | null = null;
@@ -290,7 +290,7 @@ describe('异常处理', () => {
   it('子事件普通异常向上传播，父 after 跳过', async () => {
     const game = makeGame();
     const executed: string[] = [];
-    triggerSystem.on('parent.after', () => { executed.push('parent.after'); });
+    game.triggerSystem.on('parent.after', () => { executed.push('parent.after'); });
 
     const parent = new GameEvent('parent', {}, game);
     await expect(parent.execute(async () => {
@@ -313,12 +313,12 @@ describe('TriggerSystem', () => {
     const game = makeGame();
     const calls: string[] = [];
     const handler = () => { calls.push('h'); };
-    triggerSystem.on('test.before', handler);
+    game.triggerSystem.on('test.before', handler);
 
     await new GameEvent('test', {}, game).execute(async () => {});
     expect(calls).toEqual(['h']);
 
-    triggerSystem.off('test.before', handler);
+    game.triggerSystem.off('test.before', handler);
     await new GameEvent('test', {}, game).execute(async () => {});
     expect(calls).toEqual(['h']); // 注销后不再触发
   });
@@ -326,8 +326,8 @@ describe('TriggerSystem', () => {
   it('clear 清空所有 handler', async () => {
     const game = makeGame();
     const calls: string[] = [];
-    triggerSystem.on('test.before', () => { calls.push('x'); });
-    triggerSystem.clear();
+    game.triggerSystem.on('test.before', () => { calls.push('x'); });
+    game.triggerSystem.clear();
 
     await new GameEvent('test', {}, game).execute(async () => {});
 

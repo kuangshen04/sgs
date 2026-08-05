@@ -4,7 +4,7 @@
 // 具体技能行为测试在各武将文件中（heroes/*.test.ts）。
 // ============================================================
 
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 import { freshGame, giveHand, makeUniqueCard } from './test-utils.js';
 
@@ -12,11 +12,8 @@ import { damage } from './life.js';
 import { playPhase } from './gameFlow.js';
 
 import { activeSkillRegistry, pickActiveSkill, registerSkills, skillRegistry } from './skills.js';
-import { triggerSystem } from './events/index.js';
 
 import { CardType } from './types.js';
-
-afterEach(() => triggerSystem.clear());
 
 // ============================================================
 // 分发 — 死亡规则
@@ -24,8 +21,8 @@ afterEach(() => triggerSystem.clear());
 
 describe('技能分发 — 死亡规则', () => {
   it('死亡后不再发动技能（遗计）', async () => {
-    registerSkills();
     const g = freshGame({}, ['刘备', '郭嘉', '孙权']);
+    registerSkills(g);
     const guojia = g.state.players[1];
     guojia.hp = 1; // 受到致死伤害，无桃 → 死亡
 
@@ -36,8 +33,8 @@ describe('技能分发 — 死亡规则', () => {
   });
 
   it('刚烈反杀当前回合角色 → 出牌阶段终止，不再出牌', async () => {
-    registerSkills();
     const g = freshGame({}, ['孙权', '夏侯惇', '刘备']);
+    registerSkills(g);
     const sunquan = g.state.players[0];
     const xiahou = g.state.players[1];
     sunquan.hp = 1;
