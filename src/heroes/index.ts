@@ -11,6 +11,7 @@ import './liubei.js';
 import './simayi.js';
 import './sunquan.js';
 import './xiahoudun.js';
+import './xuchu.js';
 import './zhangliao.js';
 import './zhenji.js';
 import './zhouyu.js';
