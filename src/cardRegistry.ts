@@ -49,13 +49,6 @@ export interface CardDef {
   };
 }
 
-/** 牌堆配置条目 */
-export interface DeckEntry {
-  type: CardType;
-  suit: string;
-  numbers: number[];
-}
-
 // --- 注册表 ---
 
 const _defs = new Map<CardType, CardDef>();
@@ -89,32 +82,6 @@ export function displayNumber(n: number): string {
     case 13: return 'K';
     default: return String(n);
   }
-}
-
-// ============================================================
-// 牌堆
-// ============================================================
-
-/** 根据牌堆配置生成牌堆（每副牌 ×2），id 从 startId 开始递增 */
-export function createDeck(config: DeckEntry[], startId = 1): Card[] {
-  let next = startId;
-  const deck: Card[] = [];
-  for (const entry of config) {
-    const def = cardRegistry.get(entry.type);
-    if (!def) {
-      console.warn(`CardDef "${entry.type}" not registered, skipping.`);
-      continue;
-    }
-    for (let copy = 0; copy < 2; copy++) {
-      for (const num of entry.numbers) {
-        deck.push({
-          id: next++, type: entry.type,
-          name: def.name, suit: entry.suit, number: num,
-        });
-      }
-    }
-  }
-  return deck;
 }
 
 /** Fisher-Yates 洗牌 */

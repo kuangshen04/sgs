@@ -11,7 +11,8 @@ import { useCard } from './cardActions.js';
 
 import { registerSkills } from './skills.js';
 
-import { CardType } from './types.js';
+import { cardRegistry } from './cardRegistry.js';
+import { CardTag, CardType } from './types.js';
 
 describe('麒麟弓（装备触发）', () => {
   it('使用杀造成伤害后弃置目标一张坐骑牌', async () => {
@@ -192,5 +193,18 @@ describe('雌雄双股剑（装备触发）', () => {
 
     expect(target.hand.length).toBe(1); // 决斗造成的伤害不触发剑效果
     expect(target.hp).toBe(hpBefore - 1);
+  });
+});
+
+describe('马匹（白板注册）', () => {
+  it.each([
+    [CardType.JueYing, CardTag.DefensiveHorse],
+    [CardType.DiLu, CardTag.DefensiveHorse],
+    [CardType.ZhuaHuangFeiDian, CardTag.DefensiveHorse],
+    [CardType.ChiTu, CardTag.OffensiveHorse],
+    [CardType.DaYuan, CardTag.OffensiveHorse],
+    [CardType.ZiXin, CardTag.OffensiveHorse],
+  ] as const)('%s 标签为 %s', (type, tag) => {
+    expect(cardRegistry.get(type)?.tags).toContain(tag);
   });
 });

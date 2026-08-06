@@ -8,7 +8,7 @@ import { describe, it, expect } from 'vitest';
 import './cards.js'; // 触发卡牌注册（side-effect import）
 import { STANDARD_DECK } from './cards.js';
 
-import { displayNumber, cardRegistry, createDeck, shuffle } from './cardRegistry.js';
+import { displayNumber, cardRegistry, shuffle } from './cardRegistry.js';
 import { playFromHand, giveCards, discardCards, drawCards, moveCards } from './cardActions.js';
 import { damage, recover, dying, loseHp } from './life.js';
 import { createGame, lastManStanding } from './game.js';
@@ -145,18 +145,16 @@ describe('cardRegistry', () => {
 });
 
 // ============================================================
-// 牌堆生成
+// 标准版牌堆（src/standardDeck.json 数据驱动，一副 108 张）
 // ============================================================
 
-describe('createDeck', () => {
-  it('牌堆 162 张（160 + 雌雄双股剑 2）', () => {
-    const deck = createDeck(STANDARD_DECK);
-    expect(deck.length).toBe(162);
+describe('STANDARD_DECK', () => {
+  it('标准版牌堆共 108 张', () => {
+    expect(STANDARD_DECK.length).toBe(108);
   });
 
   it('每张牌有 id/type/name/suit/number', () => {
-    const deck = createDeck(STANDARD_DECK);
-    for (const card of deck) {
+    for (const card of STANDARD_DECK) {
       expect(card.id).toBeTypeOf('number');
       expect(card.type).toBeTypeOf('string');
       expect(card.name).toBeTypeOf('string');
@@ -165,84 +163,60 @@ describe('createDeck', () => {
     }
   });
 
-  it('杀数量 = (9+10)×2副本 = 38', () => {
-    const deck = createDeck(STANDARD_DECK);
-    const shaCount = deck.filter((c) => c.type === CardType.Sha).length;
-    expect(shaCount).toBe(38);
+  it('基本牌数量：杀 30 / 闪 15 / 桃 8', () => {
+    const count = (type: CardType) => STANDARD_DECK.filter((c) => c.type === type).length;
+    expect(count(CardType.Sha)).toBe(30);
+    expect(count(CardType.Shan)).toBe(15);
+    expect(count(CardType.Tao)).toBe(8);
   });
 
-  it('南蛮入侵数量 = (2+1)×2副本 = 6', () => {
-    const deck = createDeck(STANDARD_DECK);
-    const nmCount = deck.filter((c) => c.type === CardType.NanMan).length;
-    expect(nmCount).toBe(6);
+  it('锦囊牌数量', () => {
+    const count = (type: CardType) => STANDARD_DECK.filter((c) => c.type === type).length;
+    expect(count(CardType.JueDou)).toBe(3);
+    expect(count(CardType.NanMan)).toBe(3);
+    expect(count(CardType.WanJian)).toBe(1);
+    expect(count(CardType.TaoYuan)).toBe(1);
+    expect(count(CardType.WuGu)).toBe(2);
+    expect(count(CardType.GuoHe)).toBe(6);
+    expect(count(CardType.ShunShou)).toBe(5);
+    expect(count(CardType.WuZhong)).toBe(4);
+    expect(count(CardType.JieDao)).toBe(2);
+    expect(count(CardType.WuXie)).toBe(4);
+    expect(count(CardType.LeBu)).toBe(3);
+    expect(count(CardType.ShanDian)).toBe(2);
   });
 
-  it('过河拆桥数量 = (3+3)×2副本 = 12', () => {
-    const deck = createDeck(STANDARD_DECK);
-    const count = deck.filter((c) => c.type === CardType.GuoHe).length;
-    expect(count).toBe(12);
+  it('装备牌数量（武器/防具/马各一张，诸葛连弩与八卦阵各二）', () => {
+    const count = (type: CardType) => STANDARD_DECK.filter((c) => c.type === type).length;
+    // 武器
+    expect(count(CardType.ZhugeLianNu)).toBe(2);
+    expect(count(CardType.CiXiongShuangGuJian)).toBe(1);
+    expect(count(CardType.QingGangJian)).toBe(1);
+    expect(count(CardType.QingLongYanYueDao)).toBe(1);
+    expect(count(CardType.ZhangBaSheMao)).toBe(1);
+    expect(count(CardType.GuanShiFu)).toBe(1);
+    expect(count(CardType.FangTianHuaJi)).toBe(1);
+    expect(count(CardType.QiLinGong)).toBe(1);
+    expect(count(CardType.HanBingJian)).toBe(1);
+    // 防具
+    expect(count(CardType.BaGuaZhen)).toBe(2);
+    expect(count(CardType.RenWangDun)).toBe(1);
+    // 马
+    expect(count(CardType.JueYing)).toBe(1);
+    expect(count(CardType.DiLu)).toBe(1);
+    expect(count(CardType.ZhuaHuangFeiDian)).toBe(1);
+    expect(count(CardType.ChiTu)).toBe(1);
+    expect(count(CardType.DaYuan)).toBe(1);
+    expect(count(CardType.ZiXin)).toBe(1);
   });
 
-  it('顺手牵羊数量 = (3+3)×2副本 = 12', () => {
-    const deck = createDeck(STANDARD_DECK);
-    const count = deck.filter((c) => c.type === CardType.ShunShou).length;
-    expect(count).toBe(12);
-  });
-
-  it('万箭齐发数量 = (1+1)×2副本 = 4', () => {
-    const deck = createDeck(STANDARD_DECK);
-    const count = deck.filter((c) => c.type === CardType.WanJian).length;
-    expect(count).toBe(4);
-  });
-
-  it('桃园结义数量 = 1×2副本 = 2', () => {
-    const deck = createDeck(STANDARD_DECK);
-    const count = deck.filter((c) => c.type === CardType.TaoYuan).length;
-    expect(count).toBe(2);
-  });
-
-  it('五谷丰登数量 = 2×2副本 = 4', () => {
-    const deck = createDeck(STANDARD_DECK);
-    const count = deck.filter((c) => c.type === CardType.WuGu).length;
-    expect(count).toBe(4);
-  });
-
-  it('乐不思蜀数量 = 3×2副本 = 6', () => {
-    const deck = createDeck(STANDARD_DECK);
-    const count = deck.filter((c) => c.type === CardType.LeBu).length;
-    expect(count).toBe(6);
-  });
-
-  it('闪电数量 = 1×2副本 = 2', () => {
-    const deck = createDeck(STANDARD_DECK);
-    const count = deck.filter((c) => c.type === CardType.ShanDian).length;
-    expect(count).toBe(2);
-  });
-
-  it('装备牌数量 = 4种×2副本 = 8', () => {
-    const deck = createDeck(STANDARD_DECK);
-    const count = deck.filter((c) => c.type === CardType.ZhugeLianNu
-      || c.type === CardType.BaGuaZhen
-      || c.type === CardType.JueYing
-      || c.type === CardType.ChiTu).length;
-    expect(count).toBe(8);
-  });
-
-  it('麒麟弓/寒冰剑数量 = 各 2', () => {
-    const deck = createDeck(STANDARD_DECK);
-    expect(deck.filter((c) => c.type === CardType.QiLinGong).length).toBe(2);
-    expect(deck.filter((c) => c.type === CardType.HanBingJian).length).toBe(2);
-  });
-
-  it('仁王盾数量 = 2', () => {
-    const deck = createDeck(STANDARD_DECK);
-    expect(deck.filter((c) => c.type === CardType.RenWangDun).length).toBe(2);
-  });
-
-  it('无懈可击数量 = 8', () => {
-    const deck = createDeck(STANDARD_DECK);
-    const wxCount = deck.filter((c) => c.type === CardType.WuXie).length;
-    expect(wxCount).toBe(8);
+  it('关键牌花色点数与标包一致（麒麟弓♥5、寒冰剑♠2、八卦阵♠2/♣2）', () => {
+    const has = (type: CardType, suit: string, number: number) =>
+      STANDARD_DECK.some((c) => c.type === type && c.suit === suit && c.number === number);
+    expect(has(CardType.QiLinGong, '♥', 5)).toBe(true);
+    expect(has(CardType.HanBingJian, '♠', 2)).toBe(true);
+    expect(has(CardType.BaGuaZhen, '♠', 2)).toBe(true);
+    expect(has(CardType.BaGuaZhen, '♣', 2)).toBe(true);
   });
 });
 
@@ -282,8 +256,8 @@ describe('createGame', () => {
     expect(g.state.currentIndex).toBe(0);
     expect(g.state.gameOver).toBe(false);
     expect(g.state.winner).toBeNull();
-    // 162 - 3人×4 = 150
-    expect(g.state.deck.length).toBe(150);
+    // 108 - 3人×4 = 96
+    expect(g.state.deck.length).toBe(96);
     expect(g.state.discardPile.length).toBe(0);
   });
 

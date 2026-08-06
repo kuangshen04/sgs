@@ -6,7 +6,8 @@
 
 import { CardTag, CardType } from './types.js';
 import type { Card, Player } from './types.js';
-import type { CardContentFn, DeckEntry } from './cardRegistry.js';
+import type { CardContentFn } from './cardRegistry.js';
+import { buildStandardDeck } from './deck.js';
 import type { Game } from './game.js';
 import { cardRegistry, cardEmoji, displayNumber } from './cardRegistry.js';
 import { discardCards, drawCards, moveCards, playFromHand, useCard } from './cardActions.js';
@@ -188,6 +189,38 @@ const shunshouContent: CardContentFn = async (game, data, _event) => {
   console.log(
     `  获得了 ${cardEmoji(card.type)} (${card.suit}${displayNumber(card.number)})`,
   );
+};
+
+const jiedaoContent: CardContentFn = async (game, data, _event) => {
+  const user = data.player;
+  const target = data.targets[0];
+  const weapon = target.equipment.weapon;
+  if (!weapon) return;
+
+  console.log(
+    `  ${user.name} 对 ${target.name} 使用了 🗡️借刀杀人，令其对他人使用杀或交出武器`,
+  );
+
+  // TODO(玩家选择): 目标选择"出杀"还是"交武器"、杀的对象——目前写死为
+  // "有杀且攻击范围内有除双方外的角色就出杀（目标为第一个），否则交武器"
+  const sha = findResponse(target, CardType.Sha);
+  const shaTarget = game.state.players.find(
+    (p) => p.alive && p !== target && p !== user
+      && distanceTo(game.state.players, target, p) <= attackRange(target),
+  );
+
+  if (sha && shaTarget) {
+    await useCard(game, { player: target, card: sha, targets: [shaTarget] });
+    console.log(
+      `  🗡️ ${target.name} 响应【借刀杀人】，对 ${shaTarget.name} 使用了杀`,
+    );
+  } else {
+    target.equipment.weapon = undefined;
+    user.hand.push(weapon);
+    console.log(
+      `  🗡️ ${target.name} 选择交出武器，${cardEmoji(weapon.type)} 到了 ${user.name} 手上`,
+    );
+  }
 };
 
 // ============================================================
@@ -424,6 +457,24 @@ cardRegistry.register({
   ai: {
     shouldUse: () => true,
     usePriority: 75,
+    discardPriority: 2,
+  },
+});
+
+cardRegistry.register({
+  type: CardType.JieDao,
+  name: '借刀杀人',
+  emoji: '🗡️',
+  content: jiedaoContent,
+  tags: [CardTag.Trick],
+  canUse: (player, allPlayers) =>
+    allPlayers.some((p) => p !== player && p.alive && !!p.equipment.weapon),
+  targetFilter: (user, allPlayers) =>
+    allPlayers.filter((p) => p !== user && p.alive && !!p.equipment.weapon),
+  targetCount: 1,
+  ai: {
+    shouldUse: () => true,
+    usePriority: 55,
     discardPriority: 2,
   },
 });
@@ -790,47 +841,69 @@ cardRegistry.register({
 });
 
 // ============================================================
-// 标准牌堆配置
+// 剩余武器（白板：仅攻击范围生效；持续效果留空待实现）
+// 青釭剑：使用杀无视目标防具（依赖防具效果模型）
+// 青龙偃月刀：杀被抵消后可再出杀（依赖杀响应流程）
+// 丈八蛇矛：两张手牌当杀（转化牌系统）
+// 贯石斧：杀被抵消后弃两张牌令其仍造成伤害（依赖杀响应流程）
+// 方天画戟：使用杀可指定至多三个目标（依赖选择系统）
 // ============================================================
 
-export const STANDARD_DECK: DeckEntry[] = [
-  // ♠
-  { type: CardType.JueDou, suit: '♠', numbers: [1] },
-  { type: CardType.ShanDian, suit: '♠', numbers: [1] },
-  { type: CardType.BaGuaZhen, suit: '♠', numbers: [2] },
-  { type: CardType.CiXiongShuangGuJian, suit: '♠', numbers: [2] },
-  { type: CardType.JueYing, suit: '♠', numbers: [5] },
-  { type: CardType.QiLinGong, suit: '♠', numbers: [5] },
-  { type: CardType.NanMan, suit: '♠', numbers: [7, 13] },
-  { type: CardType.GuoHe,   suit: '♠', numbers: [3, 4, 12] },
-  { type: CardType.ShunShou, suit: '♠', numbers: [3, 4, 11] },
-  { type: CardType.WuXie,  suit: '♠', numbers: [11] },
-  { type: CardType.Sha,    suit: '♠', numbers: [2,3,4,5,6,8,9,10,12] },
-  // ♥
-  { type: CardType.Tao,     suit: '♥', numbers: [2] },
-  { type: CardType.WanJian, suit: '♥', numbers: [1] },
-  { type: CardType.TaoYuan, suit: '♥', numbers: [1] },
-  { type: CardType.WuGu,    suit: '♥', numbers: [3, 4] },
-  { type: CardType.WuZhong, suit: '♥', numbers: [7,8,9,11] },
-  { type: CardType.WuXie,   suit: '♥', numbers: [13] },
-  { type: CardType.Shan,    suit: '♥', numbers: [1,3,4,5,6,10,12] },
-  { type: CardType.LeBu,    suit: '♥', numbers: [6] },
-  { type: CardType.ChiTu,   suit: '♥', numbers: [5] },
-  // ♣
-  { type: CardType.JueDou, suit: '♣', numbers: [1] },
-  { type: CardType.ZhugeLianNu, suit: '♣', numbers: [1] },
-  { type: CardType.HanBingJian, suit: '♣', numbers: [2] },
-  { type: CardType.RenWangDun, suit: '♣', numbers: [2] },
-  { type: CardType.NanMan, suit: '♣', numbers: [7] },
-  { type: CardType.GuoHe,   suit: '♣', numbers: [3, 4, 12] },
-  { type: CardType.WuXie,  suit: '♣', numbers: [12] },
-  { type: CardType.Sha,    suit: '♣', numbers: [2,3,4,5,6,8,9,10,11,13] },
-  { type: CardType.LeBu,   suit: '♣', numbers: [6] },
-  // ♦
-  { type: CardType.JueDou, suit: '♦', numbers: [1] },
-  { type: CardType.WanJian, suit: '♦', numbers: [1] },
-  { type: CardType.ShunShou, suit: '♦', numbers: [3, 4, 11] },
-  { type: CardType.WuXie,  suit: '♦', numbers: [12] },
-  { type: CardType.Tao,    suit: '♦', numbers: [2,3,4,5,6,7,8,9,10,11,13] },
-  { type: CardType.LeBu,   suit: '♦', numbers: [6] },
-];
+function registerBlankWeapon(
+  type: CardType, name: string, emoji: string, range: number,
+): void {
+  cardRegistry.register({
+    type, name, emoji,
+    content: async () => {}, // 白板：触发效果待对应系统
+    tags: [CardTag.Equip, CardTag.Weapon],
+    range,
+    canUse: () => true,
+    targetFilter: (user) => [user],
+    targetCount: 1,
+    ai: {
+      shouldUse: () => true,
+      usePriority: 45,
+      discardPriority: 100, // 装备尽量保留
+    },
+  });
+}
+
+registerBlankWeapon(CardType.QingGangJian, '青釭剑', '🗡️', 2);
+registerBlankWeapon(CardType.QingLongYanYueDao, '青龙偃月刀', '🗡️', 3);
+registerBlankWeapon(CardType.ZhangBaSheMao, '丈八蛇矛', '🔱', 3);
+registerBlankWeapon(CardType.GuanShiFu, '贯石斧', '🪓', 3);
+registerBlankWeapon(CardType.FangTianHuaJi, '方天画戟', '🔱', 4);
+
+// ============================================================
+// 马匹（白板：距离修正由槽位 effectRegistry 自动生效）
+// ============================================================
+
+function registerBlankHorse(
+  type: CardType, name: string, tag: CardTag.DefensiveHorse | CardTag.OffensiveHorse,
+): void {
+  cardRegistry.register({
+    type, name, emoji: '🐎',
+    content: async () => {}, // 白板：距离修正由槽位 effectRegistry 处理
+    tags: [CardTag.Equip, tag],
+    canUse: () => true,
+    targetFilter: (user) => [user],
+    targetCount: 1,
+    ai: {
+      shouldUse: () => true,
+      usePriority: 45,
+      discardPriority: 100, // 装备尽量保留
+    },
+  });
+}
+
+registerBlankHorse(CardType.DiLu, '的卢', CardTag.DefensiveHorse);
+registerBlankHorse(CardType.ZhuaHuangFeiDian, '爪黄飞电', CardTag.DefensiveHorse);
+registerBlankHorse(CardType.DaYuan, '大宛', CardTag.OffensiveHorse);
+registerBlankHorse(CardType.ZiXin, '紫骍', CardTag.OffensiveHorse);
+
+// ============================================================
+// 标准版牌堆（数据驱动：src/standardDeck.json，一副 108 张）
+// 需在全部卡牌注册之后构建，故放在文件末尾。
+// ============================================================
+
+export const STANDARD_DECK: Card[] = buildStandardDeck();

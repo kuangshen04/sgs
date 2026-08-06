@@ -6,8 +6,7 @@ import { Card, GameState, Player, VictoryCondition } from './types.js';
 import { TriggerSystem, createEventStack } from './events/index.js';
 import type { EventStack } from './events/index.js';
 import type { Deciders } from './choose.js';
-import { createDeck, shuffle } from './cardRegistry.js';
-import type { DeckEntry } from './cardRegistry.js';
+import { shuffle } from './cardRegistry.js';
 import { drawCardsFromDeck } from './cardActions.js';
 import { heroRegistry } from './heroRegistry.js';
 import './heroes/index.js'; // 副作用：触发全部武将注册
@@ -48,7 +47,7 @@ export interface CreateGameOptions {
 }
 
 export function createGame(
-  deckConfig: DeckEntry[],
+  deck: Card[],
   heroNames: string[],
   options?: CreateGameOptions,
 ): Game {
@@ -62,19 +61,19 @@ export function createGame(
     };
   });
 
-  const deck = shuffle(createDeck(deckConfig));
+  const shuffledDeck = shuffle(deck); // 副本：不污染调用方传入的牌堆数组
   const discardPile: Card[] = [];
 
   // 起始手牌（不走事件）
   for (const p of players) {
-    drawCardsFromDeck(p, deck, discardPile, 4);
+    drawCardsFromDeck(p, shuffledDeck, discardPile, 4);
   }
 
   return {
     state: {
       players,
       currentIndex: 0,
-      deck, discardPile,
+      deck: shuffledDeck, discardPile,
       round: 1, gameOver: false, winner: null,
       victoryCheck: options?.victoryCheck ?? lastManStanding,
     },

@@ -10,6 +10,7 @@ import { freshGame, giveHand, makeUniqueCard } from './test-utils.js';
 
 import { useCard } from './cardActions.js';
 
+import { cardRegistry } from './cardRegistry.js';
 import { registerSkills } from './skills.js';
 import { EventType } from './events/index.js';
 
@@ -59,6 +60,48 @@ describe('useCard — 杀', () => {
     expect(defender.hand.find((c) => c.id === shanCard.id)).toBeUndefined();
     // 不受伤
     expect(defender.hp).toBe(hpBefore);
+  });
+});
+
+describe('借刀杀人', () => {
+  it('目标有杀且攻击范围内有角色 → 目标对其使用杀', async () => {
+    const g = freshGame(); // 刘备/曹操/孙权，3 人局任意距离 1
+    const user = g.state.players[0];
+    const target = g.state.players[1];
+    const shaVictim = g.state.players[2];
+    target.equipment.weapon = makeUniqueCard(CardType.QiLinGong);
+    giveHand(user, CardType.JieDao);
+    giveHand(target, CardType.Sha);
+    giveHand(shaVictim); // 无闪
+    const hpBefore = shaVictim.hp;
+
+    await useCard(g, { player: user, card: user.hand[0], targets: [target] });
+
+    expect(target.hand.length).toBe(0);         // 杀打出去了
+    expect(shaVictim.hp).toBe(hpBefore - 1);    // 杀命中
+    expect(target.equipment.weapon?.type).toBe(CardType.QiLinGong); // 武器保留
+  });
+
+  it('目标无杀 → 将武器交给使用者', async () => {
+    const g = freshGame();
+    const user = g.state.players[0];
+    const target = g.state.players[1];
+    const weapon = makeUniqueCard(CardType.GuanShiFu);
+    target.equipment.weapon = weapon;
+    giveHand(user, CardType.JieDao);
+
+    await useCard(g, { player: user, card: user.hand[0], targets: [target] });
+
+    expect(target.equipment.weapon).toBeUndefined();      // 武器被交出
+    expect(user.hand.map((c) => c.id)).toContain(weapon.id); // 武器到使用者手上
+  });
+
+  it('规则层面：无人装备武器 → 不可使用', () => {
+    const g = freshGame();
+    const user = g.state.players[0];
+    const def = cardRegistry.get(CardType.JieDao)!;
+
+    expect(def.canUse(user, g.state.players, false)).toBe(false);
   });
 });
 
