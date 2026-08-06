@@ -40,6 +40,19 @@ describe('反馈（司马懿技能）', () => {
 
     expect(simayi.hand.length).toBe(0);
   });
+
+  it('获得伤害来源装备区的一张牌', async () => {
+    const g = freshGame({}, ['刘备', '司马懿', '孙权']);
+    registerSkills(g);
+    const simayi = g.state.players[1];
+    const source = g.state.players[0];
+    source.equipment.weapon = makeUniqueCard(CardType.ZhugeLianNu);
+
+    await damage(g, { target: simayi, source, amount: 1 });
+
+    expect(source.equipment.weapon).toBeUndefined();
+    expect(simayi.hand.some((c) => c.type === CardType.ZhugeLianNu)).toBe(true);
+  });
 });
 
 describe('鬼才（司马懿技能）', () => {

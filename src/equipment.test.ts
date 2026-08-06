@@ -64,6 +64,24 @@ describe('寒冰剑（装备触发）', () => {
     expect(target.hand.length).toBe(0); // 两张都被弃
   });
 
+  it('目标无手牌但有装备区牌 → 弃置装备区牌', async () => {
+    const g = freshGame();
+    registerSkills(g);
+    const attacker = g.state.players[0];
+    const target = g.state.players[1];
+    attacker.equipment.weapon = makeUniqueCard(CardType.HanBingJian);
+    target.equipment.armor = makeUniqueCard(CardType.BaGuaZhen);
+    target.equipment.offensiveHorse = makeUniqueCard(CardType.ChiTu);
+    giveHand(attacker, CardType.Sha);
+    const hpBefore = target.hp;
+
+    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [target] });
+
+    expect(target.hp).toBe(hpBefore); // 伤害被防止
+    expect(target.equipment.armor).toBeUndefined();
+    expect(target.equipment.offensiveHorse).toBeUndefined();
+  });
+
   it('决斗伤害不发动（仅杀）', async () => {
     const g = freshGame();
     registerSkills(g);

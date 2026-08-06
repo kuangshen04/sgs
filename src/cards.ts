@@ -9,9 +9,10 @@ import type { Card, Player } from './types.js';
 import type { CardContentFn, DeckEntry } from './cardRegistry.js';
 import type { Game } from './game.js';
 import { cardRegistry, cardEmoji, displayNumber } from './cardRegistry.js';
-import { drawCards, giveCards, moveCards, playFromHand, useCard } from './cardActions.js';
+import { drawCards, moveCards, playFromHand, useCard } from './cardActions.js';
 import { damage, recover } from './life.js';
 import { distanceTo, attackRange } from './distance.js';
+import { hasCardsInAreas, selectCardFromAreas, takeCardFromAreas } from './areas.js';
 import { findResponse } from './choose.js';
 import type {
   TargetingEventData,
@@ -155,14 +156,13 @@ const guoheContent: CardContentFn = async (game, data, _event) => {
   const user = data.player;
   const target = data.targets[0];
   console.log(
-    `  ${user.name} 对 ${target.name} 使用了 🌉过河拆桥，弃置其一张手牌`,
+    `  ${user.name} 对 ${target.name} 使用了 🌉过河拆桥，弃置其区域内的一张牌`,
   );
 
-  // 初步实现：随机选一张手牌弃置（装备区/判定区尚未实现）
-  const hand = target.hand;
-  if (hand.length === 0) return;
-  const card = hand[Math.floor(Math.random() * hand.length)];
-  playFromHand(game, target, card);
+  const card = selectCardFromAreas(target);
+  if (!card) return;
+  takeCardFromAreas(target, card);
+  game.state.discardPile.push(card);
   console.log(
     `  弃置了 ${cardEmoji(card.type)} (${card.suit}${displayNumber(card.number)})`,
   );
@@ -172,15 +172,13 @@ const shunshouContent: CardContentFn = async (game, data, _event) => {
   const user = data.player;
   const target = data.targets[0];
   console.log(
-    `  ${user.name} 对 ${target.name} 使用了 🐑顺手牵羊，获得其一张手牌`,
+    `  ${user.name} 对 ${target.name} 使用了 🐑顺手牵羊，获得其区域内的一张牌`,
   );
 
-  // 初步实现：随机选一张手牌获得（距离与装备区尚未实现）
-  const hand = target.hand;
-  if (hand.length === 0) return;
-  const idx = Math.floor(Math.random() * hand.length);
-  const card = hand[idx];
-  giveCards(target, user, [card]);
+  const card = selectCardFromAreas(target);
+  if (!card) return;
+  takeCardFromAreas(target, card);
+  user.hand.push(card);
   console.log(
     `  获得了 ${cardEmoji(card.type)} (${card.suit}${displayNumber(card.number)})`,
   );
@@ -485,8 +483,11 @@ cardRegistry.register({
   emoji: '🌉',
   content: guoheContent,
   tags: [CardTag.Trick],
-  canUse: (player, allPlayers) => otherAliveWithCards(player, allPlayers).length > 0, // 规则：需要有牌目标
-  targetFilter: otherAliveWithCards,
+  canUse: (player, allPlayers) =>
+    // 规则：存在区域内有牌的目标（无距离限制）
+    allPlayers.some((p) => p !== player && p.alive && hasCardsInAreas(p)),
+  targetFilter: (user, allPlayers) =>
+    allPlayers.filter((p) => p !== user && p.alive && hasCardsInAreas(p)),
   targetCount: 1,
   ai: {
     shouldUse: () => true,
@@ -502,11 +503,11 @@ cardRegistry.register({
   content: shunshouContent,
   tags: [CardTag.Trick],
   canUse: (player, allPlayers) =>
-    // 规则：存在距离为 1 且有牌的目标
-    allPlayers.some((p) => p !== player && p.alive && p.hand.length > 0
+    // 规则：存在距离为 1 且区域内有牌的目标
+    allPlayers.some((p) => p !== player && p.alive && hasCardsInAreas(p)
       && distanceTo(allPlayers, player, p) <= 1),
   targetFilter: (user, allPlayers) =>
-    allPlayers.filter((p) => p !== user && p.alive && p.hand.length > 0
+    allPlayers.filter((p) => p !== user && p.alive && hasCardsInAreas(p)
       && distanceTo(allPlayers, user, p) <= 1),
   targetCount: 1,
   ai: {
@@ -666,30 +667,19 @@ cardRegistry.register({
       if (useCard.data.card.type !== CardType.Sha) return false;
       const { target } = event.data as DamageEventData;
       if (!target) return false;
-      // 目标有能被弃置的牌（手牌/装备区/判定区）
-      return target.hand.length > 0
-        || !!target.equipment.weapon || !!target.equipment.armor
-        || !!target.equipment.defensiveHorse || !!target.equipment.offensiveHorse
-        || target.judgment.length > 0;
+      return hasCardsInAreas(target); // 目标区域内有能被弃置的牌
     },
     content: async (game, event, owner) => {
       const { target } = event.data as DamageEventData;
       if (!target) return;
-      // 依次弃置两张牌（简化：手牌 → 装备区 → 判定区），然后防止伤害。
+      // 依次弃置两张区域内的牌，然后防止伤害。
       // prevent() 抛异常，之后的代码不会执行，所以必须先弃牌再 prevent。
       const discarded: Card[] = [];
-      discarded.push(...target.hand.splice(0, 2));
-      const slots = ['weapon', 'armor', 'defensiveHorse', 'offensiveHorse'] as const;
-      for (const slot of slots) {
-        if (discarded.length >= 2) break;
-        const card = target.equipment[slot];
-        if (card) {
-          target.equipment[slot] = undefined;
-          discarded.push(card);
-        }
-      }
-      while (discarded.length < 2 && target.judgment.length > 0) {
-        discarded.push(target.judgment.shift()!);
+      for (let i = 0; i < 2; i++) {
+        const card = selectCardFromAreas(target);
+        if (!card) break;
+        takeCardFromAreas(target, card);
+        discarded.push(card);
       }
       game.state.discardPile.push(...discarded);
       console.log(

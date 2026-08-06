@@ -307,6 +307,20 @@ describe('useCard — 过河拆桥', () => {
     // 过河拆桥本身也进入弃牌堆
     expect(g.state.discardPile.some((c) => c.id === card.id)).toBe(true);
   });
+
+  it('弃置目标装备区的一张牌', async () => {
+    const g = freshGame();
+    const attacker = g.state.players[0];
+    const target = g.state.players[1];
+    giveHand(attacker, CardType.GuoHe);
+    target.equipment.weapon = makeUniqueCard(CardType.ZhugeLianNu);
+
+    const card = attacker.hand[0];
+    await useCard(g, { player: attacker, card, targets: [target] });
+
+    expect(target.equipment.weapon).toBeUndefined();
+    expect(g.state.discardPile.some((c) => c.type === CardType.ZhugeLianNu)).toBe(true);
+  });
 });
 
 describe('useCard — 顺手牵羊', () => {
@@ -324,6 +338,20 @@ describe('useCard — 顺手牵羊', () => {
     expect(attacker.hand.some((c) => c.type === CardType.Tao)).toBe(true);
     // 顺手牵羊本身进入弃牌堆
     expect(g.state.discardPile.some((c) => c.id === card.id)).toBe(true);
+  });
+
+  it('获得目标装备区的一张牌', async () => {
+    const g = freshGame();
+    const attacker = g.state.players[0];
+    const target = g.state.players[1];
+    giveHand(attacker, CardType.ShunShou);
+    target.equipment.armor = makeUniqueCard(CardType.BaGuaZhen);
+
+    const card = attacker.hand[0];
+    await useCard(g, { player: attacker, card, targets: [target] });
+
+    expect(target.equipment.armor).toBeUndefined();
+    expect(attacker.hand.some((c) => c.type === CardType.BaGuaZhen)).toBe(true);
   });
 
   it('可以被无懈可击抵消', async () => {
