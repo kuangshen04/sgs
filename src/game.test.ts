@@ -149,9 +149,9 @@ describe('cardRegistry', () => {
 // ============================================================
 
 describe('createDeck', () => {
-  it('牌堆 160 张（158 + 仁王盾 2）', () => {
+  it('牌堆 162 张（160 + 雌雄双股剑 2）', () => {
     const deck = createDeck(STANDARD_DECK);
-    expect(deck.length).toBe(160);
+    expect(deck.length).toBe(162);
   });
 
   it('每张牌有 id/type/name/suit/number', () => {
@@ -282,8 +282,8 @@ describe('createGame', () => {
     expect(g.state.currentIndex).toBe(0);
     expect(g.state.gameOver).toBe(false);
     expect(g.state.winner).toBeNull();
-    // 160 - 3人×4 = 148
-    expect(g.state.deck.length).toBe(148);
+    // 162 - 3人×4 = 150
+    expect(g.state.deck.length).toBe(150);
     expect(g.state.discardPile.length).toBe(0);
   });
 

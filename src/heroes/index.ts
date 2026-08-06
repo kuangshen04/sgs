@@ -13,6 +13,7 @@ import './luxun.js';
 import './machao.js';
 import './simayi.js';
 import './sunquan.js';
+import './sunshangxiang.js';
 import './xiahoudun.js';
 import './xuchu.js';
 import './zhangfei.js';

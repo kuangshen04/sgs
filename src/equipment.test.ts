@@ -129,3 +129,68 @@ describe('仁王盾（装备触发）', () => {
     expect(defender.hp).toBe(hpBefore - 1);
   });
 });
+
+describe('雌雄双股剑（装备触发）', () => {
+  const mixedHeroes = ['刘备', '甄宓', '孙权']; // 男/女/男
+
+  it('使用杀指定异性目标后，目标弃置一张手牌', async () => {
+    const g = freshGame({}, mixedHeroes);
+    registerSkills(g);
+    const attacker = g.state.players[0]; // 刘备（男）
+    const target = g.state.players[1];   // 甄宓（女）
+    attacker.equipment.weapon = makeUniqueCard(CardType.CiXiongShuangGuJian);
+    giveHand(attacker, CardType.Sha);
+    giveHand(target, CardType.Tao, CardType.Tao); // 无闪 → 杀命中，桃不会被自动使用
+    const hpBefore = target.hp;
+
+    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [target] });
+
+    expect(target.hand.length).toBe(1); // 弃了一张手牌
+    expect(target.hp).toBe(hpBefore - 1); // 杀照常命中
+  });
+
+  it('异性目标无手牌 → 使用者摸一张牌', async () => {
+    const g = freshGame({}, mixedHeroes);
+    registerSkills(g);
+    const attacker = g.state.players[0];
+    const target = g.state.players[1];
+    attacker.equipment.weapon = makeUniqueCard(CardType.CiXiongShuangGuJian);
+    giveHand(attacker, CardType.Sha);
+
+    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [target] });
+
+    expect(attacker.hand.length).toBe(1); // 杀出掉后摸回一张
+  });
+
+  it('指定同性目标 → 不发动', async () => {
+    const g = freshGame({}, mixedHeroes);
+    registerSkills(g);
+    const attacker = g.state.players[0]; // 刘备（男）
+    const target = g.state.players[2];   // 孙权（男）
+    attacker.equipment.weapon = makeUniqueCard(CardType.CiXiongShuangGuJian);
+    giveHand(attacker, CardType.Sha);
+    giveHand(target, CardType.Tao);
+    const hpBefore = target.hp;
+
+    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [target] });
+
+    expect(target.hand.length).toBe(1); // 手牌未被要求弃置
+    expect(target.hp).toBe(hpBefore - 1);
+  });
+
+  it('非杀（决斗）→ 不发动', async () => {
+    const g = freshGame({}, mixedHeroes);
+    registerSkills(g);
+    const attacker = g.state.players[0];
+    const target = g.state.players[1]; // 异性
+    attacker.equipment.weapon = makeUniqueCard(CardType.CiXiongShuangGuJian);
+    giveHand(attacker, CardType.JueDou);
+    giveHand(target, CardType.Tao);
+    const hpBefore = target.hp;
+
+    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [target] });
+
+    expect(target.hand.length).toBe(1); // 决斗造成的伤害不触发剑效果
+    expect(target.hp).toBe(hpBefore - 1);
+  });
+});

@@ -9,7 +9,7 @@ import type { Card, Player } from './types.js';
 import type { CardContentFn, DeckEntry } from './cardRegistry.js';
 import type { Game } from './game.js';
 import { cardRegistry, cardEmoji, displayNumber } from './cardRegistry.js';
-import { drawCards, moveCards, playFromHand, useCard } from './cardActions.js';
+import { discardCards, drawCards, moveCards, playFromHand, useCard } from './cardActions.js';
 import { damage, recover } from './life.js';
 import { distanceTo, attackRange } from './distance.js';
 import { hasCardsInAreas, selectCardFromAreas, takeCardFromAreas } from './areas.js';
@@ -750,6 +750,45 @@ cardRegistry.register({
   },
 });
 
+cardRegistry.register({
+  type: CardType.CiXiongShuangGuJian,
+  name: '雌雄双股剑',
+  emoji: '⚔️',
+  content: async () => {}, // 无使用效果（触发效果在 equipTrigger）
+  equipTrigger: {
+    trigger: 'targeting.after',
+    canTrigger: (game, event, owner) => {
+      const { user, card, target } = event.data as TargetingEventData;
+      if (user !== owner) return false; // 只有装备者使用牌时触发
+      if (card.type !== CardType.Sha) return false;
+      return target.hero.sex !== owner.hero.sex; // 指定异性目标后
+    },
+    content: async (game, event, owner) => {
+      const { target } = event.data as TargetingEventData;
+      // TODO(玩家选择): 目标选择"弃一张手牌"还是"令使用者摸一张牌"——写死为优先弃牌
+      if (target.hand.length > 0) {
+        discardCards(game, target, [target.hand[0]]);
+        console.log(
+          `  ⚔️${owner.name} 的雌雄双股剑发动！${target.name} 弃置了一张手牌`,
+        );
+      } else {
+        await drawCards(game, { target: owner, count: 1 });
+        console.log(`  ⚔️${owner.name} 的雌雄双股剑发动！摸了一张牌`);
+      }
+    },
+  },
+  tags: [CardTag.Equip, CardTag.Weapon],
+  range: 2,
+  canUse: () => true,
+  targetFilter: (user) => [user],
+  targetCount: 1,
+  ai: {
+    shouldUse: () => true,
+    usePriority: 45,
+    discardPriority: 100,
+  },
+});
+
 // ============================================================
 // 标准牌堆配置
 // ============================================================
@@ -759,6 +798,7 @@ export const STANDARD_DECK: DeckEntry[] = [
   { type: CardType.JueDou, suit: '♠', numbers: [1] },
   { type: CardType.ShanDian, suit: '♠', numbers: [1] },
   { type: CardType.BaGuaZhen, suit: '♠', numbers: [2] },
+  { type: CardType.CiXiongShuangGuJian, suit: '♠', numbers: [2] },
   { type: CardType.JueYing, suit: '♠', numbers: [5] },
   { type: CardType.QiLinGong, suit: '♠', numbers: [5] },
   { type: CardType.NanMan, suit: '♠', numbers: [7, 13] },
