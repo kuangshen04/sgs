@@ -3,6 +3,7 @@
 // ============================================================
 
 import { CardType } from './types.js';
+import type { Player } from './types.js';
 import { EventType, GameEvent } from './events/index.js';
 import type {
   DamageEventData, RecoverEventData, DyingEventData, DieEventData,
@@ -43,6 +44,18 @@ export async function recover(
         event.data.target.maxHp,
       );
     });
+}
+
+/**
+ * 失去体力：直接减少体力（无来源、无伤害事件——不触发 damage 相关技能）。
+ * 体力 ≤ 0 时进入濒死。
+ */
+export async function loseHp(game: Game, player: Player, amount: number): Promise<void> {
+  player.hp -= amount;
+  console.log(`  ${player.name} 失去 ${amount} 点体力，体力: ${player.hp}/${player.maxHp}`);
+  if (player.hp <= 0) {
+    await dying(game, { player });
+  }
 }
 
 // ============================================================

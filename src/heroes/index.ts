@@ -5,6 +5,7 @@
 import './caocao.js';
 import './diaochan.js';
 import './guojia.js';
+import './huanggai.js';
 import './huangyueying.js';
 import './huatuo.js';
 import './liubei.js';

@@ -8,7 +8,7 @@ import { describe, it, expect } from 'vitest';
 
 import { freshGame, giveHand, makeUniqueCard } from './test-utils.js';
 
-import { damage } from './life.js';
+import { damage, loseHp } from './life.js';
 import { playPhase } from './gameFlow.js';
 
 import { activeSkillRegistry, pickActiveSkill, registerSkills, skillRegistry } from './skills.js';
@@ -20,6 +20,19 @@ import { CardType } from './types.js';
 // ============================================================
 
 describe('技能分发 — 死亡规则', () => {
+  it('失去体力不触发伤害事件（遗计不响应）', async () => {
+    const g = freshGame({}, ['刘备', '郭嘉', '孙权']);
+    registerSkills(g);
+    const guojia = g.state.players[1];
+    guojia.hp = 2;
+    const before = guojia.hand.length;
+
+    await loseHp(g, guojia, 1);
+
+    expect(guojia.hp).toBe(1);
+    expect(guojia.hand.length).toBe(before); // 遗计（damage.after）未触发
+  });
+
   it('死亡后不再发动技能（遗计）', async () => {
     const g = freshGame({}, ['刘备', '郭嘉', '孙权']);
     registerSkills(g);

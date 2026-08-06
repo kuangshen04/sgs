@@ -10,7 +10,7 @@ import { STANDARD_DECK } from './cards.js';
 
 import { displayNumber, cardRegistry, createDeck, shuffle } from './cardRegistry.js';
 import { playFromHand, giveCards, discardCards, drawCards, moveCards } from './cardActions.js';
-import { damage, recover, dying } from './life.js';
+import { damage, recover, dying, loseHp } from './life.js';
 import { createGame, lastManStanding } from './game.js';
 
 import { freshGame, giveHand, makeCard, makeUniqueCard, DEFAULT_HEROES } from './test-utils.js';
@@ -459,6 +459,33 @@ describe('drawCards', () => {
     expect(target.hand.length).toBe(1);
     // 弃牌堆被洗回牌堆，牌堆数 = 原弃牌堆 - 1
     expect(g.state.deck.length).toBeGreaterThan(0);
+  });
+});
+
+// ============================================================
+// loseHp — 失去体力原语
+// ============================================================
+
+describe('loseHp', () => {
+  it('直接失去体力（无来源、无伤害事件）', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    const before = player.hp;
+
+    await loseHp(g, player, 2);
+
+    expect(player.hp).toBe(before - 2);
+  });
+
+  it('失去体力到 0 以下 → 进入濒死（无桃则死亡）', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    player.hp = 1;
+
+    await loseHp(g, player, 2);
+
+    expect(player.hp).toBe(-1);
+    expect(player.alive).toBe(false);
   });
 });
 
