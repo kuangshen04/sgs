@@ -283,10 +283,12 @@ cardRegistry.register({
     // 规则：每回合限一次（咆哮/诸葛连弩可无视），且存在攻击范围内目标
     (!shaUsed || effectRegistry.has(player, 'unlimitedSha')) &&
     _allPlayers.some((p) => p !== player && p.alive
-      && distanceTo(_allPlayers, player, p) <= attackRange(player)),
+      && distanceTo(_allPlayers, player, p) <= attackRange(player)
+      && !effectRegistry.has(p, 'immuneSha')), // 空城等：不能成为杀的目标
   targetFilter: (user, allPlayers) =>
     allPlayers.filter((p) => p !== user && p.alive
-      && distanceTo(allPlayers, user, p) <= attackRange(user)),
+      && distanceTo(allPlayers, user, p) <= attackRange(user)
+      && !effectRegistry.has(p, 'immuneSha')),
   targetCount: 1,
   ai: {
     shouldUse: () => true,
@@ -349,8 +351,10 @@ cardRegistry.register({
   emoji: '⚔️',
   content: juedouContent,
   tags: [CardTag.Trick],
-  canUse: () => true,
-  targetFilter: otherAlive,
+  canUse: (player, allPlayers) =>
+    allPlayers.some((p) => p !== player && p.alive && !effectRegistry.has(p, 'immuneJueDou')),
+  targetFilter: (user, allPlayers) =>
+    allPlayers.filter((p) => p !== user && p.alive && !effectRegistry.has(p, 'immuneJueDou')),
   targetCount: 1,
   ai: {
     shouldUse: (player) => player.hand.some((c) => c.type === CardType.Sha), // AI：有杀垫底才决斗
@@ -438,8 +442,10 @@ cardRegistry.register({
     }
   },
   tags: [CardTag.Trick, CardTag.Delay],
-  canUse: () => true,
-  targetFilter: otherAlive,
+  canUse: (player, allPlayers) =>
+    allPlayers.some((p) => p !== player && p.alive && !effectRegistry.has(p, 'immuneLeBu')),
+  targetFilter: (user, allPlayers) =>
+    allPlayers.filter((p) => p !== user && p.alive && !effectRegistry.has(p, 'immuneLeBu')),
   targetCount: 1,
   ai: {
     shouldUse: () => true,
@@ -512,10 +518,12 @@ cardRegistry.register({
   canUse: (player, allPlayers) =>
     // 规则：存在距离为 1 且区域内有牌的目标
     allPlayers.some((p) => p !== player && p.alive && hasCardsInAreas(p)
-      && distanceTo(allPlayers, player, p) <= 1),
+      && distanceTo(allPlayers, player, p) <= 1
+      && !effectRegistry.has(p, 'immuneShunShou')),
   targetFilter: (user, allPlayers) =>
     allPlayers.filter((p) => p !== user && p.alive && hasCardsInAreas(p)
-      && distanceTo(allPlayers, user, p) <= 1),
+      && distanceTo(allPlayers, user, p) <= 1
+      && !effectRegistry.has(p, 'immuneShunShou')),
   targetCount: 1,
   ai: {
     shouldUse: () => true,
@@ -709,6 +717,39 @@ cardRegistry.register({
   },
 });
 
+cardRegistry.register({
+  type: CardType.RenWangDun,
+  name: '仁王盾',
+  emoji: '🔰',
+  content: async () => {}, // 无使用效果（触发效果在 equipTrigger）
+  equipTrigger: {
+    trigger: 'targeting.before',
+    canTrigger: (game, event, owner) => {
+      const { card, target } = event.data as TargetingEventData;
+      if (target !== owner) return false; // 只保护装备者自己
+      if (card.type !== CardType.Sha) return false;
+      // 黑色杀（♠/♣）对装备者无效
+      return card.suit === '♠' || card.suit === '♣';
+    },
+    content: async (game, event, owner) => {
+      const { card, target } = event.data as TargetingEventData;
+      console.log(
+        `  🔰${owner.name} 的仁王盾发动！黑色 ${cardEmoji(card.type)} 对其无效`,
+      );
+      event.prevent(); // targeting 时取消目标
+    },
+  },
+  tags: [CardTag.Equip, CardTag.Armor],
+  canUse: () => true,
+  targetFilter: (user) => [user],
+  targetCount: 1,
+  ai: {
+    shouldUse: () => true,
+    usePriority: 45,
+    discardPriority: 100,
+  },
+});
+
 // ============================================================
 // 标准牌堆配置
 // ============================================================
@@ -739,6 +780,7 @@ export const STANDARD_DECK: DeckEntry[] = [
   { type: CardType.JueDou, suit: '♣', numbers: [1] },
   { type: CardType.ZhugeLianNu, suit: '♣', numbers: [1] },
   { type: CardType.HanBingJian, suit: '♣', numbers: [2] },
+  { type: CardType.RenWangDun, suit: '♣', numbers: [2] },
   { type: CardType.NanMan, suit: '♣', numbers: [7] },
   { type: CardType.GuoHe,   suit: '♣', numbers: [3, 4, 12] },
   { type: CardType.WuXie,  suit: '♣', numbers: [12] },

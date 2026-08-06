@@ -98,3 +98,34 @@ describe('寒冰剑（装备触发）', () => {
     expect(attacker.hp).toBe(hpBefore - 1);
   });
 });
+
+describe('仁王盾（装备触发）', () => {
+  it('黑色杀对装备者无效（targeting 时取消目标）', async () => {
+    const g = freshGame();
+    registerSkills(g);
+    const attacker = g.state.players[0];
+    const defender = g.state.players[1];
+    defender.equipment.armor = makeUniqueCard(CardType.RenWangDun);
+    const sha = makeUniqueCard(CardType.Sha, '♠', 3); // 黑色杀
+    attacker.hand = [sha];
+    const hpBefore = defender.hp;
+
+    await useCard(g, { player: attacker, card: sha, targets: [defender] });
+
+    expect(defender.hp).toBe(hpBefore); // 目标被取消，未受伤
+  });
+
+  it('红色杀正常生效', async () => {
+    const g = freshGame();
+    registerSkills(g);
+    const attacker = g.state.players[0];
+    const defender = g.state.players[1];
+    defender.equipment.armor = makeUniqueCard(CardType.RenWangDun);
+    const sha = makeUniqueCard(CardType.Sha, '♥', 3); // 红色杀
+    const hpBefore = defender.hp;
+
+    await useCard(g, { player: attacker, card: sha, targets: [defender] });
+
+    expect(defender.hp).toBe(hpBefore - 1);
+  });
+});
