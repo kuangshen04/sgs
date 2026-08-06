@@ -33,7 +33,7 @@
 ### 4. 常驻效果
 
 - [x] 距离修正（坐骑、马术、绝影）
-- [ ] 无距离限制（奇才）
+- [x] 无距离限制（奇才，effectRegistry kind: noTrickDistance）
 - [x] 杀使用次数限制修改（咆哮、诸葛连弩，effectRegistry kind: unlimitedSha）
 - [x] 目标合法性限制（空城/谦逊：targetFilter 排除，effectRegistry kind: immuneSha/immuneJueDou/immuneShunShou/immuneLeBu）
 - [ ] 响应要求修改（无双：需两张闪/杀，依赖杀响应流程）
@@ -134,7 +134,7 @@
 - 陆逊：谦逊（已实现）、连营（触发：失去最后手牌）
 - 吕蒙：克己（跳过弃牌阶段/杀使用记录）
 - 黄盖：苦肉（失去体力原语）
-- 黄月英：奇才（常驻：无距离限制）
+- 黄月英：奇才（已实现）
 - 孙尚香：枭姬（触发：失去装备）、结姻（主动技能 + 性别）
 - 主公技：曹操（护驾）、刘备（激将）、孙权（救援）
 

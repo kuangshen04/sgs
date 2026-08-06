@@ -516,13 +516,13 @@ cardRegistry.register({
   content: shunshouContent,
   tags: [CardTag.Trick],
   canUse: (player, allPlayers) =>
-    // 规则：存在距离为 1 且区域内有牌的目标
+    // 规则：存在距离为 1（或奇才无视距离）且区域内有牌的目标
     allPlayers.some((p) => p !== player && p.alive && hasCardsInAreas(p)
-      && distanceTo(allPlayers, player, p) <= 1
+      && (effectRegistry.has(player, 'noTrickDistance') || distanceTo(allPlayers, player, p) <= 1)
       && !effectRegistry.has(p, 'immuneShunShou')),
   targetFilter: (user, allPlayers) =>
     allPlayers.filter((p) => p !== user && p.alive && hasCardsInAreas(p)
-      && distanceTo(allPlayers, user, p) <= 1
+      && (effectRegistry.has(user, 'noTrickDistance') || distanceTo(allPlayers, user, p) <= 1)
       && !effectRegistry.has(p, 'immuneShunShou')),
   targetCount: 1,
   ai: {
