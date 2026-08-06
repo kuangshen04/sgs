@@ -28,4 +28,4 @@ activeSkillRegistry.register({
   },
 });
 
-heroRegistry.register({ name: '黄盖', maxHp: 4, skills: ['苦肉'] });
+heroRegistry.register({ name: '黄盖', maxHp: 4, sex: 'male', group: '吴', skills: ['苦肉'] });

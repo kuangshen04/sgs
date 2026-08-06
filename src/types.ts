@@ -53,9 +53,17 @@ export interface Card {
 export interface HeroDef {
   name: string;
   maxHp: number;
+  sex: HeroSex;
+  group: HeroGroup;
   /** 拥有的技能名列表（引用 skillRegistry 中的 SkillDef.name） */
   skills?: string[];
 }
+
+/** 性别（对应标包数据中的 sex 字段） */
+export type HeroSex = 'male' | 'female';
+
+/** 势力（标包四势力） */
+export type HeroGroup = '魏' | '蜀' | '吴' | '群';
 
 /** 玩家状态 */
 export interface Player {

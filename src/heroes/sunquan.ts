@@ -32,4 +32,4 @@ activeSkillRegistry.register({
   },
 });
 
-heroRegistry.register({ name: '孙权', maxHp: 4, skills: ['制衡'] });
+heroRegistry.register({ name: '孙权', maxHp: 4, sex: 'male', group: '吴', skills: ['制衡'] });

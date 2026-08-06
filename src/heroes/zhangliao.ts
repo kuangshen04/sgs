@@ -36,4 +36,4 @@ skillRegistry.register({
   content: tuxiContent,
 });
 
-heroRegistry.register({ name: '张辽', maxHp: 4, skills: ['突袭'] });
+heroRegistry.register({ name: '张辽', maxHp: 4, sex: 'male', group: '魏', skills: ['突袭'] });

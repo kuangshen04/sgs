@@ -52,4 +52,4 @@ activeSkillRegistry.register({
   },
 });
 
-heroRegistry.register({ name: '周瑜', maxHp: 3, skills: ['英姿', '反间'] });
+heroRegistry.register({ name: '周瑜', maxHp: 3, sex: 'male', group: '吴', skills: ['英姿', '反间'] });

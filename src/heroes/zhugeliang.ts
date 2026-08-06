@@ -18,4 +18,4 @@ effectRegistry.register({
     (player.hero.skills?.includes('空城') && player.hand.length === 0 ? 1 : 0),
 });
 
-heroRegistry.register({ name: '诸葛亮', maxHp: 3, skills: ['空城'] });
+heroRegistry.register({ name: '诸葛亮', maxHp: 3, sex: 'male', group: '蜀', skills: ['空城'] });

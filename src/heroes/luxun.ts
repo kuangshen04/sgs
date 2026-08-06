@@ -16,4 +16,4 @@ effectRegistry.register({
   value: (player: Player) => (player.hero.skills?.includes('谦逊') ? 1 : 0),
 });
 
-heroRegistry.register({ name: '陆逊', maxHp: 3, skills: ['谦逊'] });
+heroRegistry.register({ name: '陆逊', maxHp: 3, sex: 'male', group: '吴', skills: ['谦逊'] });

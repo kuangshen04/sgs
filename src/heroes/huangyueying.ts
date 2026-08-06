@@ -35,4 +35,4 @@ effectRegistry.register({
   value: (player: Player) => (player.hero.skills?.includes('奇才') ? 1 : 0),
 });
 
-heroRegistry.register({ name: '黄月英', maxHp: 3, skills: ['集智', '奇才'] });
+heroRegistry.register({ name: '黄月英', maxHp: 3, sex: 'female', group: '蜀', skills: ['集智', '奇才'] });

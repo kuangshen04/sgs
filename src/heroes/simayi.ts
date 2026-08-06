@@ -51,4 +51,4 @@ skillRegistry.register({
   content: guicaiContent,
 });
 
-heroRegistry.register({ name: '司马懿', maxHp: 3, skills: ['反馈', '鬼才'] });
+heroRegistry.register({ name: '司马懿', maxHp: 3, sex: 'male', group: '魏', skills: ['反馈', '鬼才'] });

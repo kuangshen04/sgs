@@ -51,4 +51,4 @@ skillRegistry.register({
   content: luoyiContent,
 });
 
-heroRegistry.register({ name: '许褚', maxHp: 4, skills: ['裸衣'] });
+heroRegistry.register({ name: '许褚', maxHp: 4, sex: 'male', group: '魏', skills: ['裸衣'] });

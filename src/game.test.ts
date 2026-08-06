@@ -254,6 +254,10 @@ describe('createGame', () => {
   it('heroRegistry 可查询已注册武将', () => {
     expect(heroRegistry.get('刘备')?.skills).toContain('仁德');
     expect(heroRegistry.get('郭嘉')?.maxHp).toBe(3);
+    expect(heroRegistry.get('刘备')?.sex).toBe('male');
+    expect(heroRegistry.get('刘备')?.group).toBe('蜀');
+    expect(heroRegistry.get('甄宓')?.sex).toBe('female');
+    expect(heroRegistry.get('貂蝉')?.group).toBe('群');
     expect(heroRegistry.get('不存在')).toBeUndefined();
   });
 
@@ -294,6 +298,7 @@ describe('createGame', () => {
     expect(g.state.players.length).toBe(3);
     expect(g.state.players.every((p) => p.hero.name === '郭嘉')).toBe(true);
     expect(g.state.players.every((p) => p.hero.skills?.includes('遗计'))).toBe(true);
+    expect(g.state.players.every((p) => p.hero.sex === 'male' && p.hero.group === '魏')).toBe(true);
     // 同名英雄持有独立的 hero 副本
     expect(g.state.players[0].hero).not.toBe(g.state.players[1].hero);
   });

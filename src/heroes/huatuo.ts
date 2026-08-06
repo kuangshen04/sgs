@@ -31,4 +31,4 @@ activeSkillRegistry.register({
   },
 });
 
-heroRegistry.register({ name: '华佗', maxHp: 3, skills: ['青囊'] });
+heroRegistry.register({ name: '华佗', maxHp: 3, sex: 'male', group: '群', skills: ['青囊'] });

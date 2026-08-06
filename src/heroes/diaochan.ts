@@ -26,4 +26,4 @@ skillRegistry.register({
   content: biyueContent,
 });
 
-heroRegistry.register({ name: '貂蝉', maxHp: 3, skills: ['闭月'] });
+heroRegistry.register({ name: '貂蝉', maxHp: 3, sex: 'female', group: '群', skills: ['闭月'] });

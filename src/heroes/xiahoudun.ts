@@ -34,4 +34,4 @@ skillRegistry.register({
   content: ganglieContent,
 });
 
-heroRegistry.register({ name: '夏侯惇', maxHp: 4, skills: ['刚烈'] });
+heroRegistry.register({ name: '夏侯惇', maxHp: 4, sex: 'male', group: '魏', skills: ['刚烈'] });

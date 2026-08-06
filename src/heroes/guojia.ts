@@ -51,4 +51,4 @@ skillRegistry.register({
   content: tianduContent,
 });
 
-heroRegistry.register({ name: '郭嘉', maxHp: 3, skills: ['遗计', '天妒'] });
+heroRegistry.register({ name: '郭嘉', maxHp: 3, sex: 'male', group: '魏', skills: ['遗计', '天妒'] });
