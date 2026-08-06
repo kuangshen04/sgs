@@ -637,38 +637,6 @@ cardRegistry.register({
   },
 });
 
-cardRegistry.register({
-  type: CardType.JueYing,
-  name: '绝影',
-  emoji: '🐎',
-  content: async () => {}, // 白板：防御马（其他角色与你距离+1）
-  tags: [CardTag.Equip, CardTag.DefensiveHorse],
-  canUse: () => true,
-  targetFilter: (user) => [user],
-  targetCount: 1,
-  ai: {
-    shouldUse: () => true,
-    usePriority: 45,
-    discardPriority: 100,
-  },
-});
-
-cardRegistry.register({
-  type: CardType.ChiTu,
-  name: '赤兔',
-  emoji: '🐴',
-  content: async () => {}, // 无使用效果（持续效果在 effectRegistry 注册）
-  tags: [CardTag.Equip, CardTag.OffensiveHorse],
-  canUse: () => true,
-  targetFilter: (user) => [user],
-  targetCount: 1,
-  ai: {
-    shouldUse: () => true,
-    usePriority: 45,
-    discardPriority: 100,
-  },
-});
-
 // 马匹槽位距离修正（按槽位注册，将来大宛/紫骍/的卢等自动覆盖）
 effectRegistry.register({
   kind: 'defensiveDistance',
@@ -900,6 +868,8 @@ registerBlankHorse(CardType.DiLu, '的卢', CardTag.DefensiveHorse);
 registerBlankHorse(CardType.ZhuaHuangFeiDian, '爪黄飞电', CardTag.DefensiveHorse);
 registerBlankHorse(CardType.DaYuan, '大宛', CardTag.OffensiveHorse);
 registerBlankHorse(CardType.ZiXin, '紫骍', CardTag.OffensiveHorse);
+registerBlankHorse(CardType.JueYing, '绝影', CardTag.DefensiveHorse);
+registerBlankHorse(CardType.ChiTu, '赤兔', CardTag.OffensiveHorse);
 
 // ============================================================
 // 标准版牌堆（数据驱动：src/standardDeck.json，一副 108 张）
