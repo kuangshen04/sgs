@@ -21,6 +21,7 @@ const yingziContent = async (game: Game, event: GameEvent<any>, owner: Player): 
 /** 反间：出牌阶段限一次，交给其他角色一张牌，然后对其造成 1 点伤害 */
 const fanjianContent = async (game: Game, player: Player): Promise<void> => {
   if (player.hand.length === 0) return;
+  // TODO(玩家选择): 反间指定谁——目前写死为"第一个其他存活角色"
   const target = game.state.players.find((p) => p !== player && p.alive);
   if (!target) return;
   giveCards(player, target, [player.hand[0]]);

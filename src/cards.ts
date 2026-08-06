@@ -32,6 +32,7 @@ const shaContent: CardContentFn = async (game, data, _event) => {
     `  ${attacker.name} 对 ${defender.name} 使用了 🗡️杀 (${data.card.suit}${displayNumber(data.card.number)})`,
   );
 
+  // TODO(玩家选择): 是否出闪/出哪张闪——目前写死为"有就出第一张"
   const shan = findResponse(defender, CardType.Shan);
   if (shan) {
     playFromHand(game, defender, shan);
@@ -74,6 +75,7 @@ const juedouContent: CardContentFn = async (game, data, _event) => {
   let opponent = initiator;
 
   while (true) {
+    // TODO(玩家选择): 决斗中是否出杀/出哪张——目前写死为"有就出第一张"
     const sha = findResponse(current, CardType.Sha);
     if (!sha) {
       console.log(`  ${current.name} 无法打出杀！`);
@@ -96,6 +98,7 @@ const nanmanContent: CardContentFn = async (game, data, _event) => {
   );
 
   for (const target of data.targets) {
+    // TODO(玩家选择): 南蛮中是否出杀/出哪张——目前写死为"有就出第一张"
     const sha = findResponse(target, CardType.Sha);
     if (sha) {
       playFromHand(game, target, sha);
@@ -116,6 +119,7 @@ const wanjianContent: CardContentFn = async (game, data, _event) => {
   );
 
   for (const target of data.targets) {
+    // TODO(玩家选择): 万箭中是否出闪/出哪张——目前写死为"有就出第一张"
     const shan = findResponse(target, CardType.Shan);
     if (shan) {
       playFromHand(game, target, shan);
@@ -159,6 +163,7 @@ const guoheContent: CardContentFn = async (game, data, _event) => {
     `  ${user.name} 对 ${target.name} 使用了 🌉过河拆桥，弃置其区域内的一张牌`,
   );
 
+  // TODO(玩家选择): 弃置目标区域内哪张牌——目前写死为随机
   const card = selectCardFromAreas(target);
   if (!card) return;
   takeCardFromAreas(target, card);
@@ -175,6 +180,7 @@ const shunshouContent: CardContentFn = async (game, data, _event) => {
     `  ${user.name} 对 ${target.name} 使用了 🐑顺手牵羊，获得其区域内的一张牌`,
   );
 
+  // TODO(玩家选择): 获得目标区域内哪张牌——目前写死为随机
   const card = selectCardFromAreas(target);
   if (!card) return;
   takeCardFromAreas(target, card);
@@ -248,6 +254,7 @@ export function installWuxieTrigger(game: Game): void {
       if (target !== player) continue;
       if (!judging && user === player) continue;
 
+      // TODO(玩家选择): 是否出无懈/出哪张——目前写死为 AI 策略"只保护自己"
       const wxCard = findResponse(player, CardType.WuXie);
       if (!wxCard) continue;
       console.log(
@@ -632,6 +639,7 @@ cardRegistry.register({
       if (!target) return;
       // 弃置目标一张坐骑（简化：优先防御马）
       const eq = target.equipment;
+      // TODO(玩家选择): 弃置目标的哪张坐骑——目前写死为"优先防御马"
       const mount = eq.defensiveHorse ?? eq.offensiveHorse;
       if (!mount) return;
       if (eq.defensiveHorse === mount) eq.defensiveHorse = undefined;
@@ -676,6 +684,7 @@ cardRegistry.register({
       // prevent() 抛异常，之后的代码不会执行，所以必须先弃牌再 prevent。
       const discarded: Card[] = [];
       for (let i = 0; i < 2; i++) {
+        // TODO(玩家选择): 依次弃置哪两张区域牌——目前写死为随机
         const card = selectCardFromAreas(target);
         if (!card) break;
         takeCardFromAreas(target, card);

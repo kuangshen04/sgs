@@ -111,6 +111,8 @@ function hasEquipped(player: Player, cardType: CardType): boolean {
  */
 export function registerSkills(game: Game): void {
   // 技能触发器
+  // TODO(玩家选择): 触发技能"你可以"的发动与否目前全部写死为自动发动
+  // （遗计/天妒/奸雄/刚烈/反馈/集智/闭月/英姿/裸衣/洛神等），未建模"是否发动"决策
   for (const skill of skillRegistry.all()) {
     game.triggerSystem.on(skill.trigger, async (event) => {
       const game = event.game;

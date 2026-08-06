@@ -15,6 +15,7 @@ import type { Player } from '../types.js';
 const yijiContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
   const { amount } = event.data as DamageEventData;
   const before = owner.hand.length;
+  // TODO(玩家选择): 遗计两张牌分配给谁——目前写死为"全给自己"（简化）
   await drawCards(game, { target: owner, count: amount * 2 });
   console.log(
     `  ✨${owner.name} 发动【遗计】！受到 ${amount} 点伤害，摸了 ${amount * 2} 张牌` +

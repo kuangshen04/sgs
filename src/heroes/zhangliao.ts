@@ -18,6 +18,7 @@ const tuxiContent = async (game: Game, event: GameEvent<any>, owner: Player): Pr
   const candidates = game.state.players.filter(
     (p) => p !== owner && p.alive && p.hand.length > 0,
   );
+  // TODO(玩家选择): 突袭抢哪两名角色——目前写死为随机
   const picks = shuffle(candidates).slice(0, Math.min(2, candidates.length));
   for (const target of picks) {
     const card = target.hand[Math.floor(Math.random() * target.hand.length)];

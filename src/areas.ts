@@ -73,5 +73,6 @@ export function selectCardFromAreas(player: Player, opts: AreaSelectOptions = {}
   if (areas.includes('equipment')) pool.push(...equipmentCards(player));
   if (areas.includes('judgment')) pool.push(...player.judgment);
   if (pool.length === 0) return null;
+  // TODO(玩家选择): 区域内选牌策略目前写死为随机——玩家决策在此接入
   return pool[Math.floor(Math.random() * pool.length)];
 }

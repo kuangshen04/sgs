@@ -26,6 +26,7 @@ const fankuiContent = async (game: Game, event: GameEvent<any>, owner: Player): 
 /** 鬼才：一名角色的判定牌生效前，你可以打出一张手牌代替之 */
 const guicaiContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
   const judgeEvent = event as GameEvent<JudgeEventData>;
+  // TODO(玩家选择): 鬼才打出哪张手牌替换判定牌——目前写死为第一张
   const card = owner.hand[0];
   discardCards(game, owner, [card]);
   judgeEvent.data.card = card;

@@ -12,6 +12,7 @@ import type { Player } from '../types.js';
 /** 仁德：出牌阶段限一次，交给其他角色两张牌，然后回复 1 点体力 */
 const rendeContent = async (game: Game, player: Player): Promise<void> => {
   if (player.hand.length < 2) return;
+  // TODO(玩家选择): 仁德交给谁——目前写死为"第一个其他存活角色"
   const target = game.state.players.find((p) => p !== player && p.alive);
   if (!target) return;
   const given = giveCards(player, target, player.hand.slice(0, 2));
