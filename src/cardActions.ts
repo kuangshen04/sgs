@@ -11,30 +11,26 @@ import { cardRegistry, cardEmoji, displayNumber, shuffle } from './cardRegistry.
 import type { Game } from './game.js';
 
 // ============================================================
-// 摸牌
+// 牌堆操作（查询层 + 洗牌；摸牌/判定走统一 moveCards）
 // ============================================================
 
-/** 牌堆为空时把弃牌堆洗回牌堆；返回牌堆是否仍有牌 */
-function refillDeck(deck: Card[], discardPile: Card[]): boolean {
-  if (deck.length > 0) return true;
-  if (discardPile.length === 0) return false;
-  deck.push(...shuffle(discardPile));
-  discardPile.length = 0;
-  console.log('  🔄 弃牌堆重新洗入牌堆');
-  return true;
+/** 查看牌堆顶 n 张（不移动）；不足 n 张返回全部 */
+export function peekTop(game: Game, n: number): Card[] {
+  const deck = game.state.deck;
+  return deck.slice(Math.max(0, deck.length - n));
 }
 
-/** 从牌堆摸牌（牌堆空时自动洗入弃牌堆） */
-export function drawCardsFromDeck(
-  player: Player, deck: Card[], discardPile: Card[], count: number,
-): void {
-  for (let i = 0; i < count; i++) {
-    if (!refillDeck(deck, discardPile)) {
-      console.log('  ⚠️ 牌堆和弃牌堆都已空，无法摸牌');
-      return;
-    }
-    player.hand.push(deck.pop()!);
-  }
+/**
+ * 洗牌：把弃牌堆全部洗乱并移入牌堆（一次 reshuffle 移动事件）。
+ * 牌堆为空时由摸牌/判定自动调用，也可主动触发。
+ */
+export async function reshuffle(game: Game): Promise<void> {
+  const cards = shuffle([...game.state.discardPile]);
+  if (cards.length === 0) return;
+  await moveCards(game, {
+    to: { zone: 'deck' }, cards, reason: 'reshuffle',
+  });
+  console.log(`  🔄 弃牌堆 ${cards.length} 张重新洗入牌堆`);
 }
 
 /**
@@ -44,12 +40,20 @@ export function drawCardsFromDeck(
 export async function judge(game: Game, player: Player): Promise<Card> {
   const event = await new GameEvent<JudgeEventData>(EventType.Judge, { player }, game)
     .execute(async (event) => {
-      if (!refillDeck(game.state.deck, game.state.discardPile)) {
+      if (game.state.deck.length === 0) {
+        if (game.state.discardPile.length === 0) {
+          throw new Error('判定失败：牌堆和弃牌堆都为空');
+        }
+        await reshuffle(game);
+      }
+      const card = peekTop(game, 1)[0];
+      if (!card) {
         throw new Error('判定失败：牌堆和弃牌堆都为空');
       }
-      const card = game.state.deck.pop()!;
+      await moveCards(game, {
+        to: { zone: 'discardPile' }, cards: [card], reason: 'judge',
+      });
       event.data.card = card;
-      game.state.discardPile.push(card);
       console.log(
         `  ⚡${player.name} 判定：亮出 ${cardEmoji(card.type)} (${card.suit}${displayNumber(card.number)})`,
       );
@@ -65,9 +69,23 @@ export async function drawCards(
 ): Promise<GameEvent<DrawEventData>> {
   return new GameEvent<DrawEventData>(EventType.Draw, data, game)
     .execute(async (event) => {
-      drawCardsFromDeck(
-        event.data.target, game.state.deck, game.state.discardPile, event.data.count,
-      );
+      const player = event.data.target;
+      let remaining = event.data.count;
+      while (remaining > 0) {
+        if (game.state.deck.length === 0) {
+          if (game.state.discardPile.length === 0) break; // 两堆都空
+          await reshuffle(game);
+        }
+        const cards = peekTop(game, remaining);
+        if (cards.length === 0) break;
+        await moveCards(game, {
+          to: { player, zone: 'hand' },
+          cards,
+          reason: 'draw',
+          mover: player,
+        });
+        remaining -= cards.length;
+      }
     });
 }
 

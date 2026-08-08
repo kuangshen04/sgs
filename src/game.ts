@@ -7,7 +7,6 @@ import { TriggerSystem, createEventStack } from './events/index.js';
 import type { EventStack } from './events/index.js';
 import type { Deciders } from './choose.js';
 import { shuffle } from './cardRegistry.js';
-import { drawCardsFromDeck } from './cardActions.js';
 import { heroRegistry } from './heroRegistry.js';
 import './heroes/index.js'; // 副作用：触发全部武将注册
 
@@ -64,9 +63,10 @@ export function createGame(
   const shuffledDeck = shuffle(deck); // 副本：不污染调用方传入的牌堆数组
   const discardPile: Card[] = [];
 
-  // 起始手牌（不走事件）
+  // 起始手牌：建局初始化，不走事件系统（游戏容器尚未构造，无法发 CardMove）
   for (const p of players) {
-    drawCardsFromDeck(p, shuffledDeck, discardPile, 4);
+    const dealt = shuffledDeck.splice(shuffledDeck.length - 4); // 牌堆顶 4 张
+    p.hand.push(...dealt);
   }
 
   return {

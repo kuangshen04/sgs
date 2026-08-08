@@ -6,7 +6,9 @@ import { describe, it, expect } from 'vitest';
 
 import { freshGame, giveHand, makeUniqueCard } from './test-utils.js';
 
-import { discardCards, drawCards, getCardArea, giveCards, moveCards, playFromHand } from './cardActions.js';
+import {
+  discardCards, drawCards, getCardArea, giveCards, moveCards, peekTop, playFromHand, reshuffle,
+} from './cardActions.js';
 
 import type { CardMoveEventData } from './events/index.js';
 import { CardType } from './types.js';
@@ -29,6 +31,56 @@ describe('drawCards', () => {
     expect(target.hand.length).toBe(1);
     // 弃牌堆被洗回牌堆，牌堆数 = 原弃牌堆 - 1
     expect(g.state.deck.length).toBeGreaterThan(0);
+  });
+
+  it('摸牌中途牌堆空 → 洗入弃牌堆继续摸', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    player.hand = [];
+    g.state.deck = [makeUniqueCard(CardType.Sha)];       // 牌堆只剩 1 张
+    g.state.discardPile = [makeUniqueCard(CardType.Tao), makeUniqueCard(CardType.Shan)];
+
+    await drawCards(g, { target: player, count: 2 });
+
+    expect(player.hand.length).toBe(2); // 第 1 张摸完，洗入弃牌堆再摸第 2 张
+  });
+});
+
+describe('peekTop / reshuffle', () => {
+  it('peekTop 查看牌堆顶且不移动', () => {
+    const g = freshGame();
+    const deck = g.state.deck;
+
+    expect(peekTop(g, 2)).toEqual(deck.slice(-2));
+    expect(g.state.deck).toEqual(deck); // 未改变
+  });
+
+  it('peekTop 不足 n 张返回全部', () => {
+    const g = freshGame();
+    g.state.deck = [makeUniqueCard(CardType.Sha)];
+
+    expect(peekTop(g, 5)).toHaveLength(1);
+  });
+
+  it('reshuffle：弃牌堆全部洗入牌堆，产生一次 reshuffle 移动事件', async () => {
+    const g = freshGame();
+    const a = makeUniqueCard(CardType.Sha);
+    const b = makeUniqueCard(CardType.Tao);
+    g.state.deck = [];
+    g.state.discardPile = [a, b];
+    const captured = { reshuffled: false };
+    g.triggerSystem.on('cardMove.after', async (event) => {
+      if ((event.data as CardMoveEventData).reason === 'reshuffle') {
+        captured.reshuffled = true;
+      }
+    });
+
+    await reshuffle(g);
+
+    expect(captured.reshuffled).toBe(true);
+    expect(g.state.discardPile).toHaveLength(0);
+    expect(g.state.deck).toHaveLength(2);
+    expect(g.state.deck).toEqual(expect.arrayContaining([a, b]));
   });
 });
 
