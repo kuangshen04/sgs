@@ -3,9 +3,10 @@
 // ============================================================
 
 import { Card, CardTag, Player } from './types.js';
+import type { CardLocation, CardMoveReason } from './types.js';
 import type { PlayerEquipment } from './types.js';
 import { EventType, GameEvent } from './events/index.js';
-import type { DrawEventData, JudgeEventData, TargetingEventData, UseCardEventData } from './events/index.js';
+import type { CardMoveEventData, DrawEventData, JudgeEventData, TargetingEventData, UseCardEventData } from './events/index.js';
 import { cardRegistry, cardEmoji, displayNumber, shuffle } from './cardRegistry.js';
 import type { Game } from './game.js';
 
@@ -71,14 +72,138 @@ export async function drawCards(
 }
 
 // ============================================================
-// 移动原语（手牌 → 弃牌堆 / 手牌区 ↔ 手牌区）
+// 统一移动模型（位置查询 + moveCards）
+// ============================================================
+
+/**
+ * 查询一张牌当前所在位置；不在任何位置返回 null。
+ * 当前实现为实时扫描（规模小、永远与状态一致）；
+ * 将来 TODO #10 位置追踪需要性能时可换成缓存索引，API 不变。
+ */
+export function getCardArea(game: Game, card: Card): CardLocation | null {
+  for (const player of game.state.players) {
+    if (player.hand.some((c) => c.id === card.id)) return { player, zone: 'hand' };
+    const eq = player.equipment;
+    for (const slot of ['weapon', 'armor', 'defensiveHorse', 'offensiveHorse'] as const) {
+      if (eq[slot]?.id === card.id) return { player, zone: 'equipment' };
+    }
+    if (player.judgment.some((c) => c.id === card.id)) return { player, zone: 'judgment' };
+  }
+  if (game.state.deck.some((c) => c.id === card.id)) return { zone: 'deck' };
+  if (game.state.discardPile.some((c) => c.id === card.id)) return { zone: 'discardPile' };
+  return null;
+}
+
+/** 从位置移除一张牌（按 id）；不在该位置返回 null */
+function takeCardFromLocation(game: Game, loc: CardLocation, cardId: number): Card | null {
+  if ('player' in loc) {
+    const p = loc.player;
+    if (loc.zone === 'hand') {
+      const i = p.hand.findIndex((c) => c.id === cardId);
+      if (i < 0) return null;
+      return p.hand.splice(i, 1)[0];
+    }
+    if (loc.zone === 'equipment') {
+      const eq = p.equipment;
+      for (const slot of ['weapon', 'armor', 'defensiveHorse', 'offensiveHorse'] as const) {
+        if (eq[slot]?.id === cardId) {
+          const card = eq[slot]!;
+          eq[slot] = undefined;
+          return card;
+        }
+      }
+      return null;
+    }
+    const i = p.judgment.findIndex((c) => c.id === cardId);
+    if (i < 0) return null;
+    return p.judgment.splice(i, 1)[0];
+  }
+  const pile = loc.zone === 'deck' ? game.state.deck : game.state.discardPile;
+  const i = pile.findIndex((c) => c.id === cardId);
+  if (i < 0) return null;
+  return pile.splice(i, 1)[0];
+}
+
+/** 把一张牌放入位置（牌堆按 toPosition 决定顶/底，默认顶） */
+function putCardToLocation(
+  game: Game, loc: CardLocation, card: Card, toPosition?: 'top' | 'bottom',
+): void {
+  if ('player' in loc) {
+    const p = loc.player;
+    if (loc.zone === 'hand') p.hand.push(card);
+    else if (loc.zone === 'equipment') p.equipment[equipSlotOf(card)] = card;
+    else p.judgment.push(card);
+    return;
+  }
+  if (loc.zone === 'deck') {
+    if (toPosition === 'bottom') game.state.deck.unshift(card);
+    else game.state.deck.push(card);
+    return;
+  }
+  game.state.discardPile.push(card);
+}
+
+/** 一次移动的规格：调用方只给终点 + 已知牌 + reason，来源由引擎派生 */
+export interface CardMoveSpec {
+  to: CardLocation;
+  cards: Card[];
+  reason: CardMoveReason;
+  mover?: Player;
+  /** 仅终点为牌堆时使用（临时，见 移动模型重构TODO） */
+  toPosition?: 'top' | 'bottom';
+}
+
+/**
+ * 统一移动原语：把一组已知牌移到终点位置，产生一次 CardMove 事件。
+ * - 来源区域由引擎对每张牌实时查询（from 派生）
+ * - 不在任何位置的牌自动跳过（部分成功语义）
+ * - 空移动不发事件
+ * - before 可 prevent（移动取消）；物理移动在事件 content 中完成
+ * - 返回实际移动的牌
+ */
+export async function moveCards(game: Game, spec: CardMoveSpec): Promise<Card[]> {
+  if (spec.cards.length === 0) return [];
+
+  // from 派生：实时查询每张牌的位置
+  const entries: { card: Card; from: CardLocation }[] = [];
+  for (const card of spec.cards) {
+    const from = getCardArea(game, card);
+    if (from) entries.push({ card, from });
+  }
+  if (entries.length === 0) return [];
+
+  const data: CardMoveEventData = {
+    cards: entries.map((e) => e.card),
+    fromAreas: entries.map((e) => e.from),
+    to: spec.to,
+    reason: spec.reason,
+    mover: spec.mover,
+    toPosition: spec.toPosition,
+  };
+
+  let moved: Card[] = [];
+  await new GameEvent<CardMoveEventData>(EventType.CardMove, data, game)
+    .execute(async (event) => {
+      moved = [];
+      for (let i = 0; i < event.data.cards.length; i++) {
+        const card = event.data.cards[i];
+        takeCardFromLocation(game, event.data.fromAreas[i], card.id);
+        putCardToLocation(game, event.data.to, card, event.data.toPosition);
+        moved.push(card);
+      }
+    });
+  return moved;
+}
+
+// ============================================================
+// 旧移动原语（逐步迁移到统一 moveCards；内部仍用数组级 moveCardsRaw）
 // ============================================================
 
 /**
  * 纯数组级移动：把 cards 中实际位于 from 的牌移入 to，返回实际移走的牌。
- * 底层移动原语；discardCards / giveCards 等区域语义在其上构建。
+ * 内部原语：仅旧封装（discardCards / giveCards 等）使用，逐步迁移到统一 moveCards。
  */
-export function moveCards(from: Card[], to: Card[], cards: Card[]): Card[] {
+function moveCardsRaw(from: Card[], to: Card[], cards: Card[]): Card[] {
   const ids = new Set(cards.map((c) => c.id));
   const removed: Card[] = [];
   for (let i = from.length - 1; i >= 0; i--) {
@@ -98,7 +223,7 @@ export function moveCards(from: Card[], to: Card[], cards: Card[]): Card[] {
  * 共用这一个移动原语；不在手牌的牌自动跳过。
  */
 export function discardCards(game: Game, player: Player, cards: Card[]): Card[] {
-  return moveCards(player.hand, game.state.discardPile, cards);
+  return moveCardsRaw(player.hand, game.state.discardPile, cards);
 }
 
 /** 打出：把一张牌从手牌移入弃牌堆（不产生使用事件） */
@@ -111,7 +236,7 @@ export function playFromHand(game: Game, player: Player, card: Card): void {
  * 用于仁德/反间/顺手牵羊这类"获得/交给"移动（手牌区 ↔ 手牌区）。
  */
 export function giveCards(from: Player, to: Player, cards: Card[]): Card[] {
-  return moveCards(from.hand, to.hand, cards);
+  return moveCardsRaw(from.hand, to.hand, cards);
 }
 
 /** 从弃牌堆按 id 取回一张牌到手牌；不在弃牌堆返回 null */
@@ -162,7 +287,11 @@ export async function useCard(
         // 延时锦囊：使用时直接置入目标判定区（无无懈窗口）
         const target = event.data.targets[0];
         if (target) {
-          moveCards(event.data.player.hand, target.judgment, [event.data.card]);
+          await moveCards(game, {
+            to: { player: target, zone: 'judgment' },
+            cards: [event.data.card],
+            reason: 'use',
+          });
           console.log(
             `  ${event.data.player.name} 使用了 ${cardEmoji(event.data.card.type)}` +
             `(${event.data.card.suit}${displayNumber(event.data.card.number)})，` +

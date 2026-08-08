@@ -48,6 +48,13 @@ interface CardMoveSpec {
   颗粒度由调用方控制——装备顶掉是两次 moveCards（replace + equip 两个事件，顺序先 replace 后 equip）
 
 - [ ] **TODO：toPosition 是区域容器的特性，不应长期留在 moveCards 签名里**——之后应剥离为牌堆容器的置入原语/查询层对偶操作
+- **moveCards 不带 from 约束**：位置确认由调用方负责（`getCardArea` 检查后再移动）。
+  最初为"闪电被转移后判定结算不应再拖走"加了可选 from，但多张牌分别确认位置表达不了、
+  语义模糊；改为判定流程重构解决（见下）
+- **判定流程**：判定前先把延时牌从判定区移入弃牌堆（简化"判定区 → 处理区 → 结算 → 清理进弃牌堆"；
+  判定后 delayContent 若转移则从弃牌堆取走）。TODO #10 处理区就绪后改为先入 processing
+- **getCardArea 当前为实时扫描**（非缓存索引）：规模小且永远与状态一致，测试辅助直接改数组也不受影响；
+  将来 TODO #10 需要性能时再换缓存，API 不变
 
 ### CardMoveReason
 
@@ -55,7 +62,7 @@ interface CardMoveSpec {
 
 ## 实施步骤
 
-- [ ] 1. 骨架：`CardLocation` / `CardMoveReason` / `CardMoveEventData` / `EventType.CardMove`，位置索引 `getCardArea`（createGame 建立、moveCards 更新），新建 async `moveCards`（from 派生，底层保留现有数组级实现为内部函数）
+- [x] 1. 骨架：`CardLocation` / `CardMoveReason` / `CardMoveEventData` / `EventType.CardMove`，`getCardArea`（实时扫描），async `moveCards`（from 派生、空移动不发事件、before 可 prevent），旧数组级实现改名 `moveCardsRaw`；已迁移：延时牌置入判定区（use）、闪电转移（transfer）、判定结算（resolve，判定前移入弃牌堆）
 - [ ] 2. 迁移简单原语：`discardCards` / `playFromHand` / `giveCards` / `takeFromDiscard` → moveCards
 - [ ] 3. 装备路径：`equipCard` 拆两次 moveCards（replace + equip，两个事件）；麒麟弓、借刀杀人手写路径收口
 - [ ] 4. 区域取牌：过河拆桥 / 顺手牵羊 / 寒冰剑 / 反馈 合并为 select（查询）+ move；`takeCardFromAreas` 决定去留

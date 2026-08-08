@@ -92,6 +92,31 @@ export interface Player {
   skipPlayPhase?: boolean;
 }
 
+/**
+ * 卡牌位置（统一位置模型的基础）。
+ * 玩家三区（hand/equipment/judgment）+ 牌堆/弃牌堆；
+ * processing（处理区）等后续需要时再加。
+ * 注意：牌堆顶/底不是位置，是移动时的取放策略（toPosition）。
+ */
+export type CardLocation =
+  | { player: Player; zone: 'hand' | 'equipment' | 'judgment' }
+  | { zone: 'deck' | 'discardPile' };
+
+/** 移动原因（CardMove 事件的语义标签；转化牌/虚拟牌可能扩展） */
+export type CardMoveReason =
+  | 'draw'        // 摸牌
+  | 'judge'       // 判定
+  | 'discard'     // 弃置
+  | 'play'        // 打出（响应）
+  | 'use'         // 使用消耗/置入判定区
+  | 'equip'       // 装备入槽
+  | 'replace'     // 顶掉旧装备
+  | 'give'        // 交给/获得
+  | 'obtain'      // 从弃牌堆/牌堆取回
+  | 'transfer'    // 判定区转移（闪电）
+  | 'resolve'     // 延时牌结算
+  | 'reshuffle';  // 洗牌（弃牌堆 → 牌堆）
+
 /** 装备区：武器 / 防具 / 防御马 / 进攻马 四个栏位 */
 export interface PlayerEquipment {
   weapon?: Card;

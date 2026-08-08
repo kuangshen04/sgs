@@ -101,13 +101,26 @@ export async function judgePhase(
 
         if (windowEvent.isPrevented()) {
           console.log(`  🚫${player.name} 判定区的 ${cardEmoji(card.type)} 被无懈可击抵消`);
-          moveCards(player.judgment, game.state.discardPile, [card]);
+          await moveCards(game, {
+            to: { zone: 'discardPile' },
+            cards: [card],
+            reason: 'resolve',
+          });
           continue;
         }
 
+        // 判定前：延时牌离开判定区。
+        // 正常流程是"判定区 → 处理区 → 结算 → 清理进弃牌堆"；
+        // 暂简化"判定区 → 弃牌堆"（delayContent 若转移则从弃牌堆取走），
+        // TODO #10 处理区就绪后改为先入 processing。
+        await moveCards(game, {
+          to: { zone: 'discardPile' },
+          cards: [card],
+          reason: 'resolve',
+        });
+
         const judgeCard = await judge(game, player);
         await def.delayContent?.(game, player, judgeCard, card);
-        moveCards(player.judgment, game.state.discardPile, [card]);
       }
     });
 }

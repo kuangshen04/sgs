@@ -524,7 +524,11 @@ cardRegistry.register({
       for (let i = 1; i <= players.length; i++) {
         const next = players[(start + i) % players.length];
         if (!next.alive) continue;
-        moveCards(target.judgment, next.judgment, [card]);
+        await moveCards(game, {
+          to: { player: next, zone: 'judgment' },
+          cards: [card],
+          reason: 'transfer',
+        });
         console.log(`  ${target.name} 的闪电判定非黑桃2~9，移到 ${next.name} 的判定区`);
         break;
       }

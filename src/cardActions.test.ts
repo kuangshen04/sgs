@@ -6,10 +6,10 @@ import { describe, it, expect } from 'vitest';
 
 import { freshGame, giveHand, makeUniqueCard } from './test-utils.js';
 
-import { discardCards, drawCards, giveCards, moveCards, playFromHand } from './cardActions.js';
+import { discardCards, drawCards, getCardArea, giveCards, moveCards, playFromHand } from './cardActions.js';
 
+import type { CardMoveEventData } from './events/index.js';
 import { CardType } from './types.js';
-import type { Card } from './types.js';
 
 describe('drawCards', () => {
   it('摸 2 张牌', async () => {
@@ -137,45 +137,163 @@ describe('discardCards', () => {
 });
 
 // ============================================================
-// moveCards — 底层移动原语（纯数组级）
+// moveCards — 统一移动原语（from 由引擎派生）
 // ============================================================
 
-describe('moveCards', () => {
-  it('把 cards 中实际位于 from 的牌移到 to，返回实际移走的牌', () => {
+describe('moveCards（统一移动）', () => {
+  it('手牌 → 弃牌堆：移动并同步位置查询', async () => {
     const g = freshGame();
-    const from = g.state.players[0];
-    const to: Card[] = [];
-    giveHand(from, CardType.Sha, CardType.Tao);
-    const card = from.hand[0];
+    const player = g.state.players[0];
+    giveHand(player, CardType.Sha, CardType.Tao);
+    const card = player.hand[0];
+    expect(getCardArea(g, card)).toEqual({ player, zone: 'hand' });
 
-    const moved = moveCards(from.hand, to, [card]);
+    const moved = await moveCards(g, {
+      to: { zone: 'discardPile' }, cards: [card], reason: 'discard',
+    });
 
     expect(moved).toEqual([card]);
-    expect(from.hand.length).toBe(1);
-    expect(to).toEqual([card]);
+    expect(player.hand.map((c) => c.id)).not.toContain(card.id);
+    expect(g.state.discardPile).toContain(card);
+    expect(getCardArea(g, card)).toEqual({ zone: 'discardPile' });
   });
 
-  it('不在 from 中的牌自动跳过', () => {
-    const from: Card[] = [makeUniqueCard(CardType.Sha)];
-    const to: Card[] = [];
-    const phantom = makeUniqueCard(CardType.Tao);
+  it('from 派生：不传来源，从装备区移入手牌', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    const eq = makeUniqueCard(CardType.QiLinGong);
+    player.equipment.weapon = eq;
 
-    const moved = moveCards(from, to, [phantom]);
+    const moved = await moveCards(g, {
+      to: { player, zone: 'hand' }, cards: [eq], reason: 'obtain',
+    });
+
+    expect(moved).toEqual([eq]);
+    expect(player.equipment.weapon).toBeUndefined();
+    expect(player.hand).toContain(eq);
+    expect(getCardArea(g, eq)).toEqual({ player, zone: 'hand' });
+  });
+
+  it('一次移动支持多张牌来自不同区域', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    const handCard = makeUniqueCard(CardType.Sha);
+    const eqCard = makeUniqueCard(CardType.QiLinGong);
+    player.hand = [handCard];
+    player.equipment.weapon = eqCard;
+
+    const moved = await moveCards(g, {
+      to: { zone: 'discardPile' }, cards: [handCard, eqCard], reason: 'discard',
+    });
+
+    expect(moved).toEqual([handCard, eqCard]);
+    expect(player.hand.length).toBe(0);
+    expect(player.equipment.weapon).toBeUndefined();
+    expect(g.state.discardPile).toEqual([handCard, eqCard]);
+  });
+
+  it('toPosition bottom：放入牌堆底', async () => {
+    const g = freshGame();
+    const bottom = makeUniqueCard(CardType.Tao);
+    const card = makeUniqueCard(CardType.Sha);
+    g.state.deck = [bottom, card]; // card 在牌堆顶
+
+    await moveCards(g, {
+      to: { zone: 'deck' }, cards: [card], reason: 'draw', toPosition: 'bottom',
+    });
+
+    expect(g.state.deck[0]).toBe(card);   // 底
+    expect(g.state.deck[1]).toBe(bottom);
+  });
+
+  it('位置确认由调用方负责：牌已不在原区域则不移动', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    const other = g.state.players[1];
+    const card = makeUniqueCard(CardType.ShanDian);
+    player.judgment = [card];
+    // 模拟闪电把牌转移到下家判定区
+    await moveCards(g, {
+      to: { player: other, zone: 'judgment' },
+      cards: [card],
+      reason: 'transfer',
+    });
+
+    // 调用方先确认牌仍在自己判定区，再结算；不在则跳过（替代 from 约束）
+    const area = getCardArea(g, card);
+    const stillInJudgment = !!area && 'player' in area
+      && area.player === player && area.zone === 'judgment';
+    if (stillInJudgment) {
+      await moveCards(g, {
+        to: { zone: 'discardPile' },
+        cards: [card],
+        reason: 'resolve',
+      });
+    }
+
+    expect(other.judgment).toContain(card); // 未被拖走
+  });
+
+  it('空数组：不发事件，返回空', async () => {
+    const g = freshGame();
+    let fired = false;
+    g.triggerSystem.on('cardMove.before', async () => { fired = true; });
+
+    const moved = await moveCards(g, {
+      to: { player: g.state.players[0], zone: 'hand' }, cards: [], reason: 'draw',
+    });
 
     expect(moved).toEqual([]);
-    expect(from.length).toBe(1);
-    expect(to.length).toBe(0);
+    expect(fired).toBe(false);
   });
 
-  it('多张牌保持原顺序', () => {
-    const a = makeUniqueCard(CardType.Sha);
-    const b = makeUniqueCard(CardType.Tao);
-    const from = [a, b];
-    const to: Card[] = [];
+  it('牌不在任何位置 → 跳过，返回空', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    const phantom = makeUniqueCard(CardType.Sha);
 
-    const moved = moveCards(from, to, [a, b]);
+    const moved = await moveCards(g, {
+      to: { player, zone: 'hand' }, cards: [phantom], reason: 'obtain',
+    });
 
-    expect(moved).toEqual([a, b]);
-    expect(to).toEqual([a, b]);
+    expect(moved).toEqual([]);
+    expect(player.hand.length).toBe(0);
+  });
+
+  it('before prevent → 移动取消，牌留在原处', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    const card = makeUniqueCard(CardType.Sha);
+    player.hand = [card];
+    g.triggerSystem.on('cardMove.before', async (event) => { event.prevent(); });
+
+    const moved = await moveCards(g, {
+      to: { zone: 'discardPile' }, cards: [card], reason: 'discard',
+    });
+
+    expect(moved).toEqual([]);
+    expect(player.hand).toContain(card);
+    expect(g.state.discardPile.length).toBe(0);
+  });
+
+  it('事件数据：reason / fromAreas / to / mover 正确', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    const card = makeUniqueCard(CardType.Sha);
+    player.hand = [card];
+    const captured = { data: null as CardMoveEventData | null };
+    g.triggerSystem.on('cardMove.after', async (event) => {
+      captured.data = event.data as CardMoveEventData;
+    });
+
+    await moveCards(g, {
+      to: { zone: 'discardPile' }, cards: [card], reason: 'discard', mover: player,
+    });
+
+    expect(captured.data?.reason).toBe('discard');
+    expect(captured.data?.cards).toEqual([card]);
+    expect(captured.data?.fromAreas).toEqual([{ player, zone: 'hand' }]);
+    expect(captured.data?.to).toEqual({ zone: 'discardPile' });
+    expect(captured.data?.mover).toBe(player);
   });
 });
