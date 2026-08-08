@@ -64,7 +64,7 @@ interface CardMoveSpec {
 
 - [x] 1. 骨架：`CardLocation` / `CardMoveReason` / `CardMoveEventData` / `EventType.CardMove`，`getCardArea`（实时扫描），async `moveCards`（from 派生、空移动不发事件、before 可 prevent），旧数组级实现改名 `moveCardsRaw`；已迁移：延时牌置入判定区（use）、闪电转移（transfer）、判定结算（resolve，判定前移入弃牌堆）
 - [x] 2. 迁移简单原语：`discardCards` / `playFromHand` / `giveCards` / `takeFromDiscard` → moveCards（全部 async；`giveCards` 补 game 参数；封装层保留"来源限定"语义，内部用 getCardArea 确认；`moveCardsRaw` 已删除）
-- [ ] 3. 装备路径：`equipCard` 拆两次 moveCards（replace + equip，两个事件）；麒麟弓、借刀杀人手写路径收口
+- [x] 3. 装备路径：`equipCard` 拆两次 moveCards（replace + equip，两个事件，async）；麒麟弓弃坐骑、借刀杀人交武器收口
 - [ ] 4. 区域取牌：过河拆桥 / 顺手牵羊 / 寒冰剑 / 反馈 合并为 select（查询）+ move；`takeCardFromAreas` 决定去留
 - [ ] 5. 判定区：延时牌置入、判定结算、闪电转移 → moveCards
 - [ ] 6. 摸牌/判定/洗牌：`peekTop(n)` + moveCards；洗牌 = `moveCards(to=deck, reason='reshuffle')`

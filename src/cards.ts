@@ -215,8 +215,9 @@ const jiedaoContent: CardContentFn = async (game, data, _event) => {
       `  🗡️ ${target.name} 响应【借刀杀人】，对 ${shaTarget.name} 使用了杀`,
     );
   } else {
-    target.equipment.weapon = undefined;
-    user.hand.push(weapon);
+    await moveCards(game, {
+      to: { player: user, zone: 'hand' }, cards: [weapon], reason: 'give',
+    });
     console.log(
       `  🗡️ ${target.name} 选择交出武器，${cardEmoji(weapon.type)} 到了 ${user.name} 手上`,
     );
@@ -673,9 +674,9 @@ cardRegistry.register({
       // TODO(玩家选择): 弃置目标的哪张坐骑——目前写死为"优先防御马"
       const mount = eq.defensiveHorse ?? eq.offensiveHorse;
       if (!mount) return;
-      if (eq.defensiveHorse === mount) eq.defensiveHorse = undefined;
-      else eq.offensiveHorse = undefined;
-      game.state.discardPile.push(mount);
+      await moveCards(game, {
+        to: { zone: 'discardPile' }, cards: [mount], reason: 'discard',
+      });
       console.log(
         `  ✨${owner.name} 的麒麟弓发动！弃置 ${target.name} 的坐骑 ${cardEmoji(mount.type)}`,
       );

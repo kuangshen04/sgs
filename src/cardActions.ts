@@ -264,14 +264,22 @@ function equipSlotOf(card: Card): keyof PlayerEquipment {
 
 /**
  * 装备：把牌置入对应栏位，旧装备顶掉进弃牌堆；返回被顶掉的旧装备。
+ * 拆为两次独立移动（两个事件）：旧装备 equipment → discardPile（replace），
+ * 新牌 hand → equipment（equip）。
  */
-export function equipCard(game: Game, player: Player, card: Card): Card | undefined {
+export async function equipCard(
+  game: Game, player: Player, card: Card,
+): Promise<Card | undefined> {
   const slot = equipSlotOf(card);
   const old = player.equipment[slot];
-  if (old) game.state.discardPile.push(old); // 顶掉
-  const idx = player.hand.findIndex((c) => c.id === card.id);
-  if (idx >= 0) player.hand.splice(idx, 1);
-  player.equipment[slot] = card;
+  if (old) {
+    await moveCards(game, {
+      to: { zone: 'discardPile' }, cards: [old], reason: 'replace',
+    });
+  }
+  await moveCards(game, {
+    to: { player, zone: 'equipment' }, cards: [card], reason: 'equip',
+  });
   return old;
 }
 
@@ -311,7 +319,7 @@ export async function useCard(
       if (isEquip) {
         // 装备：置入对应栏位（顶掉旧装备），无响应窗口
         const target = event.data.targets[0] ?? event.data.player;
-        const replaced = equipCard(game, target, event.data.card);
+        const replaced = await equipCard(game, target, event.data.card);
         console.log(
           `  ${event.data.player.name} 装备了 ${cardEmoji(event.data.card.type)}` +
           `(${event.data.card.suit}${displayNumber(event.data.card.number)})` +
