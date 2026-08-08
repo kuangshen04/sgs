@@ -20,7 +20,7 @@ type CardLocation =
 - 装备区不显式槽位：槽位由牌类型唯一决定
 - 牌堆顶/底不是位置，是查询层的取放策略；牌堆内重排（观星）不产生移动事件
 - **来源区域由引擎派生**：调用方只给 `to` + cards，`fromArea` 执行时对每张牌实时查询（FreeKill 式）
-  - 支撑设施：内部位置索引 `getCardArea(cardId)`（createGame 建立、moveCards 更新），也是 TODO #10 位置追踪的最小版本
+  - 支撑设施：位置查询 `getCardArea(cardId)`（当前实时扫描实现，见下），也是 TODO #10 位置追踪的最小版本
 
 三层职责：
 
