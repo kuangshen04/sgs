@@ -5,8 +5,8 @@
 
 import { describe, it, expect } from 'vitest';
 
-import './cards.js'; // 触发卡牌注册（side-effect import）
-import { STANDARD_DECK } from './cards.js';
+import './cards/index.js'; // 触发卡牌注册（side-effect import）
+import { STANDARD_DECK } from './cards/index.js';
 
 import { CardType } from './types.js';
 

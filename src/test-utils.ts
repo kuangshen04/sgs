@@ -2,8 +2,8 @@
 // 测试辅助 — 各测试文件共享
 // ============================================================
 
-import './cards.js'; // 触发卡牌注册（side-effect import）
-import { STANDARD_DECK } from './cards.js';
+import './cards/index.js'; // 触发卡牌注册（side-effect import）
+import { STANDARD_DECK } from './cards/index.js';
 import { cardRegistry } from './cardRegistry.js';
 import { createGame } from './game.js';
 import type { Game } from './game.js';

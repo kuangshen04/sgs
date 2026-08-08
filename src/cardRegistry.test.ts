@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from 'vitest';
 
-import './cards.js'; // 触发卡牌注册（side-effect import）
+import './cards/index.js'; // 触发卡牌注册（side-effect import）
 import { displayNumber, cardRegistry, shuffle } from './cardRegistry.js';
 
 import { makeCard } from './test-utils.js';

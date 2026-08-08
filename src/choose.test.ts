@@ -9,7 +9,7 @@ import { freshGame, giveHand, makeUniqueCard, DEFAULT_HEROES } from './test-util
 
 import { cardRegistry } from './cardRegistry.js';
 import { createGame } from './game.js';
-import { STANDARD_DECK } from './cards.js';
+import { STANDARD_DECK } from './cards/index.js';
 import type { Game } from './game.js';
 
 import {

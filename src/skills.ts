@@ -6,7 +6,7 @@
 import type { Game } from './game.js';
 import type { GameEvent } from './events/index.js';
 import { cardRegistry } from './cardRegistry.js';
-import { installWuxieTrigger } from './cards.js';
+import { installWuxieTrigger } from './cards/trick.js';
 import { CardType } from './types.js';
 import type { Card, Player } from './types.js';
 

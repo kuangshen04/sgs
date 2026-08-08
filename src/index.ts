@@ -2,8 +2,8 @@
 // 三国杀最小原型 — 入口
 // ============================================================
 
-import './cards.js';  // 触发卡牌注册（side-effect import）
-import { STANDARD_DECK } from './cards.js';
+import './cards/index.js';  // 触发卡牌注册（side-effect import）
+import { STANDARD_DECK } from './cards/index.js';
 import { registerSkills } from './skills.js';
 import { createGame } from './game.js';
 import { printState } from './display.js';
