@@ -1,12 +1,12 @@
 // ============================================================
-// 孙尚香 — 结姻
-// 枭姬（失去装备区内的牌后摸两张）待"失去牌触发"系统，暂未实现。
+// 孙尚香 — 结姻 / 枭姬
 // ============================================================
 
-import { discardCards } from '../cardActions.js';
+import { discardCards, drawCards } from '../cardActions.js';
 import { recover } from '../life.js';
-import { activeSkillRegistry } from '../skills.js';
+import { activeSkillRegistry, skillRegistry } from '../skills.js';
 import { heroRegistry } from '../heroRegistry.js';
+import type { CardMoveEventData, GameEvent } from '../events/index.js';
 import type { Game } from '../game.js';
 import type { Player } from '../types.js';
 
@@ -45,6 +45,31 @@ activeSkillRegistry.register({
   },
 });
 
+/** 枭姬：当你失去装备区内的牌后，每失去一张摸两张牌 */
+const xiaojiContent = async (
+  game: Game, event: GameEvent<any>, owner: Player,
+): Promise<void> => {
+  const { fromAreas } = event.data as CardMoveEventData;
+  const lost = fromAreas.filter(
+    (a) => 'player' in a && a.player === owner && a.zone === 'equipment',
+  ).length;
+  if (lost === 0) return;
+  await drawCards(game, { target: owner, count: lost * 2 });
+  console.log(`  ✨${owner.name} 发动【枭姬】！失去 ${lost} 张装备区内的牌，摸了 ${lost * 2} 张牌`);
+};
+
+skillRegistry.register({
+  name: '枭姬',
+  trigger: 'cardMove.after',
+  canTrigger: (_game, event, owner) => {
+    const { fromAreas } = event.data as CardMoveEventData;
+    return fromAreas.some(
+      (a) => 'player' in a && a.player === owner && a.zone === 'equipment',
+    );
+  },
+  content: xiaojiContent,
+});
+
 heroRegistry.register({
-  name: '孙尚香', maxHp: 3, sex: 'female', group: '吴', skills: ['结姻'],
+  name: '孙尚香', maxHp: 3, sex: 'female', group: '吴', skills: ['结姻', '枭姬'],
 });

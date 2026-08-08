@@ -4,9 +4,11 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { freshGame, giveHand } from '../test-utils.js';
+import { freshGame, giveHand, makeUniqueCard } from '../test-utils.js';
 
 import { playPhase } from '../gameFlow.js';
+
+import { discardCards, equipCard, moveCards } from '../cardActions.js';
 
 import { activeSkillRegistry, registerSkills } from '../skills.js';
 
@@ -76,5 +78,66 @@ describe('结姻（孙尚香主动技能）', () => {
 
     expect(sun.hand.length).toBe(2); // 未发动
     expect(target.hp).toBe(2);
+  });
+});
+
+describe('枭姬（孙尚香触发技能）', () => {
+  it('失去装备区内的牌 → 摸两张', async () => {
+    const g = freshGame({}, sunshangxiangHeroes);
+    registerSkills(g);
+    const sun = g.state.players[0];
+    const weapon = makeUniqueCard(CardType.ZhugeLianNu);
+    sun.equipment.weapon = weapon;
+    const before = sun.hand.length;
+
+    await moveCards(g, {
+      to: { zone: 'discardPile' }, cards: [weapon], reason: 'discard',
+    });
+
+    expect(sun.equipment.weapon).toBeUndefined();
+    expect(sun.hand.length).toBe(before + 2);
+  });
+
+  it('装备顶掉 → 旧装备失去触发枭姬', async () => {
+    const g = freshGame({}, sunshangxiangHeroes);
+    registerSkills(g);
+    const sun = g.state.players[0];
+    const oldWeapon = makeUniqueCard(CardType.QiLinGong);
+    const newWeapon = makeUniqueCard(CardType.HanBingJian);
+    sun.equipment.weapon = oldWeapon;
+    sun.hand = [newWeapon];
+
+    await equipCard(g, sun, newWeapon);
+
+    expect(sun.equipment.weapon).toBe(newWeapon);
+    // 初始 1（新武器）→ replace 触发枭姬摸 2（=3）→ equip 消耗新武器（=2）
+    expect(sun.hand.length).toBe(2);
+  });
+
+  it('失去手牌 → 不触发枭姬', async () => {
+    const g = freshGame({}, sunshangxiangHeroes);
+    registerSkills(g);
+    const sun = g.state.players[0];
+    giveHand(sun, CardType.Sha);
+    const before = sun.hand.length;
+
+    await discardCards(g, sun, [sun.hand[0]]);
+
+    expect(sun.hand.length).toBe(before - 1); // 只弃不摸
+  });
+
+  it('非孙尚香 → 不触发', async () => {
+    const g = freshGame({}, sunshangxiangHeroes);
+    registerSkills(g);
+    const liubei = g.state.players[1];
+    const weapon = makeUniqueCard(CardType.ZhugeLianNu);
+    liubei.equipment.weapon = weapon;
+    const before = liubei.hand.length;
+
+    await moveCards(g, {
+      to: { zone: 'discardPile' }, cards: [weapon], reason: 'discard',
+    });
+
+    expect(liubei.hand.length).toBe(before); // 无枭姬
   });
 });

@@ -72,7 +72,7 @@ interface CardMoveSpec {
 - [ ] 5. 判定区：延时牌置入、判定结算、闪电转移 → moveCards
 - [ ] 6. 摸牌/判定/洗牌：`peekTop(n)` + moveCards；洗牌 = `moveCards(to=deck, reason='reshuffle')`
 - [ ] 7. 查询层：`findInDeck` / `findAllInDeckAndDiscard` / `putTop` / `putBottom` 落地（观星/五谷真版的前置）
-- [ ] 8. 连营/枭姬：作为 CardMove 第一个消费者（`cardMove.after`，from.zone 判断）
+- [x] 8. 连营/枭姬：作为 CardMove 第一个消费者（`cardMove.after`，from.zone 判断）——验证模型够用；枭姬按失去张数 ×2 摸牌
 - [ ] 9. 验证：全量测试保持绿色；再评估处理区（TODO #10）与事件历史（TODO #7）
 
 每批迁移保持全量测试绿色。
