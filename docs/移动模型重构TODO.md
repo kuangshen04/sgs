@@ -55,6 +55,9 @@ interface CardMoveSpec {
   判定后 delayContent 若转移则从弃牌堆取走）。TODO #10 处理区就绪后改为先入 processing
 - **getCardArea 当前为实时扫描**（非缓存索引）：规模小且永远与状态一致，测试辅助直接改数组也不受影响；
   将来 TODO #10 需要性能时再换缓存，API 不变
+- **完整位置追踪需要硬约束：牌只能通过 moveCards 移动，禁止直接数组操作**
+  （当前生产代码已全部收口；实现方式候选：受控区域访问 / 运行时一致性校验 / lint 规则，
+  测试辅助的直写需要一并处理）
 
 ### CardMoveReason
 
@@ -83,4 +86,4 @@ interface CardMoveSpec {
 - [ ] E. 判定牌去向：暂保持"判定牌直接进弃牌堆"（judge = deck→discardPile），处理区就绪后再改
 - [ ] F. processing zone：现在不加，需要时再加（加一个 zone 值成本极低）
 - [ ] G. 所有移动原语同步 → async 的波及范围（heroes/cards/gameFlow 调用点全加 await）
-- [ ] H. 位置索引的维护边界：getCardArea 只在 moveCards 内更新，不允许外部直接改区域数组？（防御性 vs 侵入性）
+- [x] H. 位置索引的维护边界：确认需要"牌只能通过 moveCards 移动"的硬约束（机制待 TODO #10 落地时选型）
