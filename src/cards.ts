@@ -36,7 +36,7 @@ const shaContent: CardContentFn = async (game, data, _event) => {
   // TODO(玩家选择): 是否出闪/出哪张闪——目前写死为"有就出第一张"
   const shan = findResponse(defender, CardType.Shan);
   if (shan) {
-    playFromHand(game, defender, shan);
+    await playFromHand(game, defender, shan);
     console.log(
       `  ${defender.name} 使用了 🛡️闪 (${shan.suit}${displayNumber(shan.number)})，抵消了攻击`,
     );
@@ -83,7 +83,7 @@ const juedouContent: CardContentFn = async (game, data, _event) => {
       await damage(game, { target: current, source: opponent, amount: 1 });
       return;
     }
-    playFromHand(game, current, sha);
+    await playFromHand(game, current, sha);
     console.log(
       `  ${current.name} 打出了 🗡️杀 (${sha.suit}${displayNumber(sha.number)})`,
     );
@@ -102,7 +102,7 @@ const nanmanContent: CardContentFn = async (game, data, _event) => {
     // TODO(玩家选择): 南蛮中是否出杀/出哪张——目前写死为"有就出第一张"
     const sha = findResponse(target, CardType.Sha);
     if (sha) {
-      playFromHand(game, target, sha);
+      await playFromHand(game, target, sha);
       console.log(
         `  ${target.name} 打出了 🗡️杀 (${sha.suit}${displayNumber(sha.number)})`,
       );
@@ -123,7 +123,7 @@ const wanjianContent: CardContentFn = async (game, data, _event) => {
     // TODO(玩家选择): 万箭中是否出闪/出哪张——目前写死为"有就出第一张"
     const shan = findResponse(target, CardType.Shan);
     if (shan) {
-      playFromHand(game, target, shan);
+      await playFromHand(game, target, shan);
       console.log(
         `  ${target.name} 打出了 🛡️闪 (${shan.suit}${displayNumber(shan.number)})`,
       );
@@ -790,7 +790,7 @@ cardRegistry.register({
       const { target } = event.data as TargetingEventData;
       // TODO(玩家选择): 目标选择"弃一张手牌"还是"令使用者摸一张牌"——写死为优先弃牌
       if (target.hand.length > 0) {
-        discardCards(game, target, [target.hand[0]]);
+        await discardCards(game, target, [target.hand[0]]);
         console.log(
           `  ⚔️${owner.name} 的雌雄双股剑发动！${target.name} 弃置了一张手牌`,
         );

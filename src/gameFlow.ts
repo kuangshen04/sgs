@@ -190,7 +190,7 @@ export async function discardPhase(
         (a, b) => (cardRegistry.get(a.type)?.ai.discardPriority ?? 0)
                 - (cardRegistry.get(b.type)?.ai.discardPriority ?? 0),
       );
-      const discarded = discardCards(game, player, sorted.slice(0, excess));
+      const discarded = await discardCards(game, player, sorted.slice(0, excess));
       for (const c of discarded) {
         console.log(`  弃置了 ${cardEmoji(c.type)} (${c.suit}${displayNumber(c.number)})`);
       }

@@ -19,7 +19,7 @@ const jieyinContent = async (game: Game, player: Player): Promise<void> => {
   if (!target) return;
 
   // TODO(玩家选择): 弃置哪两张手牌——目前写死为前两张（简化）
-  discardCards(game, player, [...player.hand].slice(0, 2));
+  await discardCards(game, player, [...player.hand].slice(0, 2));
   await recover(game, { target: player, amount: 1 });
   await recover(game, { target, amount: 1 });
   console.log(

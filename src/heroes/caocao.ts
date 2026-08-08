@@ -18,7 +18,7 @@ const jianxiongContent = async (game: Game, event: GameEvent<any>, owner: Player
   const card = useCardEvent.data.card as Card;
 
   // 使用的牌已进弃牌堆：从弃牌堆找回并收入手牌
-  const found = takeFromDiscard(game, owner, card);
+  const found = await takeFromDiscard(game, owner, card);
   if (!found) return;
   console.log(
     `  ✨${owner.name} 发动【奸雄】！获得造成伤害的 ${cardEmoji(found.type)} ` +

@@ -15,7 +15,7 @@ const rendeContent = async (game: Game, player: Player): Promise<void> => {
   // TODO(玩家选择): 仁德交给谁——目前写死为"第一个其他存活角色"
   const target = game.state.players.find((p) => p !== player && p.alive);
   if (!target) return;
-  const given = giveCards(player, target, player.hand.slice(0, 2));
+  const given = await giveCards(game, player, target, player.hand.slice(0, 2));
   await recover(game, { target: player, amount: 1 });
   console.log(
     `  ✨${player.name} 发动【仁德】！交给 ${target.name} ${given.length} 张牌，回复 1 点体力`,

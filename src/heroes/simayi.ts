@@ -28,7 +28,7 @@ const guicaiContent = async (game: Game, event: GameEvent<any>, owner: Player): 
   const judgeEvent = event as GameEvent<JudgeEventData>;
   // TODO(玩家选择): 鬼才打出哪张手牌替换判定牌——目前写死为第一张
   const card = owner.hand[0];
-  discardCards(game, owner, [card]);
+  await discardCards(game, owner, [card]);
   judgeEvent.data.card = card;
   console.log(
     `  ✨${owner.name} 发动【鬼才】！打出 ${cardEmoji(card.type)} ` +

@@ -29,7 +29,7 @@ const tianduContent = async (game: Game, event: GameEvent<any>, owner: Player): 
   if (!card) return;
 
   // 判定牌已进弃牌堆：找回并收入手牌
-  const found = takeFromDiscard(game, owner, card);
+  const found = await takeFromDiscard(game, owner, card);
   if (!found) return;
   console.log(
     `  ✨${owner.name} 发动【天妒】！获得判定牌 ${cardEmoji(found.type)} ` +

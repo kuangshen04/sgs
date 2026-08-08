@@ -196,56 +196,61 @@ export async function moveCards(game: Game, spec: CardMoveSpec): Promise<Card[]>
 }
 
 // ============================================================
-// 旧移动原语（逐步迁移到统一 moveCards；内部仍用数组级 moveCardsRaw）
+// 语义化移动封装（建立在统一 moveCards 之上）
 // ============================================================
-
-/**
- * 纯数组级移动：把 cards 中实际位于 from 的牌移入 to，返回实际移走的牌。
- * 内部原语：仅旧封装（discardCards / giveCards 等）使用，逐步迁移到统一 moveCards。
- */
-function moveCardsRaw(from: Card[], to: Card[], cards: Card[]): Card[] {
-  const ids = new Set(cards.map((c) => c.id));
-  const removed: Card[] = [];
-  for (let i = from.length - 1; i >= 0; i--) {
-    if (ids.has(from[i].id)) {
-      removed.push(from[i]);
-      from.splice(i, 1);
-    }
-  }
-  removed.reverse(); // 恢复原顺序
-  to.push(...removed);
-  return removed;
-}
 
 /**
  * 弃置：把一组牌从手牌移入弃牌堆，返回实际移除的牌（供调用方记录）。
  * 打出（playFromHand）/使用消耗（useCard）/弃牌阶段（doDiscard）/制衡
- * 共用这一个移动原语；不在手牌的牌自动跳过。
+ * 共用这一个移动原语；不在该玩家手牌的牌自动跳过。
  */
-export function discardCards(game: Game, player: Player, cards: Card[]): Card[] {
-  return moveCardsRaw(player.hand, game.state.discardPile, cards);
+export async function discardCards(game: Game, player: Player, cards: Card[]): Promise<Card[]> {
+  const inHand = cards.filter((c) => {
+    const area = getCardArea(game, c);
+    return !!area && 'player' in area && area.player === player && area.zone === 'hand';
+  });
+  return moveCards(game, {
+    to: { zone: 'discardPile' }, cards: inHand, reason: 'discard',
+  });
 }
 
 /** 打出：把一张牌从手牌移入弃牌堆（不产生使用事件） */
-export function playFromHand(game: Game, player: Player, card: Card): void {
-  discardCards(game, player, [card]);
+export async function playFromHand(game: Game, player: Player, card: Card): Promise<Card[]> {
+  const area = getCardArea(game, card);
+  if (!area || !('player' in area) || area.player !== player || area.zone !== 'hand') {
+    return [];
+  }
+  return moveCards(game, {
+    to: { zone: 'discardPile' }, cards: [card], reason: 'play',
+  });
 }
 
 /**
  * 交给：把一组牌从 from 的手牌移入 to 的手牌，返回实际移走的牌。
  * 用于仁德/反间/顺手牵羊这类"获得/交给"移动（手牌区 ↔ 手牌区）。
  */
-export function giveCards(from: Player, to: Player, cards: Card[]): Card[] {
-  return moveCardsRaw(from.hand, to.hand, cards);
+export async function giveCards(
+  game: Game, from: Player, to: Player, cards: Card[],
+): Promise<Card[]> {
+  const inHand = cards.filter((c) => {
+    const area = getCardArea(game, c);
+    return !!area && 'player' in area && area.player === from && area.zone === 'hand';
+  });
+  return moveCards(game, {
+    to: { player: to, zone: 'hand' }, cards: inHand, reason: 'give',
+  });
 }
 
 /** 从弃牌堆按 id 取回一张牌到手牌；不在弃牌堆返回 null */
-export function takeFromDiscard(game: Game, player: Player, card: Card): Card | null {
-  const idx = game.state.discardPile.findIndex((c) => c.id === card.id);
-  if (idx < 0) return null;
-  const [found] = game.state.discardPile.splice(idx, 1);
-  player.hand.push(found);
-  return found;
+export async function takeFromDiscard(
+  game: Game, player: Player, card: Card,
+): Promise<Card | null> {
+  const area = getCardArea(game, card);
+  if (!area || area.zone !== 'discardPile') return null;
+  const moved = await moveCards(game, {
+    to: { player, zone: 'hand' }, cards: [card], reason: 'obtain',
+  });
+  return moved[0] ?? null;
 }
 
 /** 卡牌 tag → 装备槽位 */
@@ -316,7 +321,7 @@ export async function useCard(
       }
 
       // 使用的牌移入弃牌堆
-      discardCards(game, event.data.player, [event.data.card]);
+      await discardCards(game, event.data.player, [event.data.card]);
 
       // 逐 target 判定（无懈可击等响应在这里）
       let shouldExecute = true;

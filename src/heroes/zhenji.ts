@@ -20,7 +20,7 @@ const luoshenContent = async (game: Game, event: GameEvent<any>, owner: Player):
       console.log(`  ${owner.name} 洛神判定为红色，停止`);
       break;
     }
-    const found = takeFromDiscard(game, owner, card);
+    const found = await takeFromDiscard(game, owner, card);
     if (!found) break;
     console.log(
       `  ${owner.name} 洛神获得 ${cardEmoji(found.type)} ` +

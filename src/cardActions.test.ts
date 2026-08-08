@@ -37,25 +37,25 @@ describe('drawCards', () => {
 // ============================================================
 
 describe('playFromHand', () => {
-  it('把牌从手牌移入弃牌堆', () => {
+  it('把牌从手牌移入弃牌堆', async () => {
     const g = freshGame();
     const player = g.state.players[0];
     giveHand(player, CardType.Sha, CardType.Tao);
     const card = player.hand[0];
 
-    playFromHand(g, player, card);
+    await playFromHand(g, player, card);
 
     expect(player.hand.map((c) => c.type)).toEqual([CardType.Tao]);
     expect(g.state.discardPile).toContain(card);
   });
 
-  it('牌不在手牌 → 不重复入弃牌堆', () => {
+  it('牌不在手牌 → 不重复入弃牌堆', async () => {
     const g = freshGame();
     const player = g.state.players[0];
     giveHand(player, CardType.Tao);
     const phantom = makeUniqueCard(CardType.Sha);
 
-    playFromHand(g, player, phantom);
+    await playFromHand(g, player, phantom);
 
     expect(g.state.discardPile).not.toContain(phantom);
   });
@@ -66,28 +66,28 @@ describe('playFromHand', () => {
 // ============================================================
 
 describe('giveCards', () => {
-  it('把牌从 from 手牌移入 to 手牌', () => {
+  it('把牌从 from 手牌移入 to 手牌', async () => {
     const g = freshGame();
     const from = g.state.players[0];
     const to = g.state.players[1];
     giveHand(from, CardType.Sha, CardType.Tao);
     const card = from.hand[0];
 
-    giveCards(from, to, [card]);
+    await giveCards(g, from, to, [card]);
 
     expect(from.hand.map((c) => c.type)).toEqual([CardType.Tao]);
     expect(to.hand).toContain(card);
     expect(g.state.discardPile.length).toBe(0); // 不经过弃牌堆
   });
 
-  it('牌不在 from 手牌 → 跳过，不入 to 手牌', () => {
+  it('牌不在 from 手牌 → 跳过，不入 to 手牌', async () => {
     const g = freshGame();
     const from = g.state.players[0];
     const to = g.state.players[1];
     giveHand(from, CardType.Tao);
     const phantom = makeUniqueCard(CardType.Sha);
 
-    giveCards(from, to, [phantom]);
+    await giveCards(g, from, to, [phantom]);
 
     expect(from.hand.length).toBe(1);
     expect(to.hand.length).toBe(0);
@@ -99,38 +99,38 @@ describe('giveCards', () => {
 // ============================================================
 
 describe('discardCards', () => {
-  it('把一组牌从手牌移入弃牌堆', () => {
+  it('把一组牌从手牌移入弃牌堆', async () => {
     const g = freshGame();
     const player = g.state.players[0];
     giveHand(player, CardType.Sha, CardType.Tao);
     const card = player.hand[0];
 
-    discardCards(g, player, [card]);
+    await discardCards(g, player, [card]);
 
     expect(player.hand.map((c) => c.type)).toEqual([CardType.Tao]);
     expect(g.state.discardPile).toContain(card);
   });
 
-  it('返回实际移除的牌，不在手牌的牌自动跳过', () => {
+  it('返回实际移除的牌，不在手牌的牌自动跳过', async () => {
     const g = freshGame();
     const player = g.state.players[0];
     giveHand(player, CardType.Sha, CardType.Tao);
     const card = player.hand[0];
     const phantom = makeUniqueCard(CardType.Shan);
 
-    const removed = discardCards(g, player, [card, phantom]);
+    const removed = await discardCards(g, player, [card, phantom]);
 
     expect(removed).toEqual([card]);
     expect(player.hand.length).toBe(1);
     expect(g.state.discardPile).not.toContain(phantom);
   });
 
-  it('空数组 → 无操作', () => {
+  it('空数组 → 无操作', async () => {
     const g = freshGame();
     const player = g.state.players[0];
     giveHand(player, CardType.Sha);
 
-    expect(discardCards(g, player, [])).toEqual([]);
+    expect(await discardCards(g, player, [])).toEqual([]);
     expect(player.hand.length).toBe(1);
     expect(g.state.discardPile.length).toBe(0);
   });
