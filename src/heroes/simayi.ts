@@ -2,9 +2,9 @@
 // 司马懿 — 反馈 / 鬼才
 // ============================================================
 
-import { discardCards } from '../cardActions.js';
+import { discardCards, moveCards } from '../cardActions.js';
 import { cardEmoji, displayNumber } from '../cardRegistry.js';
-import { selectCardFromAreas, takeCardFromAreas } from '../areas.js';
+import { selectCardFromAreas } from '../areas.js';
 import { skillRegistry, subjectIsOwner } from '../skills.js';
 import type { GameEvent } from '../events/index.js';
 import type { DamageEventData, JudgeEventData } from '../events/index.js';
@@ -18,8 +18,9 @@ const fankuiContent = async (game: Game, event: GameEvent<any>, owner: Player): 
   if (!source) return; // 无来源伤害
   const card = selectCardFromAreas(source);
   if (!card) return;
-  takeCardFromAreas(source, card);
-  owner.hand.push(card);
+  await moveCards(game, {
+    to: { player: owner, zone: 'hand' }, cards: [card], reason: 'give',
+  });
   console.log(`  ✨${owner.name} 发动【反馈】！获得 ${source.name} 的一张牌`);
 };
 

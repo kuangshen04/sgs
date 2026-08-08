@@ -32,34 +32,6 @@ export function hasCardsInAreas(player: Player): boolean {
     || player.judgment.length > 0;
 }
 
-/**
- * 从玩家任意区域移除一张牌，返回是否成功。
- * 只负责"离开区域"，目的地（手牌/弃牌堆）由调用方处理。
- */
-export function takeCardFromAreas(player: Player, card: Card): boolean {
-  // 手牌
-  const handIdx = player.hand.findIndex((c) => c.id === card.id);
-  if (handIdx >= 0) {
-    player.hand.splice(handIdx, 1);
-    return true;
-  }
-  // 装备区
-  const eq = player.equipment;
-  for (const slot of ['weapon', 'armor', 'defensiveHorse', 'offensiveHorse'] as const) {
-    if (eq[slot]?.id === card.id) {
-      eq[slot] = undefined;
-      return true;
-    }
-  }
-  // 判定区
-  const jIdx = player.judgment.findIndex((c) => c.id === card.id);
-  if (jIdx >= 0) {
-    player.judgment.splice(jIdx, 1);
-    return true;
-  }
-  return false;
-}
-
 export interface AreaSelectOptions {
   /** 允许的区域（默认全部三区） */
   areas?: AreaName[];

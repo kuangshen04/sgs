@@ -13,7 +13,7 @@ import { cardRegistry, cardEmoji, displayNumber } from './cardRegistry.js';
 import { discardCards, drawCards, moveCards, playFromHand, useCard } from './cardActions.js';
 import { damage, recover } from './life.js';
 import { distanceTo, attackRange } from './distance.js';
-import { hasCardsInAreas, selectCardFromAreas, takeCardFromAreas } from './areas.js';
+import { hasCardsInAreas, selectCardFromAreas } from './areas.js';
 import { findResponse } from './choose.js';
 import type {
   TargetingEventData,
@@ -167,8 +167,9 @@ const guoheContent: CardContentFn = async (game, data, _event) => {
   // TODO(玩家选择): 弃置目标区域内哪张牌——目前写死为随机
   const card = selectCardFromAreas(target);
   if (!card) return;
-  takeCardFromAreas(target, card);
-  game.state.discardPile.push(card);
+  await moveCards(game, {
+    to: { zone: 'discardPile' }, cards: [card], reason: 'discard',
+  });
   console.log(
     `  弃置了 ${cardEmoji(card.type)} (${card.suit}${displayNumber(card.number)})`,
   );
@@ -184,8 +185,9 @@ const shunshouContent: CardContentFn = async (game, data, _event) => {
   // TODO(玩家选择): 获得目标区域内哪张牌——目前写死为随机
   const card = selectCardFromAreas(target);
   if (!card) return;
-  takeCardFromAreas(target, card);
-  user.hand.push(card);
+  await moveCards(game, {
+    to: { player: user, zone: 'hand' }, cards: [card], reason: 'give',
+  });
   console.log(
     `  获得了 ${cardEmoji(card.type)} (${card.suit}${displayNumber(card.number)})`,
   );
@@ -713,16 +715,18 @@ cardRegistry.register({
       const { target } = event.data as DamageEventData;
       if (!target) return;
       // 依次弃置两张区域内的牌，然后防止伤害。
+      // 逐张 select → moveCards（select 只读；取走一张后才能选第二张）。
       // prevent() 抛异常，之后的代码不会执行，所以必须先弃牌再 prevent。
       const discarded: Card[] = [];
       for (let i = 0; i < 2; i++) {
         // TODO(玩家选择): 依次弃置哪两张区域牌——目前写死为随机
         const card = selectCardFromAreas(target);
         if (!card) break;
-        takeCardFromAreas(target, card);
+        await moveCards(game, {
+          to: { zone: 'discardPile' }, cards: [card], reason: 'discard',
+        });
         discarded.push(card);
       }
-      game.state.discardPile.push(...discarded);
       console.log(
         `  ✨${owner.name} 的寒冰剑发动！防止 ${target.name} 受到伤害，弃置 ${discarded.length} 张牌`,
       );
