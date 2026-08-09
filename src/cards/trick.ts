@@ -203,7 +203,9 @@ const wuxieContent: CardContentFn = async (_game, _data, event) => {
 
 /**
  * 注册无懈可击 trigger handler（挂到指定对局的触发器注册表）。
- * AI 策略：只对目标为自己、且使用者不为自己的锦囊牌出无懈。
+ * 响应链无需显式实现：每个无懈使用都会生成自身 targeting 事件 → 递归触发本 handler，
+ * 后出的无懈在 content 中 prevent 前一个（last-wins），前一个的 content 便不会执行。
+ * 本循环只剩 AI 策略：从当前回合角色起按座次、只对目标为自己且使用者不是自己的锦囊出无懈。
  */
 export function installWuxieTrigger(game: Game): void {
   game.triggerSystem.on(`${EventType.Targeting}.before`, async (targetingEvent) => {
