@@ -3,6 +3,7 @@
 // ============================================================
 
 import './caocao.js';
+import './daqiao.js';
 import './diaochan.js';
 import './guojia.js';
 import './huanggai.js';

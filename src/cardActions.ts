@@ -365,7 +365,8 @@ export async function useCard(
           });
 
           if (!targetingEvent.isPrevented()) {
-            remaining.push(target);
+            // 读事件内的 target：流离等技能可在 targeting.before 中转移目标
+            remaining.push(targetingEvent.data.target);
           } else {
             console.log(`  🚫${target.name} 被指定为目标的效果已被抵消`);
           }
