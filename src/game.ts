@@ -5,7 +5,6 @@
 import { Card, GameState, Player, VictoryCondition } from './types.js';
 import { TriggerSystem, createEventStack } from './events/index.js';
 import type { EventStack } from './events/index.js';
-import type { Deciders } from './choose.js';
 import { shuffle } from './cardRegistry.js';
 import { heroRegistry } from './heroRegistry.js';
 import './heroes/index.js'; // 副作用：触发全部武将注册
@@ -17,8 +16,6 @@ import './heroes/index.js'; // 副作用：触发全部武将注册
 
 export interface Game {
   state: GameState;
-  /** 全局注入的出牌策略（choose() 优先级：调用参数 > 此处 > 默认 AI） */
-  deciders: Deciders;
   /** 本局的事件执行栈（随局隔离） */
   eventStack: EventStack;
   /** 本局的触发器注册表（随局隔离） */
@@ -42,7 +39,6 @@ export function lastManStanding(state: GameState): Player | null {
 /** createGame 的可选注入项 */
 export interface CreateGameOptions {
   victoryCheck?: VictoryCondition;
-  deciders?: Deciders;
 }
 
 export function createGame(
@@ -77,7 +73,6 @@ export function createGame(
       round: 1, gameOver: false, winner: null,
       victoryCheck: options?.victoryCheck ?? lastManStanding,
     },
-    deciders: options?.deciders ?? {},
     eventStack: createEventStack(),
     triggerSystem: new TriggerSystem(),
   };

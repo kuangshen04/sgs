@@ -18,7 +18,7 @@ import { drawCards, useCard, discardCards, judge, moveCards } from './cardAction
 import { cardRegistry, cardEmoji, displayNumber } from './cardRegistry.js';
 import { printState } from './display.js';
 import type { Game } from './game.js';
-import { choose } from './choose.js';
+import { chooseCardAndTargets } from './choose.js';
 import { pickActiveSkill } from './skills.js';
 
 // ============================================================
@@ -144,7 +144,7 @@ export async function playPhase(
       const usedSkills = new Set<string>(); // 本回合已发动的限次技能
       while (true) {
         if (!player.alive) break; // 出牌阶段中死亡则终止
-        const cardChoice = await choose(game, { player, shaUsed });
+        const cardChoice = await chooseCardAndTargets(game, player, shaUsed);
         const skill = pickActiveSkill(game, player, {
           shaUsed, usedSkills, cardChoice: cardChoice?.card ?? null,
         });

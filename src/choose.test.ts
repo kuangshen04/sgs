@@ -1,31 +1,26 @@
 // ============================================================
 // 三国杀最小原型 — choose.ts 单元测试
-// 选牌 / 选目标 / 两阶段串联 / decider 注入 / 响应牌询问 findResponse
+// 规则层可选集（computeCardOptions / computeTargetOptions）、
+// 出牌选择（chooseCardAndTargets 默认 AI）、响应牌询问 findResponse
 // ============================================================
 
 import { describe, it, expect } from 'vitest';
 
-import { freshGame, giveHand, makeUniqueCard, DEFAULT_HEROES } from './test-utils.js';
+import { freshGame, giveHand, makeUniqueCard } from './test-utils.js';
 
 import { cardRegistry } from './cardRegistry.js';
-import { createGame } from './game.js';
-import { STANDARD_DECK } from './cards/index.js';
-import type { Game } from './game.js';
 
 import {
   computeCardOptions,
   computeTargetOptions,
-  choose,
+  chooseCardAndTargets,
   findResponse,
 } from './choose.js';
-import type { CardDecider, Deciders } from './choose.js';
-
-import { playPhase } from './gameFlow.js';
 
 import { CardType } from './types.js';
 
 // ============================================================
-// computeCardOptions — Phase 1: 选牌
+// computeCardOptions — 规则层：选牌
 // ============================================================
 
 describe('computeCardOptions', () => {
@@ -52,7 +47,7 @@ describe('computeCardOptions', () => {
     expect(computeCardOptions(g, g.state.players[0], false).length).toBe(0);
   });
 
-  it('computeCardOptions 只做规则过滤，保持手牌顺序', () => {
+  it('只做规则过滤，保持手牌顺序', () => {
     const g = freshGame();
     const player = g.state.players[0];
     player.hp = 2;
@@ -108,21 +103,10 @@ describe('computeCardOptions', () => {
 
     expect(computeCardOptions(g, player, false).length).toBe(0);
   });
-
-  it('默认 AI 决策：按 usePriority 降序选牌（桃 90 优先）', async () => {
-    const g = freshGame();
-    const player = g.state.players[0];
-    player.hp = 2;
-    giveHand(player, CardType.Sha, CardType.JueDou, CardType.Tao);
-
-    const result = await choose(g, { player, shaUsed: false });
-
-    expect(result!.card.type).toBe(CardType.Tao);
-  });
 });
 
 // ============================================================
-// computeTargetOptions — Phase 2: 选目标
+// computeTargetOptions — 规则层：选目标
 // ============================================================
 
 describe('computeTargetOptions', () => {
@@ -267,16 +251,16 @@ describe('computeTargetOptions', () => {
 });
 
 // ============================================================
-// choose() — 两阶段串联
+// chooseCardAndTargets — 出牌选择（默认 AI）
 // ============================================================
 
-describe('choose', () => {
-  it('默认 AI：手牌只有杀 → 选杀 + AI 选目标', async () => {
+describe('chooseCardAndTargets', () => {
+  it('默认 AI：手牌只有杀 → 选杀 + 默认选目标', async () => {
     const g = freshGame();
     const player = g.state.players[0];
     giveHand(player, CardType.Sha);
 
-    const result = await choose(g, { player, shaUsed: false });
+    const result = await chooseCardAndTargets(g, player, false);
     expect(result).not.toBeNull();
     expect(result!.card.type).toBe(CardType.Sha);
     expect(result!.targets.length).toBe(1);
@@ -286,112 +270,44 @@ describe('choose', () => {
     const g = freshGame();
     const player = g.state.players[0];
 
-    const result = await choose(g, { player, shaUsed: false });
-    expect(result).toBeNull();
+    expect(await chooseCardAndTargets(g, player, false)).toBeNull();
   });
 
-  // Phase 1: 自定义 cardDecider
-
-  it('自定义 cardDecider：优先选决斗', async () => {
+  it('默认 AI：按 usePriority 降序选牌（桃 90 优先）', async () => {
     const g = freshGame();
     const player = g.state.players[0];
-    giveHand(player, CardType.Sha, CardType.JueDou);
+    player.hp = 2;
+    giveHand(player, CardType.Sha, CardType.JueDou, CardType.Tao);
 
-    const preferJuedou: CardDecider = (options) => {
-      const jd = options.find((o) => o.card.type === CardType.JueDou);
-      return jd ? { cardId: jd.card.id } : null;
-    };
-
-    const result = await choose(g, { player, shaUsed: false, cardDecide: preferJuedou });
-    expect(result).not.toBeNull();
-    expect(result!.card.type).toBe(CardType.JueDou);
+    const result = await chooseCardAndTargets(g, player, false);
+    expect(result!.card.type).toBe(CardType.Tao);
   });
 
-  it('cardDecider 返回 null → choose 返回 null', async () => {
+  it('默认 AI：决斗无杀在手 → AI 不用（shouldUse=false）→ null', async () => {
     const g = freshGame();
     const player = g.state.players[0];
-    giveHand(player, CardType.Sha);
+    giveHand(player, CardType.JueDou);
 
-    const result = await choose(g, {
-      player, shaUsed: false,
-      cardDecide: () => null,
-    });
-    expect(result).toBeNull();
+    expect(await chooseCardAndTargets(g, player, false)).toBeNull();
   });
 
-  it('cardDecider 选不存在的 cardId → 校验拒绝 → null', async () => {
+  it('默认 AI 选目标：桃只能选自己', async () => {
     const g = freshGame();
     const player = g.state.players[0];
-    giveHand(player, CardType.Sha);
+    player.hp = 2;
+    giveHand(player, CardType.Tao);
 
-    const result = await choose(g, {
-      player, shaUsed: false,
-      cardDecide: () => ({ cardId: 99999 }),
-    });
-    expect(result).toBeNull();
+    const result = await chooseCardAndTargets(g, player, false);
+    expect(result!.targets).toEqual([player]);
   });
 
-  // Phase 2: 自定义 targetDecider
-
-  it('自定义 targetDecider：杀指定打索引 2', async () => {
-    const g = freshGame();
-    const player = g.state.players[0];
-    giveHand(player, CardType.Sha);
-
-    const result = await choose(g, {
-      player, shaUsed: false,
-      targetDecide: () => ({ targetIndices: [2] }),
-    });
-    expect(result).not.toBeNull();
-    expect(result!.targets).toEqual([g.state.players[2]]);
-  });
-
-  it('targetDecider 选自己(杀不能打自己) → 校验拒绝 → null', async () => {
-    const g = freshGame();
-    const player = g.state.players[0];
-    giveHand(player, CardType.Sha);
-
-    const result = await choose(g, {
-      player, shaUsed: false,
-      targetDecide: () => ({ targetIndices: [0] }),
-    });
-    expect(result).toBeNull();
-  });
-
-  it('南蛮入侵只选 1 个目标 → targetCount=all 校验拒绝 → null', async () => {
+  it('默认 AI 选目标：南蛮入侵 targetCount=all → 全体其他存活玩家', async () => {
     const g = freshGame();
     const player = g.state.players[0];
     giveHand(player, CardType.NanMan);
 
-    const result = await choose(g, {
-      player, shaUsed: false,
-      targetDecide: () => ({ targetIndices: [1] }),
-    });
-    expect(result).toBeNull();
-  });
-
-  it('杀选 2 个目标 → targetCount=1 校验拒绝 → null', async () => {
-    const g = freshGame();
-    const player = g.state.players[0];
-    giveHand(player, CardType.Sha);
-
-    const result = await choose(g, {
-      player, shaUsed: false,
-      targetDecide: () => ({ targetIndices: [1, 2] }),
-    });
-    expect(result).toBeNull();
-  });
-
-  it('targetDecider 返回 null → choose 返回 null', async () => {
-    const g = freshGame();
-    const player = g.state.players[0];
-    giveHand(player, CardType.Sha);
-
-    const result = await choose(g, {
-      player, shaUsed: false,
-      targetDecide: () => null,
-    });
-    expect(result).toBeNull();
+    const result = await chooseCardAndTargets(g, player, false);
+    expect(result!.targets).toEqual([g.state.players[1], g.state.players[2]]);
   });
 });
 
@@ -433,78 +349,5 @@ describe('findResponse', () => {
   it('空手牌 → 返回 null', () => {
     const g = freshGame();
     expect(findResponse(g.state.players[0], CardType.Sha)).toBeNull();
-  });
-});
-
-// ============================================================
-// 全局注入 decider（Game.deciders）
-// ============================================================
-
-describe('全局注入 decider', () => {
-  /** 创建带全局 decider 的测试局（清空手牌） */
-  function gameWithDeciders(deciders: Deciders): Game {
-    const g = createGame(STANDARD_DECK, DEFAULT_HEROES, { deciders });
-    for (const p of g.state.players) p.hand = [];
-    return g;
-  }
-
-  it('choose 使用 game.deciders.cardDecide', async () => {
-    const g = gameWithDeciders({
-      cardDecide: (options) => {
-        const jd = options.find((o) => o.card.type === CardType.JueDou);
-        return jd ? { cardId: jd.card.id } : null;
-      },
-    });
-    const player = g.state.players[0];
-    giveHand(player, CardType.Sha, CardType.JueDou);
-
-    const result = await choose(g, { player, shaUsed: false });
-    expect(result).not.toBeNull();
-    expect(result!.card.type).toBe(CardType.JueDou);
-  });
-
-  it('choose 参数注入优先于 game.deciders', async () => {
-    const g = gameWithDeciders({ cardDecide: () => null }); // 全局：不出牌
-    const player = g.state.players[0];
-    giveHand(player, CardType.Sha);
-
-    // 调用参数覆盖全局 → 出杀
-    const result = await choose(g, {
-      player, shaUsed: false,
-      cardDecide: (options) => ({ cardId: options[0].card.id }),
-    });
-    expect(result).not.toBeNull();
-    expect(result!.card.type).toBe(CardType.Sha);
-  });
-
-  it('playPhase 使用全局注入的 cardDecide 循环出牌', async () => {
-    const g = gameWithDeciders({
-      cardDecide: (options) => {
-        const sha = options.find((o) => o.card.type === CardType.Sha);
-        return sha ? { cardId: sha.card.id } : null;
-      },
-    });
-    const player = g.state.players[0];
-    const target = g.state.players[1];
-    giveHand(player, CardType.Sha);
-    const hpBefore = target.hp;
-
-    await playPhase(g, { player });
-
-    expect(player.hand.length).toBe(0);
-    expect(target.hp).toBe(hpBefore - 1);
-  });
-
-  it('全局注入非法 targetDecider → 校验拒绝，牌留在手上', async () => {
-    // 南蛮入侵只选 1 个目标 → targetCount=all 校验失败
-    const g = gameWithDeciders({
-      targetDecide: () => ({ targetIndices: [1] }),
-    });
-    const player = g.state.players[0];
-    giveHand(player, CardType.NanMan);
-
-    await playPhase(g, { player });
-
-    expect(player.hand.length).toBe(1);
   });
 });

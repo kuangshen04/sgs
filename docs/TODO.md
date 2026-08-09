@@ -99,11 +99,11 @@
 - [ ] 回合外响应框架：求桃按座次、无懈响应链完善
 - [x] 杀响应流程骨架：能否响应（铁骑）、响应修改（无双杀部分）、抵消时点（shaCancelled，青龙偃月刀/贯石斧）——见 `respond.ts`
 - [ ] 杀响应完整化：八卦阵（判定代替闪）、响应询问窗口（玩家选择）
-- 注：出牌阶段 choose 已有 decider 机制不算；代码中的 `TODO(玩家选择)` 标记是完整清单（20 处）
+- 注：出牌阶段 choose 已有默认 AI（见 #12 A，已合并）；代码中的 `TODO(玩家选择)` 标记是完整清单（20 处）
 
 ### 12. 响应窗口 / ask 系统（玩家决策层重构）
 
-- 现状：出牌阶段 `choose()` 已分层（规则 compute → decider 决策 → validate 校验）；出牌阶段外的响应全部写死（`findResponse`"有就出第一张"、区域选牌随机、技能目标写死、发动自动），代码中约 20+ 处 `TODO(玩家选择)`
+- 现状：出牌阶段已合并为 `chooseCardAndTargets`（AI 决策点隔离 + 注释）；ask 家族（`askForCard`/`askFromAreas`/`askForTargets`/`askYesNo`）已建；出牌阶段外的响应仍全部写死（`findResponse`"有就出第一张"、区域选牌随机、技能目标写死、发动自动），代码中约 20+ 处 `TODO(玩家选择)`
 - 设计原则：
   - 暂不设计注入接口：compute→decide→validate 三段式与通用规则引擎目前只有默认 AI 一个实现、无生产注入方，属过度设计——先合并为直接流程；AI 决策点收敛为函数内唯一决策处并注释标明"真人/前端接入时的注入点"，接口设计等出现真实消费者再做
   - 语义分层保留：牌的 `canUse`（规则）与 `ai.shouldUse`（AI）不合并（这是真实区分）；合并的是 choose 层面的机械流程（不再导出可插拔的 compute/validate、不建规则对象）
@@ -111,7 +111,7 @@
   - `game.deciders` 移除；暂不引入 decider 参数（含"直接传参"也延后）；现有自定义 decider / 全局注入测试随合并删除或改写为测默认 AI 行为
   - ask 暂不事件化：目前没有技能需要挂在 ask 时点；转化牌/八卦阵是"修改可选集"，接入 options 计算即可，事件化等转化牌阶段再评估
 - 阶段计划：
-  - [ ] A. 合并实现（行为保持）：
+  - [x] A. 合并实现（行为保持）：
     - 出牌阶段：`choose()` 简化为 `chooseCardAndTargets(game, player, shaUsed)`——可选牌 → AI 选牌（隔离）→ 该牌合法目标 → AI 选目标（隔离）；`computeCardOptions`/`computeTargetOptions`/validate 收为内部辅助，导出面缩小
     - ask 家族（`src/ask.ts`）：`askForCard({ types })`（闪/杀/桃/无懈；`findResponse` 收编为默认行为"有就出第一张"）、`askFromAreas({ areas? })`（顺手/过河/寒冰/反馈/麒麟弓）、`askForTargets(candidates, { min/max })`（技能目标）、`askYesNo(prompt)`（发动）——直接实现，AI 决策一行隔离 + 注释
   - [ ] B. 接入现有写死点（行为保持，逐处替换 `TODO(玩家选择)`）：
