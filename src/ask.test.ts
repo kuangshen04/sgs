@@ -1,5 +1,5 @@
 // ============================================================
-// 三国杀最小原型 — ask.ts 单元测试
+// 三国杀最小原型 — ask 家族单元测试
 // 响应牌 / 区域选牌 / 选目标 / 发动询问（当前全部为默认 AI）
 // ============================================================
 
@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest';
 
 import { freshGame, giveHand, makeUniqueCard } from './test-utils.js';
 
-import { askForCard, askFromAreas, askForTargets, askYesNo } from './ask.js';
+import { askForCard, askFromAreas, askForTargets, askYesNo } from './choose.js';
 
 import { CardType } from './types.js';
 

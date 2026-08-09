@@ -113,7 +113,7 @@
 - 阶段计划：
   - [x] A. 合并实现（行为保持）：
     - 出牌阶段：`choose()` 简化为 `chooseCardAndTargets(game, player, shaUsed)`——可选牌 → AI 选牌（隔离）→ 该牌合法目标 → AI 选目标（隔离）；`computeCardOptions`/`computeTargetOptions`/validate 收为内部辅助，导出面缩小
-    - ask 家族（`src/ask.ts`）：`askForCard({ types })`（闪/杀/桃/无懈；`findResponse` 收编为默认行为"有就出第一张"）、`askFromAreas({ areas? })`（顺手/过河/寒冰/反馈/麒麟弓）、`askForTargets(candidates, { min/max })`（技能目标）、`askYesNo(prompt)`（发动）——直接实现，AI 决策一行隔离 + 注释
+    - ask 家族（并入 `src/choose.ts`）：`askForCard({ types })`（闪/杀/桃/无懈；`findResponse` 收编为默认行为"有就出第一张"）、`askFromAreas({ areas? })`（顺手/过河/寒冰/反馈/麒麟弓）、`askForTargets(candidates, { min/max })`（技能目标）、`askYesNo(prompt)`（发动）——直接实现，AI 决策一行隔离 + 注释
   - [ ] B. 接入现有写死点（行为保持，逐处替换 `TODO(玩家选择)`）：
     - 响应牌：闪响应/决斗响应（逐张）、南蛮/万箭、濒死自救、无懈（简化 AI）、借刀杀人、青龙偃月刀
     - 区域选牌：过河拆桥/顺手牵羊/寒冰剑/反馈/麒麟弓/贯石斧弃牌
