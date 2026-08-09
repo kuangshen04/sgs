@@ -5,7 +5,7 @@
 // ============================================================
 
 import { CardType } from './types.js';
-import type { Card, Player, ShaMarks } from './types.js';
+import type { Card, Player, RespondMarks } from './types.js';
 import type { Game } from './game.js';
 import { EventType, GameEvent } from './events/index.js';
 import type { ShaCancelledEventData } from './events/index.js';
@@ -20,7 +20,7 @@ import { findResponse } from './choose.js';
  * - 全部出完 → 触发 shaCancelled 抵消时点（青龙偃月刀/贯石斧监听）
  */
 export async function resolveShaResponse(
-  game: Game, attacker: Player, defender: Player, shaCard: Card, marks: ShaMarks,
+  game: Game, attacker: Player, defender: Player, shaCard: Card, marks: RespondMarks,
 ): Promise<boolean> {
   if (marks.unavoidable) {
     console.log(`  ⚡${defender.name} 无法闪避！`);
@@ -46,5 +46,27 @@ export async function resolveShaResponse(
     attacker, defender, card: shaCard, shanCount: need,
   }, game).execute(async () => {});
 
+  return true;
+}
+
+/**
+ * 决斗中一个角色的单次响应：需打出 required 张杀（无双②），逐张询问。
+ * 不足则失败（打不出杀 → 受到伤害）；已打出的杀不返还。
+ */
+export async function resolveJueDouResponse(
+  game: Game, player: Player, required: number,
+): Promise<boolean> {
+  for (let i = 0; i < required; i++) {
+    // TODO(玩家选择): 决斗中是否出杀/出哪张——写死"有就出第一张"
+    const sha = findResponse(player, CardType.Sha);
+    if (!sha) {
+      console.log(`  ${player.name} 无法打出杀！`);
+      return false;
+    }
+    await playFromHand(game, player, sha);
+    console.log(
+      `  ${player.name} 打出了 ${cardEmoji(CardType.Sha)} (${sha.suit}${displayNumber(sha.number)})`,
+    );
+  }
   return true;
 }

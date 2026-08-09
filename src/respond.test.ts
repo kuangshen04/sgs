@@ -6,12 +6,12 @@ import { describe, it, expect } from 'vitest';
 
 import { freshGame, giveHand, makeUniqueCard } from './test-utils.js';
 
-import { resolveShaResponse } from './respond.js';
+import { resolveJueDouResponse, resolveShaResponse } from './respond.js';
 
 import type { ShaCancelledEventData } from './events/index.js';
 
 import { CardType } from './types.js';
-import type { ShaMarks } from './types.js';
+import type { RespondMarks } from './types.js';
 
 describe('resolveShaResponse', () => {
   it('目标有闪 → 出闪并抵消（触发 shaCancelled）', async () => {
@@ -20,7 +20,7 @@ describe('resolveShaResponse', () => {
     const defender = g.state.players[1];
     const sha = makeUniqueCard(CardType.Sha);
     giveHand(defender, CardType.Shan);
-    const marks: ShaMarks = {};
+    const marks: RespondMarks = {};
     const captured = { data: null as ShaCancelledEventData | null };
     g.triggerSystem.on('shaCancelled.after', async (event) => {
       captured.data = event.data as ShaCancelledEventData;
@@ -40,7 +40,7 @@ describe('resolveShaResponse', () => {
     const attacker = g.state.players[0];
     const defender = g.state.players[1];
     const sha = makeUniqueCard(CardType.Sha);
-    const marks: ShaMarks = {};
+    const marks: RespondMarks = {};
     const captured = { fired: false };
     g.triggerSystem.on('shaCancelled.after', async () => { captured.fired = true; });
 
@@ -56,7 +56,7 @@ describe('resolveShaResponse', () => {
     const defender = g.state.players[1];
     const sha = makeUniqueCard(CardType.Sha);
     giveHand(defender, CardType.Shan, CardType.Shan);
-    const marks: ShaMarks = { shanRequired: 2 };
+    const marks: RespondMarks = { shanRequired: 2 };
 
     const cancelled = await resolveShaResponse(g, attacker, defender, sha, marks);
 
@@ -70,7 +70,7 @@ describe('resolveShaResponse', () => {
     const defender = g.state.players[1];
     const sha = makeUniqueCard(CardType.Sha);
     giveHand(defender, CardType.Shan, CardType.Tao); // 只有一张闪
-    const marks: ShaMarks = { shanRequired: 2 };
+    const marks: RespondMarks = { shanRequired: 2 };
 
     const cancelled = await resolveShaResponse(g, attacker, defender, sha, marks);
 
@@ -84,7 +84,7 @@ describe('resolveShaResponse', () => {
     const defender = g.state.players[1];
     const sha = makeUniqueCard(CardType.Sha);
     giveHand(defender, CardType.Shan);
-    const marks: ShaMarks = { unavoidable: true };
+    const marks: RespondMarks = { unavoidable: true };
     const captured = { fired: false };
     g.triggerSystem.on('shaCancelled.after', async () => { captured.fired = true; });
 
@@ -93,5 +93,38 @@ describe('resolveShaResponse', () => {
     expect(cancelled).toBe(false);
     expect(defender.hand.length).toBe(1); // 闪没被打出
     expect(captured.fired).toBe(false);
+  });
+});
+
+describe('resolveJueDouResponse', () => {
+  it('打出 required 张杀 → 成功', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    giveHand(player, CardType.Sha, CardType.Sha);
+
+    const ok = await resolveJueDouResponse(g, player, 2);
+
+    expect(ok).toBe(true);
+    expect(player.hand.length).toBe(0);
+  });
+
+  it('杀不足 required 张 → 失败（已打出的不返还）', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    giveHand(player, CardType.Sha, CardType.Tao);
+
+    const ok = await resolveJueDouResponse(g, player, 2);
+
+    expect(ok).toBe(false);
+    expect(player.hand.length).toBe(1); // 只剩桃，杀已打出
+  });
+
+  it('无杀 → 失败', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+
+    const ok = await resolveJueDouResponse(g, player, 1);
+
+    expect(ok).toBe(false);
   });
 });

@@ -2,7 +2,7 @@
 // 事件系统 — 事件名常量 & 事件数据接口
 // ============================================================
 
-import type { Card, CardLocation, CardMoveReason, Player, ShaMarks } from '../types.js';
+import type { Card, CardLocation, CardMoveReason, Player, RespondMarks } from '../types.js';
 
 /** 事件名常量 */
 export const EventType = {
@@ -76,8 +76,8 @@ export interface UseCardEventData {
   player: Player;
   card: Card;
   targets: Player[];
-  /** 杀响应的过程状态（无双/铁骑等 targeting.after 写入，shaContent 读取） */
-  marks?: ShaMarks;
+  /** 响应过程状态（无双/铁骑等 targeting.after 写入，响应流程读取） */
+  marks?: RespondMarks;
 }
 
 /** 杀被闪抵消时点（青龙偃月刀/贯石斧/刺杀等监听） */

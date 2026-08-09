@@ -15,6 +15,7 @@ import { EventType } from '../events/index.js';
 import { effectRegistry } from '../persistentEffects.js';
 import { otherAlive, allAlive } from './helpers.js';
 import type { Game } from '../game.js';
+import { resolveJueDouResponse } from '../respond.js';
 
 const wuzhongContent: CardContentFn = async (game, data, _event) => {
   const player = data.player;
@@ -37,17 +38,16 @@ const juedouContent: CardContentFn = async (game, data, _event) => {
   let opponent = initiator;
 
   while (true) {
-    // TODO(玩家选择): 决斗中是否出杀/出哪张——目前写死为"有就出第一张"
-    const sha = findResponse(current, CardType.Sha);
-    if (!sha) {
-      console.log(`  ${current.name} 无法打出杀！`);
+    // 无双②：每次响应时看对方是否持有无双——持有则需打出两张杀。
+    // 无双是唯一影响响应数的技能，单例特判（吕布使用决斗时目标需两张、
+    // 吕布成为目标时对手需两张；双方都是吕布则双方都需两张）。
+    const required = opponent.hero.skills?.includes('无双') ? 2 : 1;
+    const ok = await resolveJueDouResponse(game, current, required);
+    if (!ok) {
+      // 打不出杀 → 受伤（失败时点暂无监听者，直接结算）
       await damage(game, { target: current, source: opponent, amount: 1 });
       return;
     }
-    await playFromHand(game, current, sha);
-    console.log(
-      `  ${current.name} 打出了 🗡️杀 (${sha.suit}${displayNumber(sha.number)})`,
-    );
     [current, opponent] = [opponent, current];
   }
 };

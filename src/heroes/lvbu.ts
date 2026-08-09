@@ -11,7 +11,7 @@ import { EventType } from '../events/index.js';
 import type { Game } from '../game.js';
 import type { Player } from '../types.js';
 
-/** 无双：使用杀指定目标后，目标需使用两张闪（逐张响应） */
+/** 无双①：杀的目标需两张闪（决斗部分由决斗响应按"对方是否无双"动态判定） */
 const wushuangContent = async (
   game: Game, event: GameEvent<any>, owner: Player,
 ): Promise<void> => {
@@ -28,9 +28,7 @@ skillRegistry.register({
   trigger: 'targeting.after',
   canTrigger: (_game, event, owner) => {
     const { user, card } = event.data as TargetingEventData;
-    if (user !== owner) return false;
-    return card.type === CardType.Sha;
-    // 决斗部分（每次响应需两张杀）待决斗响应流程（TODO）
+    return user === owner && card.type === CardType.Sha; // ① 使用杀
   },
   content: wushuangContent,
 });
