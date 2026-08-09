@@ -26,12 +26,14 @@ const shaContent: CardContentFn = async (game, data, event) => {
 };
 
 const taoContent: CardContentFn = async (game, data, _event) => {
-  const player = data.player;
-  const before = player.hp;
-  await recover(game, { target: player, amount: 1 });
+  const user = data.player;
+  // 出牌阶段目标是自己；濒死求桃时目标是濒死角色（他人用桃救援）
+  const target = data.targets[0] ?? user;
+  const before = target.hp;
+  await recover(game, { target, amount: 1 });
   console.log(
-    `  ${player.name} 使用了 🍑桃 (${data.card.suit}${displayNumber(data.card.number)})，` +
-    `体力恢复到 ${before}→${player.hp}/${player.maxHp}`,
+    `  ${user.name} 使用了 🍑桃 (${data.card.suit}${displayNumber(data.card.number)})，` +
+    `${target.name} 体力恢复到 ${before}→${target.hp}/${target.maxHp}`,
   );
 };
 

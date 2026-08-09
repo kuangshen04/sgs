@@ -96,6 +96,36 @@ describe('dying', () => {
     expect(player.alive).toBe(false);
     expect(player.hand.length).toBe(1); // 桃未使用
   });
+
+  it('其他角色按座次出桃救援（从当前回合角色开始）', async () => {
+    const g = freshGame(); // 刘备/曹操/孙权，currentIndex=0
+    const target = g.state.players[0]; // 刘备濒死
+    const savior = g.state.players[1]; // 曹操
+    target.hp = 0;
+    giveHand(savior, CardType.Tao);
+
+    await dying(g, { player: target });
+
+    expect(target.alive).toBe(true);
+    expect(target.hp).toBe(1);
+    expect(savior.hand.length).toBe(0); // 曹操的桃被用来救人
+  });
+
+  it('用桃者被继续询问：同一玩家可连续使用多个桃', async () => {
+    const g = freshGame(); // 刘备/曹操/孙权，currentIndex=0
+    const target = g.state.players[2]; // 孙权濒死 hp=-1，需 2 桃
+    const a = g.state.players[0];      // 刘备：先问，无桃
+    const b = g.state.players[1];      // 曹操：用第 1 桃后被继续询问，用第 2 桃救活
+    target.hp = -1;
+    giveHand(b, CardType.Tao, CardType.Tao);
+
+    await dying(g, { player: target });
+
+    expect(target.alive).toBe(true);
+    expect(target.hp).toBe(1);
+    expect(a.hand.length).toBe(0); // 刘备无桃
+    expect(b.hand.length).toBe(0); // 曹操连续用了两张（指针停在用桃者身上）
+  });
 });
 
 describe('recover', () => {

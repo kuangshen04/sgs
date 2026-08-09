@@ -64,8 +64,9 @@ export async function loseHp(game: Game, player: Player, amount: number): Promis
 
 /**
  * 濒死：求桃自救。内容：
- *   1. 循环使用桃直到体力 > 0 或无桃可用
- *   2. 若仍 ≤ 0，调用 die() 真正死亡
+ *   1. 从当前回合角色开始按行动顺序询问桃（三国杀按座次均从当前回合角色开始）
+ *   2. 有人用桃后不重置回开头：指针停在用桃者身上（其可连续用桃）
+ *   3. 一整轮无人响应仍 ≤ 0 → 调用 die() 真正死亡
  */
 export async function dying(
   game: Game,
@@ -73,28 +74,51 @@ export async function dying(
 ): Promise<GameEvent<DyingEventData>> {
   return new GameEvent<DyingEventData>(EventType.Dying, data, game)
     .execute(async (event) => {
-      const player = event.data.player;
+      const dyingPlayer = event.data.player;
 
-      if (!player.alive) return; // 已死亡，跳过
+      if (!dyingPlayer.alive) return; // 已死亡，跳过
 
-      // 求桃：自己使用桃直到体力 > 0 或无桃可用
+      const players = game.state.players;
+      const startIndex = game.state.currentIndex; // 求桃按座次：从当前回合角色开始
+      const aliveCount = players.filter((p) => p.alive).length;
+
+      // 求桃：指针从当前回合角色开始；拒绝则前进，用桃则停在原处（可再用桃）；
+      // 一整轮无人响应 → 死亡。
       let usedTao = false;
-      while (player.hp <= 0) {
-        // askForCard：濒死时是否用桃自救/用哪张（默认 AI：有就出第一张）
-        const tao = askForCard(game, player, '是否使用桃自救', [CardType.Tao]);
-        if (!tao) break;
-        console.log(`  🩸${player.name} 濒死！使用 🍑桃 自救`);
-        await useCard(game, { player, card: tao, targets: [player] });
+      let idx = startIndex;
+      let consecutivePasses = 0;
+      while (dyingPlayer.hp <= 0) {
+        const player = players[idx];
+        if (!player.alive) {
+          idx = (idx + 1) % players.length;
+          continue;
+        }
+
+        // askForCard：是否使用桃救濒死角色（默认 AI：有就出第一张）
+        const tao = askForCard(game, player, `是否使用桃救 ${dyingPlayer.name}`, [CardType.Tao]);
+        if (!tao) {
+          consecutivePasses++;
+          if (consecutivePasses >= aliveCount) break; // 一整轮无人响应
+          idx = (idx + 1) % players.length;
+          continue;
+        }
+
+        consecutivePasses = 0;
         usedTao = true;
+        console.log(`  🩸${dyingPlayer.name} 濒死！${player.name} 使用 🍑桃 救援`);
+        await useCard(game, { player, card: tao, targets: [dyingPlayer] });
+        // 用了桃但未脱离：指针停在原处，下一轮继续问同一玩家（可再用桃）
       }
 
-      if (usedTao && player.hp > 0) {
-        console.log(`  💚${player.name} 脱离濒死，体力: ${player.hp}/${player.maxHp}`);
+      if (usedTao && dyingPlayer.hp > 0) {
+        console.log(
+          `  💚${dyingPlayer.name} 脱离濒死，体力: ${dyingPlayer.hp}/${dyingPlayer.maxHp}`,
+        );
       }
 
       // 若仍死亡，真正阵亡
-      if (player.hp <= 0) {
-        await die(game, { player });
+      if (dyingPlayer.hp <= 0) {
+        await die(game, { player: dyingPlayer });
       }
     });
 }
