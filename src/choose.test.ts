@@ -1,7 +1,7 @@
 // ============================================================
 // 三国杀最小原型 — choose.ts 单元测试
 // 规则层可选集（computeCardOptions / computeTargetOptions）、
-// 出牌选择（chooseCardAndTargets 默认 AI）、响应牌询问 findResponse
+// 出牌选择（chooseCardAndTargets 默认 AI）
 // ============================================================
 
 import { describe, it, expect } from 'vitest';
@@ -14,7 +14,6 @@ import {
   computeCardOptions,
   computeTargetOptions,
   chooseCardAndTargets,
-  findResponse,
 } from './choose.js';
 
 import { CardType } from './types.js';
@@ -308,46 +307,5 @@ describe('chooseCardAndTargets', () => {
 
     const result = await chooseCardAndTargets(g, player, false);
     expect(result!.targets).toEqual([g.state.players[1], g.state.players[2]]);
-  });
-});
-
-// ============================================================
-// findResponse — 响应牌询问（只读）
-// ============================================================
-
-describe('findResponse', () => {
-  it('手牌有指定类型 → 返回该牌，不改状态', () => {
-    const g = freshGame();
-    const player = g.state.players[0];
-    giveHand(player, CardType.Sha, CardType.Tao);
-
-    const result = findResponse(player, CardType.Sha);
-
-    expect(result).toBeDefined();
-    expect(result!.type).toBe(CardType.Sha);
-    expect(player.hand.length).toBe(2); // 只读，不消耗
-  });
-
-  it('多张同类型 → 返回第一张', () => {
-    const g = freshGame();
-    const player = g.state.players[0];
-    giveHand(player, CardType.Shan, CardType.Sha, CardType.Sha);
-
-    const result = findResponse(player, CardType.Sha);
-
-    expect(result).toBe(player.hand[1]);
-  });
-
-  it('手牌没有指定类型 → 返回 null', () => {
-    const g = freshGame();
-    const player = g.state.players[0];
-    giveHand(player, CardType.Tao);
-
-    expect(findResponse(player, CardType.Sha)).toBeNull();
-  });
-
-  it('空手牌 → 返回 null', () => {
-    const g = freshGame();
-    expect(findResponse(g.state.players[0], CardType.Sha)).toBeNull();
   });
 });

@@ -123,18 +123,20 @@ export function askForCard(
 
 // ---- askFromAreas：从玩家区域内选一张牌（顺手牵羊/过河拆桥/寒冰剑/反馈等） ----
 
-/** 询问从玩家区域内选一张牌（顺手牵羊/过河拆桥/寒冰剑/反馈等）。无牌返回 null。 */
+/** 询问从玩家区域内选一张牌（顺手牵羊/过河拆桥/寒冰剑/反馈/麒麟弓等）。无牌返回 null。 */
 export function askFromAreas(
   game: Game,
   player: Player,
   prompt: string,
   areas: AreaName[] = ['hand', 'equipment', 'judgment'],
+  filter?: (card: Card) => boolean,
 ): Card | null {
-  // 规则层：目标区域内的牌
-  const pool: Card[] = [];
+  // 规则层：目标区域内、符合过滤条件的牌
+  let pool: Card[] = [];
   if (areas.includes('hand')) pool.push(...player.hand);
   if (areas.includes('equipment')) pool.push(...equipmentCards(player));
   if (areas.includes('judgment')) pool.push(...player.judgment);
+  if (filter) pool = pool.filter(filter);
   if (pool.length === 0) return null;
 
   // ---- AI 决策：选哪张（当前写死：随机；真人/前端接入时在此注入）----
@@ -169,19 +171,4 @@ export function askYesNo(
 ): boolean {
   // ---- AI 决策：是否发动（当前写死：返回默认值；真人/前端接入时在此注入）----
   return defaultAnswer;
-}
-
-// ============================================================
-// findResponse — 响应牌询问（只读）
-//
-// 出牌阶段外的"要一张指定类型的牌"：闪、决斗打出的杀、南蛮打出的杀、
-// 濒死的桃、无懈可击共用同一个 ask。只查找不消耗，
-// 打出（playFromHand）还是使用（useCard）由调用方决定。
-// 注：askForCard 已同文件实现；本函数为遗留单类型封装，
-// TODO #12 B 阶段替换调用点后删除。
-// ============================================================
-
-/** 询问一个角色是否用指定类型的牌响应。只读，不改变状态；无牌返回 null。 */
-export function findResponse(player: Player, type: CardType): Card | null {
-  return player.hand.find((c) => c.type === type) ?? null;
 }

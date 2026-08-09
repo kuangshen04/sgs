@@ -66,6 +66,21 @@ describe('askFromAreas', () => {
     expect(card).toBe(player.equipment.weapon);
   });
 
+  it('filter 过滤候选牌（麒麟弓：只选坐骑）', () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    giveHand(player, CardType.Sha);
+    player.equipment.weapon = makeUniqueCard(CardType.QiLinGong);
+    player.equipment.offensiveHorse = makeUniqueCard(CardType.ChiTu);
+
+    const card = askFromAreas(
+      g, player, '弃置一张坐骑', ['equipment'],
+      (c) => c.type === CardType.ChiTu || c.type === CardType.JueYing,
+    );
+
+    expect(card).toBe(player.equipment.offensiveHorse);
+  });
+
   it('目标区域无牌 → 返回 null', () => {
     const g = freshGame();
     expect(askFromAreas(g, g.state.players[0], '')).toBeNull();

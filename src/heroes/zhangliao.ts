@@ -4,6 +4,7 @@
 
 import { giveCards } from '../cardActions.js';
 import { shuffle } from '../cardRegistry.js';
+import { askForTargets } from '../choose.js';
 import { skillRegistry, subjectIsOwner } from '../skills.js';
 import type { GameEvent } from '../events/index.js';
 import type { DrawPhaseEventData } from '../events/index.js';
@@ -18,8 +19,9 @@ const tuxiContent = async (game: Game, event: GameEvent<any>, owner: Player): Pr
   const candidates = game.state.players.filter(
     (p) => p !== owner && p.alive && p.hand.length > 0,
   );
-  // TODO(玩家选择): 突袭抢哪两名角色——目前写死为随机
-  const picks = shuffle(candidates).slice(0, Math.min(2, candidates.length));
+  // askForTargets：突袭抢哪两名角色（候选人洗牌后取前 2 → 随机；默认 AI）
+  const picks = askForTargets(game, owner, '突袭：抢谁的手牌', shuffle(candidates), 2);
+  if (!picks) return;
   for (const target of picks) {
     const card = target.hand[Math.floor(Math.random() * target.hand.length)];
     await giveCards(game, target, owner, [card]);

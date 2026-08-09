@@ -8,10 +8,10 @@ import { cardRegistry, cardEmoji } from '../cardRegistry.js';
 import { discardCards, drawCards, moveCards, useCard } from '../cardActions.js';
 import type { DamageEventData, ShaCancelledEventData, TargetingEventData } from '../events/index.js';
 import { EventType } from '../events/index.js';
-import { findResponse } from '../choose.js';
+import { askForCard, askFromAreas, askYesNo } from '../choose.js';
 import { damage } from '../life.js';
 import { effectRegistry } from '../persistentEffects.js';
-import { cardsInAreas, hasCardsInAreas, selectCardFromAreas } from '../areas.js';
+import { cardsInAreas, hasCardsInAreas } from '../areas.js';
 
 cardRegistry.register({
   type: CardType.ZhugeLianNu,
@@ -78,10 +78,13 @@ cardRegistry.register({
     content: async (game, event, owner) => {
       const { target } = event.data as DamageEventData;
       if (!target) return;
-      // 弃置目标一张坐骑（简化：优先防御马）
-      const eq = target.equipment;
-      // TODO(玩家选择): 弃置目标的哪张坐骑——目前写死为"优先防御马"
-      const mount = eq.defensiveHorse ?? eq.offensiveHorse;
+      // askFromAreas：弃置目标一张坐骑（默认 AI：随机；原简化"优先防御马"）
+      const mount = askFromAreas(
+        game, target, '麒麟弓：弃置目标一张坐骑', ['equipment'],
+        (c) => !!cardRegistry.get(c.type)?.tags.some(
+          (t) => t === CardTag.DefensiveHorse || t === CardTag.OffensiveHorse,
+        ),
+      );
       if (!mount) return;
       await moveCards(game, {
         to: { zone: 'discardPile' }, cards: [mount], reason: 'discard',
@@ -126,8 +129,8 @@ cardRegistry.register({
       // prevent() 抛异常，之后的代码不会执行，所以必须先弃牌再 prevent。
       const discarded: Card[] = [];
       for (let i = 0; i < 2; i++) {
-        // TODO(玩家选择): 依次弃置哪两张区域牌——目前写死为随机
-        const card = selectCardFromAreas(target);
+        // askFromAreas：依次弃置哪两张区域牌（默认 AI：随机）
+        const card = askFromAreas(game, target, '寒冰剑：弃置目标一张区域牌');
         if (!card) break;
         await moveCards(game, {
           to: { zone: 'discardPile' }, cards: [card], reason: 'discard',
@@ -200,8 +203,12 @@ cardRegistry.register({
     },
     content: async (game, event, owner) => {
       const { target } = event.data as TargetingEventData;
-      // TODO(玩家选择): 目标选择"弃一张手牌"还是"令使用者摸一张牌"——写死为优先弃牌
-      if (target.hand.length > 0) {
+      // askYesNo：目标选择"弃一张手牌"还是"令使用者摸一张牌"
+      // （默认 AI：有手牌则弃牌，否则令使用者摸牌）
+      const discardHand = askYesNo(
+        game, target, `是否弃置一张手牌（否则 ${owner.name} 摸一张牌）`, target.hand.length > 0,
+      );
+      if (discardHand && target.hand.length > 0) {
         await discardCards(game, target, [target.hand[0]]);
         console.log(
           `  ⚔️${owner.name} 的雌雄双股剑发动！${target.name} 弃置了一张手牌`,
@@ -267,12 +274,12 @@ cardRegistry.register({
     canTrigger: (game, event, owner) => {
       const { attacker } = event.data as ShaCancelledEventData;
       if (attacker !== owner) return false; // 只有装备者使用的杀被抵消
-      return !!findResponse(owner, CardType.Sha); // AI：有杀才再出
+      return owner.hand.some((c) => c.type === CardType.Sha); // AI：有杀才再出（发动询问接入前简化）
     },
     content: async (game, event, owner) => {
       const { defender } = event.data as ShaCancelledEventData;
-      // TODO(玩家选择): 是否再出杀——写死"有杀就出"
-      const sha = findResponse(owner, CardType.Sha);
+      // askForCard：是否再出杀/出哪张（默认 AI：有就出第一张）
+      const sha = askForCard(game, owner, '青龙偃月刀：是否再次使用杀', [CardType.Sha]);
       if (!sha) return;
       await useCard(game, { player: owner, card: sha, targets: [defender] });
       console.log(`  🗡️${owner.name} 的青龙偃月刀发动，对 ${defender.name} 再次使用杀`);
@@ -304,10 +311,10 @@ cardRegistry.register({
     },
     content: async (game, event, owner) => {
       const { defender } = event.data as ShaCancelledEventData;
-      // TODO(玩家选择): 弃哪两张牌——写死随机
+      // askFromAreas：弃哪两张牌（默认 AI：随机）
       const discarded: Card[] = [];
       for (let i = 0; i < 2; i++) {
-        const card = selectCardFromAreas(owner);
+        const card = askFromAreas(game, owner, '贯石斧：弃置一张牌');
         if (!card) break;
         await moveCards(game, {
           to: { zone: 'discardPile' }, cards: [card], reason: 'discard',

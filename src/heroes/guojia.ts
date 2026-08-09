@@ -4,6 +4,7 @@
 
 import { drawCards, takeFromDiscard } from '../cardActions.js';
 import { cardEmoji, displayNumber } from '../cardRegistry.js';
+import { askForTargets } from '../choose.js';
 import { skillRegistry, subjectIsOwner } from '../skills.js';
 import type { GameEvent } from '../events/index.js';
 import type { DamageEventData, JudgeEventData } from '../events/index.js';
@@ -15,8 +16,10 @@ import type { Player } from '../types.js';
 const yijiContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
   const { amount } = event.data as DamageEventData;
   const before = owner.hand.length;
-  // TODO(玩家选择): 遗计两张牌分配给谁——目前写死为"全给自己"（简化）
-  await drawCards(game, { target: owner, count: amount * 2 });
+  // askForTargets：遗计牌分配给谁（简化：只给自己）
+  const receivers = askForTargets(game, owner, '遗计：牌分给谁（简化只给自己）', [owner], 1);
+  if (!receivers) return;
+  await drawCards(game, { target: receivers[0], count: amount * 2 });
   console.log(
     `  ✨${owner.name} 发动【遗计】！受到 ${amount} 点伤害，摸了 ${amount * 2} 张牌` +
     `（${before} → ${owner.hand.length}）`,

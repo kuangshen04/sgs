@@ -8,8 +8,8 @@ import { cardRegistry, cardEmoji, displayNumber } from '../cardRegistry.js';
 import { drawCards, moveCards, playFromHand, useCard } from '../cardActions.js';
 import { damage, recover } from '../life.js';
 import { distanceTo, attackRange } from '../distance.js';
-import { hasCardsInAreas, selectCardFromAreas } from '../areas.js';
-import { findResponse } from '../choose.js';
+import { hasCardsInAreas } from '../areas.js';
+import { askForCard, askFromAreas } from '../choose.js';
 import type { TargetingEventData } from '../events/index.js';
 import { EventType } from '../events/index.js';
 import { effectRegistry } from '../persistentEffects.js';
@@ -60,8 +60,8 @@ const nanmanContent: CardContentFn = async (game, data, _event) => {
   );
 
   for (const target of data.targets) {
-    // TODO(玩家选择): 南蛮中是否出杀/出哪张——目前写死为"有就出第一张"
-    const sha = findResponse(target, CardType.Sha);
+    // askForCard：南蛮中是否出杀/出哪张（默认 AI：有就出第一张）
+    const sha = askForCard(game, target, '是否打出杀', [CardType.Sha]);
     if (sha) {
       await playFromHand(game, target, sha);
       console.log(
@@ -81,8 +81,8 @@ const wanjianContent: CardContentFn = async (game, data, _event) => {
   );
 
   for (const target of data.targets) {
-    // TODO(玩家选择): 万箭中是否出闪/出哪张——目前写死为"有就出第一张"
-    const shan = findResponse(target, CardType.Shan);
+    // askForCard：万箭中是否出闪/出哪张（默认 AI：有就出第一张）
+    const shan = askForCard(game, target, '是否打出闪', [CardType.Shan]);
     if (shan) {
       await playFromHand(game, target, shan);
       console.log(
@@ -125,8 +125,8 @@ const guoheContent: CardContentFn = async (game, data, _event) => {
     `  ${user.name} 对 ${target.name} 使用了 🌉过河拆桥，弃置其区域内的一张牌`,
   );
 
-  // TODO(玩家选择): 弃置目标区域内哪张牌——目前写死为随机
-  const card = selectCardFromAreas(target);
+  // askFromAreas：弃置目标区域内哪张牌（默认 AI：随机）
+  const card = askFromAreas(game, target, '过河拆桥：弃置目标一张牌');
   if (!card) return;
   await moveCards(game, {
     to: { zone: 'discardPile' }, cards: [card], reason: 'discard',
@@ -143,8 +143,8 @@ const shunshouContent: CardContentFn = async (game, data, _event) => {
     `  ${user.name} 对 ${target.name} 使用了 🐑顺手牵羊，获得其区域内的一张牌`,
   );
 
-  // TODO(玩家选择): 获得目标区域内哪张牌——目前写死为随机
-  const card = selectCardFromAreas(target);
+  // askFromAreas：获得目标区域内哪张牌（默认 AI：随机）
+  const card = askFromAreas(game, target, '顺手牵羊：获得目标一张牌');
   if (!card) return;
   await moveCards(game, {
     to: { player: user, zone: 'hand' }, cards: [card], reason: 'give',
@@ -164,14 +164,15 @@ const jiedaoContent: CardContentFn = async (game, data, _event) => {
     `  ${user.name} 对 ${target.name} 使用了 🗡️借刀杀人，令其对他人使用杀或交出武器`,
   );
 
-  // TODO(玩家选择): 目标选择"出杀"还是"交武器"、杀的对象——目前写死为
-  // "有杀且攻击范围内有除双方外的角色就出杀（目标为第一个），否则交武器"
-  const sha = findResponse(target, CardType.Sha);
+  // askForCard：目标是否出杀（默认 AI：有就出第一张）
+  const sha = askForCard(game, target, '是否用杀响应【借刀杀人】', [CardType.Sha]);
   const shaTarget = game.state.players.find(
     (p) => p.alive && p !== target && p !== user
       && distanceTo(game.state.players, target, p) <= attackRange(target),
   );
 
+  // AI 决策：有杀且有合法目标 → 出杀（目标取第一个）；否则交武器。
+  // 真人/前端接入时此处改为询问。
   if (sha && shaTarget) {
     await useCard(game, { player: target, card: sha, targets: [shaTarget] });
     console.log(
@@ -223,8 +224,8 @@ export function installWuxieTrigger(game: Game): void {
       if (target !== player) continue;
       if (!judging && user === player) continue;
 
-      // TODO(玩家选择): 是否出无懈/出哪张——目前写死为 AI 策略"只保护自己"
-      const wxCard = findResponse(player, CardType.WuXie);
+      // askForCard：是否出无懈/出哪张（默认 AI：有就出第一张）
+      const wxCard = askForCard(game, player, '是否打出无懈可击', [CardType.WuXie]);
       if (!wxCard) continue;
       console.log(
         `  ✨${player.name} 使用 🛡️无懈可击 ` +

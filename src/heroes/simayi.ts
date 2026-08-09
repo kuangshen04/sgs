@@ -4,19 +4,21 @@
 
 import { discardCards, moveCards } from '../cardActions.js';
 import { cardEmoji, displayNumber } from '../cardRegistry.js';
-import { selectCardFromAreas } from '../areas.js';
+import { askForCard, askFromAreas } from '../choose.js';
 import { skillRegistry, subjectIsOwner } from '../skills.js';
 import type { GameEvent } from '../events/index.js';
 import type { DamageEventData, JudgeEventData } from '../events/index.js';
 import { heroRegistry } from '../heroRegistry.js';
 import type { Game } from '../game.js';
+import { CardType } from '../types.js';
 import type { Player } from '../types.js';
 
 /** 反馈：受到伤害后，获得伤害来源区域内的一张牌 */
 const fankuiContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
   const { source } = event.data as DamageEventData;
   if (!source) return; // 无来源伤害
-  const card = selectCardFromAreas(source);
+  // askFromAreas：获得伤害来源区域内哪张牌（默认 AI：随机）
+  const card = askFromAreas(game, source, '反馈：获得伤害来源一张牌');
   if (!card) return;
   await moveCards(game, {
     to: { player: owner, zone: 'hand' }, cards: [card], reason: 'give',
@@ -27,8 +29,9 @@ const fankuiContent = async (game: Game, event: GameEvent<any>, owner: Player): 
 /** 鬼才：一名角色的判定牌生效前，你可以打出一张手牌代替之 */
 const guicaiContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
   const judgeEvent = event as GameEvent<JudgeEventData>;
-  // TODO(玩家选择): 鬼才打出哪张手牌替换判定牌——目前写死为第一张
-  const card = owner.hand[0];
+  // askForCard：打出哪张手牌替换判定牌（默认 AI：第一张；任意手牌均可）
+  const card = askForCard(game, owner, '鬼才：打出一张手牌代替判定牌', Object.values(CardType));
+  if (!card) return;
   await discardCards(game, owner, [card]);
   judgeEvent.data.card = card;
   console.log(

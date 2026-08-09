@@ -6,11 +6,7 @@ import { describe, it, expect } from 'vitest';
 
 import { freshGame, giveHand, makeUniqueCard } from './test-utils.js';
 
-import {
-  cardsInAreas,
-  hasCardsInAreas,
-  selectCardFromAreas,
-} from './areas.js';
+import { cardsInAreas, hasCardsInAreas } from './areas.js';
 
 import { CardType } from './types.js';
 
@@ -36,23 +32,5 @@ describe('区域枚举', () => {
     p.equipment.armor = undefined;
     p.judgment.push(makeUniqueCard(CardType.LeBu));
     expect(hasCardsInAreas(p)).toBe(true);
-  });
-});
-
-describe('selectCardFromAreas', () => {
-  it('区域内无牌 → null', () => {
-    const g = freshGame();
-    expect(selectCardFromAreas(g.state.players[0])).toBeNull();
-  });
-
-  it('指定区域过滤（只从装备区选）', () => {
-    const g = freshGame();
-    const p = g.state.players[0];
-    giveHand(p, CardType.Sha);
-    const weapon = makeUniqueCard(CardType.ZhugeLianNu);
-    p.equipment.weapon = weapon;
-
-    const card = selectCardFromAreas(p, { areas: ['equipment'] });
-    expect(card).toBe(weapon);
   });
 });

@@ -4,6 +4,7 @@
 
 import { discardCards, drawCards } from '../cardActions.js';
 import { recover } from '../life.js';
+import { askForTargets, askFromAreas } from '../choose.js';
 import { activeSkillRegistry, skillRegistry } from '../skills.js';
 import { heroRegistry } from '../heroRegistry.js';
 import type { CardMoveEventData, GameEvent } from '../events/index.js';
@@ -12,14 +13,20 @@ import type { Player } from '../types.js';
 
 /** 结姻：出牌阶段限一次，弃置两张手牌，选择一名已受伤的男性角色，你与其各回复 1 点体力 */
 const jieyinContent = async (game: Game, player: Player): Promise<void> => {
-  // TODO(玩家选择): 结姻选择谁——目前写死为"第一个已受伤的男性角色"
-  const target = game.state.players.find(
+  // askForTargets：结姻选择谁（默认 AI：第一个已受伤的男性角色）
+  const candidates = game.state.players.filter(
     (p) => p.alive && p !== player && p.hero.sex === 'male' && p.hp < p.maxHp,
   );
-  if (!target) return;
+  const targets = askForTargets(game, player, '结姻：选择谁', candidates, 1);
+  if (!targets) return;
+  const target = targets[0];
 
-  // TODO(玩家选择): 弃置哪两张手牌——目前写死为前两张（简化）
-  await discardCards(game, player, [...player.hand].slice(0, 2));
+  // askFromAreas：弃置哪两张手牌（默认 AI：逐张随机）
+  for (let i = 0; i < 2; i++) {
+    const card = askFromAreas(game, player, '结姻：弃置一张手牌', ['hand']);
+    if (!card) break;
+    await discardCards(game, player, [card]);
+  }
   await recover(game, { target: player, amount: 1 });
   await recover(game, { target, amount: 1 });
   console.log(

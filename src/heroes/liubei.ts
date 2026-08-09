@@ -4,6 +4,7 @@
 
 import { giveCards } from '../cardActions.js';
 import { recover } from '../life.js';
+import { askForTargets } from '../choose.js';
 import { activeSkillRegistry } from '../skills.js';
 import { heroRegistry } from '../heroRegistry.js';
 import type { Game } from '../game.js';
@@ -12,9 +13,11 @@ import type { Player } from '../types.js';
 /** 仁德：出牌阶段限一次，交给其他角色两张牌，然后回复 1 点体力 */
 const rendeContent = async (game: Game, player: Player): Promise<void> => {
   if (player.hand.length < 2) return;
-  // TODO(玩家选择): 仁德交给谁——目前写死为"第一个其他存活角色"
-  const target = game.state.players.find((p) => p !== player && p.alive);
-  if (!target) return;
+  // askForTargets：仁德交给谁（默认 AI：第一个其他存活角色）
+  const candidates = game.state.players.filter((p) => p !== player && p.alive);
+  const targets = askForTargets(game, player, '仁德：交给谁', candidates, 1);
+  if (!targets) return;
+  const target = targets[0];
   const given = await giveCards(game, player, target, player.hand.slice(0, 2));
   await recover(game, { target: player, amount: 1 });
   console.log(

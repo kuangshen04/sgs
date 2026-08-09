@@ -31,20 +31,3 @@ export function hasCardsInAreas(player: Player): boolean {
     || !!player.equipment.defensiveHorse || !!player.equipment.offensiveHorse
     || player.judgment.length > 0;
 }
-
-export interface AreaSelectOptions {
-  /** 允许的区域（默认全部三区） */
-  areas?: AreaName[];
-}
-
-/** 从玩家区域内随机选一张牌（当前 AI 策略：随机），无牌返回 null */
-export function selectCardFromAreas(player: Player, opts: AreaSelectOptions = {}): Card | null {
-  const areas = opts.areas ?? ['hand', 'equipment', 'judgment'];
-  const pool: Card[] = [];
-  if (areas.includes('hand')) pool.push(...player.hand);
-  if (areas.includes('equipment')) pool.push(...equipmentCards(player));
-  if (areas.includes('judgment')) pool.push(...player.judgment);
-  if (pool.length === 0) return null;
-  // TODO(玩家选择): 区域内选牌策略目前写死为随机——玩家决策在此接入
-  return pool[Math.floor(Math.random() * pool.length)];
-}

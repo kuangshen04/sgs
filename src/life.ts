@@ -9,7 +9,7 @@ import type {
   DamageEventData, RecoverEventData, DyingEventData, DieEventData,
 } from './events/index.js';
 import { useCard } from './cardActions.js';
-import { findResponse } from './choose.js';
+import { askForCard } from './choose.js';
 import type { Game } from './game.js';
 
 // ============================================================
@@ -80,8 +80,8 @@ export async function dying(
       // 求桃：自己使用桃直到体力 > 0 或无桃可用
       let usedTao = false;
       while (player.hp <= 0) {
-        // TODO(玩家选择): 濒死时是否用桃自救/用哪张——目前写死为"有就出第一张"
-        const tao = findResponse(player, CardType.Tao);
+        // askForCard：濒死时是否用桃自救/用哪张（默认 AI：有就出第一张）
+        const tao = askForCard(game, player, '是否使用桃自救', [CardType.Tao]);
         if (!tao) break;
         console.log(`  🩸${player.name} 濒死！使用 🍑桃 自救`);
         await useCard(game, { player, card: tao, targets: [player] });

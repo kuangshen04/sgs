@@ -12,7 +12,8 @@ import type { Player } from '../types.js';
 const zhihengContent = async (game: Game, player: Player): Promise<void> => {
   const count = player.hand.length;
   if (count === 0) return;
-  await discardCards(game, player, [...player.hand]); // TODO(玩家选择): 制衡弃哪些牌——目前写死为"全部"（简化）
+  // 规则简化：制衡弃置全部手牌并摸等量（原规则为任选弃牌，选择系统完善后改为询问）
+  await discardCards(game, player, [...player.hand]);
   await drawCards(game, { target: player, count });
   console.log(
     `  ✨${player.name} 发动【制衡】！弃置 ${count} 张牌，摸了 ${count} 张牌`,

@@ -4,6 +4,7 @@
 
 import { drawCards, giveCards } from '../cardActions.js';
 import { damage } from '../life.js';
+import { askForTargets } from '../choose.js';
 import { activeSkillRegistry, skillRegistry, subjectIsOwner } from '../skills.js';
 import type { GameEvent } from '../events/index.js';
 import type { DrawPhaseEventData } from '../events/index.js';
@@ -21,9 +22,11 @@ const yingziContent = async (game: Game, event: GameEvent<any>, owner: Player): 
 /** 反间：出牌阶段限一次，交给其他角色一张牌，然后对其造成 1 点伤害 */
 const fanjianContent = async (game: Game, player: Player): Promise<void> => {
   if (player.hand.length === 0) return;
-  // TODO(玩家选择): 反间指定谁——目前写死为"第一个其他存活角色"
-  const target = game.state.players.find((p) => p !== player && p.alive);
-  if (!target) return;
+  // askForTargets：反间指定谁（默认 AI：第一个其他存活角色）
+  const candidates = game.state.players.filter((p) => p !== player && p.alive);
+  const targets = askForTargets(game, player, '反间：指定谁', candidates, 1);
+  if (!targets) return;
+  const target = targets[0];
   await giveCards(game, player, target, [player.hand[0]]);
   await damage(game, { target, source: player, amount: 1 });
   console.log(
