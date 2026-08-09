@@ -5,11 +5,13 @@
 import { CardTag, CardType } from '../types.js';
 import type { Card } from '../types.js';
 import { cardRegistry, cardEmoji } from '../cardRegistry.js';
-import { discardCards, drawCards, moveCards } from '../cardActions.js';
-import type { DamageEventData, TargetingEventData } from '../events/index.js';
+import { discardCards, drawCards, moveCards, useCard } from '../cardActions.js';
+import type { DamageEventData, ShaCancelledEventData, TargetingEventData } from '../events/index.js';
 import { EventType } from '../events/index.js';
+import { findResponse } from '../choose.js';
+import { damage } from '../life.js';
 import { effectRegistry } from '../persistentEffects.js';
-import { hasCardsInAreas, selectCardFromAreas } from '../areas.js';
+import { cardsInAreas, hasCardsInAreas, selectCardFromAreas } from '../areas.js';
 
 cardRegistry.register({
   type: CardType.ZhugeLianNu,
@@ -251,10 +253,84 @@ function registerBlankWeapon(
 }
 
 registerBlankWeapon(CardType.QingGangJian, '青釭剑', '🗡️', 2);
-registerBlankWeapon(CardType.QingLongYanYueDao, '青龙偃月刀', '🗡️', 3);
 registerBlankWeapon(CardType.ZhangBaSheMao, '丈八蛇矛', '🔱', 3);
-registerBlankWeapon(CardType.GuanShiFu, '贯石斧', '🪓', 3);
 registerBlankWeapon(CardType.FangTianHuaJi, '方天画戟', '🔱', 4);
+
+// 青龙偃月刀：杀被闪抵消后，可以对相同的目标再使用一张杀（AI：有杀就再出）
+cardRegistry.register({
+  type: CardType.QingLongYanYueDao,
+  name: '青龙偃月刀',
+  emoji: '🗡️',
+  content: async () => {}, // 无使用效果（触发效果在 equipTrigger）
+  equipTrigger: {
+    trigger: 'shaCancelled.after',
+    canTrigger: (game, event, owner) => {
+      const { attacker } = event.data as ShaCancelledEventData;
+      if (attacker !== owner) return false; // 只有装备者使用的杀被抵消
+      return !!findResponse(owner, CardType.Sha); // AI：有杀才再出
+    },
+    content: async (game, event, owner) => {
+      const { defender } = event.data as ShaCancelledEventData;
+      // TODO(玩家选择): 是否再出杀——写死"有杀就出"
+      const sha = findResponse(owner, CardType.Sha);
+      if (!sha) return;
+      await useCard(game, { player: owner, card: sha, targets: [defender] });
+      console.log(`  🗡️${owner.name} 的青龙偃月刀发动，对 ${defender.name} 再次使用杀`);
+    },
+  },
+  tags: [CardTag.Equip, CardTag.Weapon],
+  range: 3,
+  canUse: () => true,
+  targetFilter: (user) => [user],
+  targetCount: 1,
+  ai: {
+    shouldUse: () => true,
+    usePriority: 45,
+    discardPriority: 100,
+  },
+});
+
+// 贯石斧：杀被闪抵消后，弃置两张牌令此杀依然造成伤害
+cardRegistry.register({
+  type: CardType.GuanShiFu,
+  name: '贯石斧',
+  emoji: '🪓',
+  content: async () => {}, // 无使用效果（触发效果在 equipTrigger）
+  equipTrigger: {
+    trigger: 'shaCancelled.after',
+    canTrigger: (game, event, owner) => {
+      const { attacker } = event.data as ShaCancelledEventData;
+      return attacker === owner && cardsInAreas(owner).length >= 2; // 需弃两张牌
+    },
+    content: async (game, event, owner) => {
+      const { defender } = event.data as ShaCancelledEventData;
+      // TODO(玩家选择): 弃哪两张牌——写死随机
+      const discarded: Card[] = [];
+      for (let i = 0; i < 2; i++) {
+        const card = selectCardFromAreas(owner);
+        if (!card) break;
+        await moveCards(game, {
+          to: { zone: 'discardPile' }, cards: [card], reason: 'discard',
+        });
+        discarded.push(card);
+      }
+      await damage(game, { target: defender, source: owner, amount: 1 });
+      console.log(
+        `  🪓${owner.name} 的贯石斧发动！弃 ${discarded.length} 张牌，杀依然造成伤害`,
+      );
+    },
+  },
+  tags: [CardTag.Equip, CardTag.Weapon],
+  range: 3,
+  canUse: () => true,
+  targetFilter: (user) => [user],
+  targetCount: 1,
+  ai: {
+    shouldUse: () => true,
+    usePriority: 45,
+    discardPriority: 100,
+  },
+});
 
 // ============================================================
 // 马匹（白板：距离修正由槽位 effectRegistry 自动生效）

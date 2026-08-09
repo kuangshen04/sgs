@@ -5,27 +5,22 @@
 import { CardTag, CardType } from '../types.js';
 import type { CardContentFn } from '../cardRegistry.js';
 import { cardRegistry, cardEmoji, displayNumber } from '../cardRegistry.js';
-import { playFromHand } from '../cardActions.js';
 import { damage, recover } from '../life.js';
 import { distanceTo, attackRange } from '../distance.js';
-import { findResponse } from '../choose.js';
 import { effectRegistry } from '../persistentEffects.js';
+import { resolveShaResponse } from '../respond.js';
 
-const shaContent: CardContentFn = async (game, data, _event) => {
+const shaContent: CardContentFn = async (game, data, event) => {
   const attacker = data.player;
   const defender = data.targets[0];
   console.log(
     `  ${attacker.name} 对 ${defender.name} 使用了 🗡️杀 (${data.card.suit}${displayNumber(data.card.number)})`,
   );
 
-  // TODO(玩家选择): 是否出闪/出哪张闪——目前写死为"有就出第一张"
-  const shan = findResponse(defender, CardType.Shan);
-  if (shan) {
-    await playFromHand(game, defender, shan);
-    console.log(
-      `  ${defender.name} 使用了 🛡️闪 (${shan.suit}${displayNumber(shan.number)})，抵消了攻击`,
-    );
-  } else {
+  // 响应流程：能否响应（铁骑）/ 所需闪数（无双）/ 抵消时点（shaCancelled）
+  const marks = event.data.marks ?? {};
+  const cancelled = await resolveShaResponse(game, attacker, defender, data.card, marks);
+  if (!cancelled) {
     await damage(game, { target: defender, source: attacker, amount: 1 });
   }
 };

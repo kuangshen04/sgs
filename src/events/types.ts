@@ -2,7 +2,7 @@
 // 事件系统 — 事件名常量 & 事件数据接口
 // ============================================================
 
-import type { Card, CardLocation, CardMoveReason, Player } from '../types.js';
+import type { Card, CardLocation, CardMoveReason, Player, ShaMarks } from '../types.js';
 
 /** 事件名常量 */
 export const EventType = {
@@ -16,6 +16,7 @@ export const EventType = {
   Targeting: 'targeting',
   UseCard: 'useCard',
   CardMove: 'cardMove',
+  ShaCancelled: 'shaCancelled',
   // Boundary 事件 — 游戏/轮/回合/阶段的分界标记
   Game: 'game',
   Round: 'round',
@@ -75,6 +76,16 @@ export interface UseCardEventData {
   player: Player;
   card: Card;
   targets: Player[];
+  /** 杀响应的过程状态（无双/铁骑等 targeting.after 写入，shaContent 读取） */
+  marks?: ShaMarks;
+}
+
+/** 杀被闪抵消时点（青龙偃月刀/贯石斧/刺杀等监听） */
+export interface ShaCancelledEventData {
+  attacker: Player;
+  defender: Player;
+  card: Card;        // 被杀
+  shanCount: number; // 实际打出的闪数
 }
 
 /**

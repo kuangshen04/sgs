@@ -117,6 +117,18 @@ export type CardMoveReason =
   | 'resolve'     // 延时牌结算
   | 'reshuffle';  // 洗牌（弃牌堆 → 牌堆）
 
+/**
+ * 杀响应的过程状态（随 useCard 事件生命周期存在）。
+ * targeting.after 的锁定技（无双/铁骑）写入，响应流程读取。
+ * 单例技能特判，不做通用机制（无双是唯一修改响应数的技能）。
+ */
+export interface ShaMarks {
+  /** 所需闪数（无双：2；普通杀不设置，默认 1） */
+  shanRequired?: number;
+  /** 不可闪避（铁骑判定红色后设置） */
+  unavoidable?: boolean;
+}
+
 /** 装备区：武器 / 防具 / 防御马 / 进攻马 四个栏位 */
 export interface PlayerEquipment {
   weapon?: Card;

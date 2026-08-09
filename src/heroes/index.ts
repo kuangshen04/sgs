@@ -9,6 +9,7 @@ import './huanggai.js';
 import './huangyueying.js';
 import './huatuo.js';
 import './liubei.js';
+import './lvbu.js';
 import './luxun.js';
 import './machao.js';
 import './simayi.js';

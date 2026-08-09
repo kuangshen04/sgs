@@ -311,6 +311,7 @@ export async function useCard(
 ): Promise<GameEvent<UseCardEventData>> {
   return new GameEvent<UseCardEventData>(EventType.UseCard, data, game)
     .execute(async (event) => {
+      event.data.marks = event.data.marks ?? {}; // 杀响应过程状态（无双/铁骑写入）
       const def = cardRegistry.get(event.data.card.type);
       const isDelayed = !!def?.tags.includes(CardTag.Delay);
 

@@ -13,6 +13,7 @@ import { registerSkills } from './skills.js';
 
 import { cardRegistry } from './cardRegistry.js';
 import { CardTag, CardType } from './types.js';
+import { cardsInAreas } from './areas.js';
 
 describe('麒麟弓（装备触发）', () => {
   it('使用杀造成伤害后弃置目标一张坐骑牌', async () => {
@@ -206,5 +207,76 @@ describe('马匹（白板注册）', () => {
     [CardType.ZiXin, CardTag.OffensiveHorse],
   ] as const)('%s 标签为 %s', (type, tag) => {
     expect(cardRegistry.get(type)?.tags).toContain(tag);
+  });
+});
+
+describe('青龙偃月刀（杀被抵消后）', () => {
+  it('杀被闪抵消后，有杀则对同一目标再使用杀', async () => {
+    const g = freshGame();
+    registerSkills(g);
+    const attacker = g.state.players[0];
+    const target = g.state.players[1];
+    attacker.equipment.weapon = makeUniqueCard(CardType.QingLongYanYueDao);
+    giveHand(attacker, CardType.Sha, CardType.Sha); // 第一张 + 追加一张
+    giveHand(target, CardType.Shan, CardType.Shan); // 两张闪
+    const hpBefore = target.hp;
+
+    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [target] });
+
+    // 第一杀被抵消 → 青龙再出第二杀 → 又被抵消
+    expect(target.hp).toBe(hpBefore);
+    expect(attacker.hand.length).toBe(0);
+    expect(target.hand.length).toBe(0);
+  });
+
+  it('杀未被抵消（目标无闪）→ 不追加', async () => {
+    const g = freshGame();
+    registerSkills(g);
+    const attacker = g.state.players[0];
+    const target = g.state.players[1];
+    attacker.equipment.weapon = makeUniqueCard(CardType.QingLongYanYueDao);
+    giveHand(attacker, CardType.Sha, CardType.Sha);
+    giveHand(target); // 无闪
+    const hpBefore = target.hp;
+
+    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [target] });
+
+    expect(target.hp).toBe(hpBefore - 1); // 命中，不再追加
+    expect(attacker.hand.length).toBe(1); // 第二张杀未用
+  });
+});
+
+describe('贯石斧（杀被抵消后弃牌命中）', () => {
+  it('杀被闪抵消后，弃两张牌令其依然造成伤害', async () => {
+    const g = freshGame();
+    registerSkills(g);
+    const attacker = g.state.players[0];
+    const target = g.state.players[1];
+    attacker.equipment.weapon = makeUniqueCard(CardType.GuanShiFu);
+    giveHand(attacker, CardType.Sha, CardType.Tao, CardType.Shan); // 杀 + 弃牌素材
+    giveHand(target, CardType.Shan); // 一张闪
+    const hpBefore = target.hp;
+
+    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [target] });
+
+    expect(target.hp).toBe(hpBefore - 1); // 依然命中
+    // 弃了两张牌（随机，可能含武器本身）：区域牌从 3（2 手牌 + 武器）减到 1
+    expect(cardsInAreas(attacker).length).toBe(1);
+  });
+
+  it('装备者区域牌不足两张 → 不发动', async () => {
+    const g = freshGame();
+    registerSkills(g);
+    const attacker = g.state.players[0];
+    const target = g.state.players[1];
+    attacker.equipment.weapon = makeUniqueCard(CardType.GuanShiFu);
+    giveHand(attacker, CardType.Sha); // 只有杀，弃牌素材不足
+    giveHand(target, CardType.Shan);
+    const hpBefore = target.hp;
+
+    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [target] });
+
+    expect(target.hp).toBe(hpBefore); // 被抵消，贯石斧不发动
+    expect(attacker.hand.length).toBe(0); // 杀已打出
   });
 });
