@@ -69,7 +69,7 @@ export function createGame(
     state: {
       players,
       currentIndex: 0,
-      deck: shuffledDeck, discardPile,
+      deck: shuffledDeck, discardPile, processing: [],
       round: 1, gameOver: false, winner: null,
       victoryCheck: options?.victoryCheck ?? lastManStanding,
     },

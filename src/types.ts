@@ -100,7 +100,7 @@ export interface Player {
  */
 export type CardLocation =
   | { player: Player; zone: 'hand' | 'equipment' | 'judgment' }
-  | { zone: 'deck' | 'discardPile' };
+  | { zone: 'deck' | 'discardPile' | 'processing' };
 
 /** 移动原因（CardMove 事件的语义标签；转化牌/虚拟牌可能扩展） */
 export type CardMoveReason =
@@ -146,6 +146,8 @@ export interface GameState {
   currentIndex: number;      // 当前回合玩家索引
   deck: Card[];
   discardPile: Card[];
+  /** 处理区：正在结算中的牌（使用/打出后、结算完成前） */
+  processing: Card[];
   round: number;
   gameOver: boolean;
   winner: Player | null;

@@ -2,7 +2,7 @@
 // 曹操 — 奸雄
 // ============================================================
 
-import { takeFromDiscard } from '../cardActions.js';
+import { takeFromProcessing } from '../cardActions.js';
 import { cardEmoji, displayNumber } from '../cardRegistry.js';
 import { skillRegistry, subjectIsOwner } from '../skills.js';
 import { EventType } from '../events/index.js';
@@ -17,8 +17,8 @@ const jianxiongContent = async (game: Game, event: GameEvent<any>, owner: Player
   if (!useCardEvent) return; // 非使用牌造成的伤害（如技能伤害）
   const card = useCardEvent.data.card as Card;
 
-  // 使用的牌已进弃牌堆：从弃牌堆找回并收入手牌
-  const found = await takeFromDiscard(game, owner, card);
+  // 使用的牌结算期间位于处理区：从处理区取回并收入手牌
+  const found = await takeFromProcessing(game, owner, card);
   if (!found) return;
   console.log(
     `  ✨${owner.name} 发动【奸雄】！获得造成伤害的 ${cardEmoji(found.type)} ` +

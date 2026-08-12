@@ -107,6 +107,7 @@ export function getCardArea(game: Game, card: Card): CardLocation | null {
     }
     if (player.judgment.some((c) => c.id === card.id)) return { player, zone: 'judgment' };
   }
+  if (game.state.processing.some((c) => c.id === card.id)) return { zone: 'processing' };
   if (game.state.deck.some((c) => c.id === card.id)) return { zone: 'deck' };
   if (game.state.discardPile.some((c) => c.id === card.id)) return { zone: 'discardPile' };
   return null;
@@ -136,6 +137,11 @@ function takeCardFromLocation(game: Game, loc: CardLocation, cardId: number): Ca
     if (i < 0) return null;
     return p.judgment.splice(i, 1)[0];
   }
+  if (loc.zone === 'processing') {
+    const i = game.state.processing.findIndex((c) => c.id === cardId);
+    if (i < 0) return null;
+    return game.state.processing.splice(i, 1)[0];
+  }
   const pile = loc.zone === 'deck' ? game.state.deck : game.state.discardPile;
   const i = pile.findIndex((c) => c.id === cardId);
   if (i < 0) return null;
@@ -151,6 +157,10 @@ function putCardToLocation(
     if (loc.zone === 'hand') p.hand.push(card);
     else if (loc.zone === 'equipment') p.equipment[equipSlotOf(card)] = card;
     else p.judgment.push(card);
+    return;
+  }
+  if (loc.zone === 'processing') {
+    game.state.processing.push(card);
     return;
   }
   if (loc.zone === 'deck') {
@@ -271,6 +281,28 @@ export async function takeFromDiscard(
   return moved[0] ?? null;
 }
 
+/** 从处理区按 id 取回一张牌到手牌；不在处理区返回 null */
+export async function takeFromProcessing(
+  game: Game, player: Player, card: Card,
+): Promise<Card | null> {
+  const area = getCardArea(game, card);
+  if (!area || area.zone !== 'processing') return null;
+  const moved = await moveCards(game, {
+    to: { player, zone: 'hand' }, cards: [card], reason: 'obtain',
+  });
+  return moved[0] ?? null;
+}
+
+/** 把仍在处理区的牌移入弃牌堆；已被技能移走的牌自动跳过 */
+async function settleProcessingCards(game: Game, cards: Card[]): Promise<Card[]> {
+  const stillProcessing = cards.filter(
+    (c) => getCardArea(game, c)?.zone === 'processing',
+  );
+  return moveCards(game, {
+    to: { zone: 'discardPile' }, cards: stillProcessing, reason: 'discard',
+  });
+}
+
 /** 卡牌 tag → 装备槽位 */
 function equipSlotOf(card: Card): keyof PlayerEquipment {
   const def = cardRegistry.get(card.type);
@@ -347,55 +379,60 @@ export async function useCard(
         return;
       }
 
-      // 使用的牌移入弃牌堆
-      await discardCards(game, event.data.player, [event.data.card]);
+      // 使用的牌进入处理区（结算中位置），结算完成后统一回弃牌堆
+      await moveCards(game, {
+        to: { zone: 'processing' },
+        cards: [event.data.card],
+        reason: 'use',
+      });
 
-      // 逐 target 判定（无懈可击等响应在这里）
-      let shouldExecute = true;
+      try {
+        // 逐 target 判定（无懈可击等响应在这里）
+        let shouldExecute = true;
 
-      if (event.data.targets.length > 0) {
-        const remaining: Player[] = [];
-        for (const target of event.data.targets) {
+        if (event.data.targets.length > 0) {
+          const remaining: Player[] = [];
+          for (const target of event.data.targets) {
+            const targetingEvent = await new GameEvent<TargetingEventData>(
+              EventType.Targeting,
+              { user: event.data.player, card: event.data.card, target },
+              game,
+            ).execute(async () => {
+              // content 为空 — targeting 纯粹是 trigger 检查点
+            });
+
+            if (!targetingEvent.isPrevented()) {
+              // 读事件内的 target：流离等技能可在 targeting.before 中转移目标
+              remaining.push(targetingEvent.data.target);
+            } else {
+              console.log(`  🚫${target.name} 被指定为目标的效果已被抵消`);
+            }
+          }
+          if (remaining.length === 0) {
+            shouldExecute = false;
+          } else {
+            event.data.targets = remaining;
+          }
+        } else {
+          // 无目标牌（如无懈可击）：单次 targeting，target = 使用者自己
+          // 这是唯一的响应窗口，无懈可击可以被反无懈
           const targetingEvent = await new GameEvent<TargetingEventData>(
             EventType.Targeting,
-            { user: event.data.player, card: event.data.card, target },
+            { user: event.data.player, card: event.data.card, target: event.data.player },
             game,
-          ).execute(async () => {
-            // content 为空 — targeting 纯粹是 trigger 检查点
-          });
+          ).execute(async () => {});
 
-          if (!targetingEvent.isPrevented()) {
-            // 读事件内的 target：流离等技能可在 targeting.before 中转移目标
-            remaining.push(targetingEvent.data.target);
-          } else {
-            console.log(`  🚫${target.name} 被指定为目标的效果已被抵消`);
+          if (targetingEvent.isPrevented()) {
+            console.log(`  🚫${event.data.player.name} 的 ${cardRegistry.get(event.data.card.type)?.name ?? '牌'} 效果已被抵消`);
+            shouldExecute = false;
           }
         }
-        if (remaining.length === 0) {
-          shouldExecute = false;
-        } else {
-          event.data.targets = remaining;
-        }
-      } else {
-        // 无目标牌（如无懈可击）：单次 targeting，target = 使用者自己
-        // 这是唯一的响应窗口，无懈可击可以被反无懈
-        const targetingEvent = await new GameEvent<TargetingEventData>(
-          EventType.Targeting,
-          { user: event.data.player, card: event.data.card, target: event.data.player },
-          game,
-        ).execute(async () => {});
 
-        if (targetingEvent.isPrevented()) {
-          console.log(`  🚫${event.data.player.name} 的 ${cardRegistry.get(event.data.card.type)?.name ?? '牌'} 效果已被抵消`);
-          shouldExecute = false;
-        }
-      }
-
-      if (shouldExecute) {
-        const def = cardRegistry.get(event.data.card.type);
-        if (def) {
+        if (shouldExecute && def) {
           await def.content(game, event.data, event);
         }
+      } finally {
+        await settleProcessingCards(game, [event.data.card]);
       }
     });
 }
