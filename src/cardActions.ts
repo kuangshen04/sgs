@@ -50,8 +50,9 @@ export async function judge(game: Game, player: Player): Promise<Card> {
       if (!card) {
         throw new Error('判定失败：牌堆和弃牌堆都为空');
       }
+      // 判定牌进入处理区（牌堆顶 → 处理区）
       await moveCards(game, {
-        to: { zone: 'discardPile' }, cards: [card], reason: 'judge',
+        to: { zone: 'processing' }, cards: [card], reason: 'judge',
       });
       event.data.card = card;
       console.log(
@@ -60,6 +61,8 @@ export async function judge(game: Game, player: Player): Promise<Card> {
       // 判定牌生效前：鬼才等响应技能可替换判定牌
       await game.triggerSystem.trigger(`${EventType.Judge}.judging`, event);
     });
+  // judge.after（天妒等）已执行完毕；把仍在处理区的最终判定牌结算进弃牌堆
+  await settleProcessingCards(game, [event.data.card!], 'judge');
   return event.data.card!;
 }
 

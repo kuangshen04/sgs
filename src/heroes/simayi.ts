@@ -2,7 +2,7 @@
 // 司马懿 — 反馈 / 鬼才
 // ============================================================
 
-import { discardCards, moveCards } from '../cardActions.js';
+import { moveCards } from '../cardActions.js';
 import { cardEmoji, displayNumber } from '../cardRegistry.js';
 import { askForCard, askFromAreas } from '../choose.js';
 import { skillRegistry, subjectIsOwner } from '../skills.js';
@@ -32,7 +32,17 @@ const guicaiContent = async (game: Game, event: GameEvent<any>, owner: Player): 
   // askForCard：打出哪张手牌替换判定牌（默认 AI：第一张；任意手牌均可）
   const card = askForCard(game, owner, '鬼才：打出一张手牌代替判定牌', Object.values(CardType));
   if (!card) return;
-  await discardCards(game, owner, [card]);
+  const original = judgeEvent.data.card;
+  // 原判定牌离开处理区进弃牌堆
+  if (original) {
+    await moveCards(game, {
+      to: { zone: 'discardPile' }, cards: [original], reason: 'judge',
+    });
+  }
+  // 替换牌进入处理区，作为新的判定牌
+  await moveCards(game, {
+    to: { zone: 'processing' }, cards: [card], reason: 'judge',
+  });
   judgeEvent.data.card = card;
   console.log(
     `  ✨${owner.name} 发动【鬼才】！打出 ${cardEmoji(card.type)} ` +

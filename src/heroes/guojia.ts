@@ -2,7 +2,7 @@
 // 郭嘉 — 遗计 / 天妒
 // ============================================================
 
-import { drawCards, takeFromDiscard } from '../cardActions.js';
+import { drawCards, takeFromProcessing } from '../cardActions.js';
 import { cardEmoji, displayNumber } from '../cardRegistry.js';
 import { askForTargets } from '../choose.js';
 import { skillRegistry, subjectIsOwner } from '../skills.js';
@@ -31,8 +31,8 @@ const tianduContent = async (game: Game, event: GameEvent<any>, owner: Player): 
   const { card } = event.data as JudgeEventData;
   if (!card) return;
 
-  // 判定牌已进弃牌堆：找回并收入手牌
-  const found = await takeFromDiscard(game, owner, card);
+  // 判定牌结算期间位于处理区：从处理区取回并收入手牌
+  const found = await takeFromProcessing(game, owner, card);
   if (!found) return;
   console.log(
     `  ✨${owner.name} 发动【天妒】！获得判定牌 ${cardEmoji(found.type)} ` +
