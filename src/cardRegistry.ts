@@ -3,6 +3,7 @@
 // ============================================================
 
 import { Card, CardTag, CardType, Player } from './types.js';
+import type { UsedCard } from './types.js';
 import type { Game } from './game.js';
 import type { GameEvent, UseCardEventData } from './events/index.js';
 
@@ -82,6 +83,18 @@ export function displayNumber(n: number): string {
     case 13: return 'K';
     default: return String(n);
   }
+}
+
+/** 把物理牌包装成 UsedCard（非转化牌：physicalCards = [card]）；已是 UsedCard 则原样返回 */
+export function asUsedCard(card: Card | UsedCard): UsedCard {
+  if ('physicalCards' in card) return card;
+  return {
+    type: card.type,
+    name: card.name,
+    suit: card.suit,
+    number: card.number,
+    physicalCards: [card],
+  };
 }
 
 /** Fisher-Yates 洗牌 */

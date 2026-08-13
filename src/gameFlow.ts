@@ -15,7 +15,7 @@ import type {
   TargetingEventData,
 } from './events/index.js';
 import { drawCards, useCard, discardCards, judge, moveCards, settleProcessingCards } from './cardActions.js';
-import { cardRegistry, cardEmoji, displayNumber } from './cardRegistry.js';
+import { cardRegistry, cardEmoji, displayNumber, asUsedCard } from './cardRegistry.js';
 import { printState } from './display.js';
 import type { Game } from './game.js';
 import { chooseCardAndTargets } from './choose.js';
@@ -103,7 +103,7 @@ export async function judgePhase(
           // 判定前无懈窗口：可令此判定牌无效（复用 targeting 事件 + 无懈触发器）
           const windowEvent = await new GameEvent<TargetingEventData>(
             EventType.Targeting,
-            { user: player, card, target: player, judging: true },
+            { user: player, card: asUsedCard(card), target: player, judging: true },
             game,
           ).execute(async () => {});
 

@@ -6,11 +6,11 @@
 // ============================================================
 
 import { CardType } from './types.js';
-import type { Card, Player, RespondMarks } from './types.js';
+import type { Card, Player, RespondMarks, UsedCard } from './types.js';
 import type { Game } from './game.js';
 import { EventType, GameEvent } from './events/index.js';
 import type { ShaCancelledEventData } from './events/index.js';
-import { cardEmoji, displayNumber } from './cardRegistry.js';
+import { cardEmoji, displayNumber, asUsedCard } from './cardRegistry.js';
 import { playFromHand } from './cardActions.js';
 import { askForCard } from './choose.js';
 
@@ -21,8 +21,9 @@ import { askForCard } from './choose.js';
  * - 全部出完 → 触发 shaCancelled 抵消时点（青龙偃月刀/贯石斧监听）
  */
 export async function resolveShaResponse(
-  game: Game, attacker: Player, defender: Player, shaCard: Card, marks: RespondMarks,
+  game: Game, attacker: Player, defender: Player, shaCard: Card | UsedCard, marks: RespondMarks,
 ): Promise<boolean> {
+  const usedCard = asUsedCard(shaCard);
   if (marks.unavoidable) {
     console.log(`  ⚡${defender.name} 无法闪避！`);
     return false;
@@ -44,7 +45,7 @@ export async function resolveShaResponse(
   }
 
   await new GameEvent<ShaCancelledEventData>(EventType.ShaCancelled, {
-    attacker, defender, card: shaCard, shanCount: need,
+    attacker, defender, card: usedCard, shanCount: need,
   }, game).execute(async () => {});
 
   return true;

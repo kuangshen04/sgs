@@ -9,21 +9,23 @@ import { EventType } from '../events/index.js';
 import type { GameEvent } from '../events/index.js';
 import { heroRegistry } from '../heroRegistry.js';
 import type { Game } from '../game.js';
-import type { Card, Player } from '../types.js';
+import type { Player } from '../types.js';
 
 /** 奸雄：受到伤害后，若伤害由使用牌造成，获得该牌 */
 const jianxiongContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
   const useCardEvent = event.getParent(EventType.UseCard);
   if (!useCardEvent) return; // 非使用牌造成的伤害（如技能伤害）
-  const card = useCardEvent.data.card as Card;
+  const { physicalCards } = useCardEvent.data.card;
 
-  // 使用的牌结算期间位于处理区：从处理区取回并收入手牌
-  const found = await takeFromProcessing(game, owner, card);
-  if (!found) return;
-  console.log(
-    `  ✨${owner.name} 发动【奸雄】！获得造成伤害的 ${cardEmoji(found.type)} ` +
-    `(${found.suit}${displayNumber(found.number)})`,
-  );
+  // 使用的虚拟牌对应的全部实体牌，结算期间都位于处理区
+  for (const physical of physicalCards) {
+    const found = await takeFromProcessing(game, owner, physical);
+    if (!found) continue;
+    console.log(
+      `  ✨${owner.name} 发动【奸雄】！获得造成伤害的 ${cardEmoji(found.type)} ` +
+      `(${found.suit}${displayNumber(found.number)})`,
+    );
+  }
 };
 
 skillRegistry.register({

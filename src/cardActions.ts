@@ -3,11 +3,11 @@
 // ============================================================
 
 import { Card, CardTag, Player } from './types.js';
-import type { CardLocation, CardMoveReason } from './types.js';
+import type { CardLocation, CardMoveReason, UsedCard } from './types.js';
 import type { PlayerEquipment } from './types.js';
 import { EventType, GameEvent } from './events/index.js';
 import type { CardMoveEventData, DrawEventData, JudgeEventData, TargetingEventData, UseCardEventData } from './events/index.js';
-import { cardRegistry, cardEmoji, displayNumber, shuffle } from './cardRegistry.js';
+import { cardRegistry, cardEmoji, displayNumber, shuffle, asUsedCard } from './cardRegistry.js';
 import type { Game } from './game.js';
 
 // ============================================================
@@ -344,9 +344,15 @@ export async function equipCard(
 
 export async function useCard(
   game: Game,
-  data: UseCardEventData,
+  data: Omit<UseCardEventData, 'card'> & { card: Card | UsedCard },
 ): Promise<GameEvent<UseCardEventData>> {
-  return new GameEvent<UseCardEventData>(EventType.UseCard, data, game)
+  const usedData: UseCardEventData = {
+    player: data.player,
+    targets: data.targets,
+    marks: data.marks,
+    card: asUsedCard(data.card),
+  };
+  return new GameEvent<UseCardEventData>(EventType.UseCard, usedData, game)
     .execute(async (event) => {
       event.data.marks = event.data.marks ?? {}; // 杀响应过程状态（无双/铁骑写入）
       const def = cardRegistry.get(event.data.card.type);
@@ -358,7 +364,7 @@ export async function useCard(
         if (target) {
           await moveCards(game, {
             to: { player: target, zone: 'judgment' },
-            cards: [event.data.card],
+            cards: event.data.card.physicalCards,
             reason: 'use',
           });
           console.log(
@@ -375,7 +381,7 @@ export async function useCard(
       if (isEquip) {
         // 装备：置入对应栏位（顶掉旧装备），无响应窗口
         const target = event.data.targets[0] ?? event.data.player;
-        const replaced = await equipCard(game, target, event.data.card);
+        const replaced = await equipCard(game, target, event.data.card.physicalCards[0]);
         console.log(
           `  ${event.data.player.name} 装备了 ${cardEmoji(event.data.card.type)}` +
           `(${event.data.card.suit}${displayNumber(event.data.card.number)})` +
@@ -387,7 +393,7 @@ export async function useCard(
       // 使用的牌进入处理区（结算中位置），结算完成后统一回弃牌堆
       await moveCards(game, {
         to: { zone: 'processing' },
-        cards: [event.data.card],
+        cards: event.data.card.physicalCards,
         reason: 'use',
       });
 
@@ -437,7 +443,7 @@ export async function useCard(
           await def.content(game, event.data, event);
         }
       } finally {
-        await settleProcessingCards(game, [event.data.card]);
+        await settleProcessingCards(game, event.data.card.physicalCards);
       }
     });
 }

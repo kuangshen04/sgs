@@ -2,7 +2,7 @@
 // 事件系统 — 事件名常量 & 事件数据接口
 // ============================================================
 
-import type { Card, CardLocation, CardMoveReason, Player, RespondMarks } from '../types.js';
+import type { Card, CardLocation, CardMoveReason, Player, RespondMarks, UsedCard } from '../types.js';
 
 /** 事件名常量 */
 export const EventType = {
@@ -66,7 +66,7 @@ export interface DieEventData {
 
 export interface TargetingEventData {
   user: Player;
-  card: Card;
+  card: UsedCard;
   target: Player;   // 当前正在指定的单个目标
   /** 判定阶段的无懈窗口标记（允许被判定者抵消自己的延时锦囊） */
   judging?: boolean;
@@ -74,7 +74,7 @@ export interface TargetingEventData {
 
 export interface UseCardEventData {
   player: Player;
-  card: Card;
+  card: UsedCard;
   targets: Player[];
   /** 响应过程状态（无双/铁骑等 targeting.after 写入，响应流程读取） */
   marks?: RespondMarks;
@@ -84,7 +84,7 @@ export interface UseCardEventData {
 export interface ShaCancelledEventData {
   attacker: Player;
   defender: Player;
-  card: Card;        // 被杀
+  card: UsedCard;    // 被杀（效果牌）
   shanCount: number; // 实际打出的闪数
 }
 

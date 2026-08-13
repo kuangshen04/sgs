@@ -60,6 +60,19 @@ export interface Card {
   number: number; // 1-13
 }
 
+/**
+ * 一次“使用中的牌”：效果牌 / 虚拟牌描述符。
+ * 与物理 Card 不同，它不占任何 CardLocation；physicalCards 是本次使用
+ * 实际消耗并进入处理区的实体牌。
+ */
+export interface UsedCard {
+  type: CardType;
+  name: string;
+  suit: string;
+  number: number;
+  physicalCards: Card[];
+}
+
 /** 武将定义（注册到 heroRegistry，createGame 通过名字引用，可重复） */
 export interface HeroDef {
   name: string;
