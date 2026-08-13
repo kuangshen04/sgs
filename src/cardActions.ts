@@ -294,12 +294,14 @@ export async function takeFromProcessing(
 }
 
 /** 把仍在处理区的牌移入弃牌堆；已被技能移走的牌自动跳过 */
-async function settleProcessingCards(game: Game, cards: Card[]): Promise<Card[]> {
+export async function settleProcessingCards(
+  game: Game, cards: Card[], reason: CardMoveReason = 'discard',
+): Promise<Card[]> {
   const stillProcessing = cards.filter(
     (c) => getCardArea(game, c)?.zone === 'processing',
   );
   return moveCards(game, {
-    to: { zone: 'discardPile' }, cards: stillProcessing, reason: 'discard',
+    to: { zone: 'discardPile' }, cards: stillProcessing, reason,
   });
 }
 
