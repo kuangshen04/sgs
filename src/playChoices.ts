@@ -79,21 +79,21 @@ export async function choosePlayAction(
   const result = await runSelection(plan, game, player);
   if (!result) return null;
 
-  const actionOption = result.answers.action[0];
+  const actionOption = result.action[0];
   const action = actionOption?.data as PlayAction | undefined;
   if (!action) return null;
 
   if (action.kind === 'card') {
-    const targets = (result.answers.target ?? [])
+    const targets = (result.target ?? [])
       .map((o) => o.data as Player)
       .filter((p): p is Player => !!p);
     return { kind: 'card', card: asUsedCard(action.option.card), targets };
   }
   if (action.kind === 'conversion') {
-    const resolved = action.conversion.resolve(result.answers);
+    const resolved = action.conversion.resolve(result);
     return { kind: 'card', card: resolved.card, targets: resolved.targets };
   }
-  return { kind: 'skill', skill: action.skill, answers: result.answers };
+  return { kind: 'skill', skill: action.skill, answers: result };
 }
 
 /** 构建出牌阶段的选择计划与动作列表 */
@@ -185,9 +185,6 @@ function buildPlayPlan(
         return action.skill.selectionPlan(game, player, ctx).nextStep(answers);
       }
       return null;
-    },
-    result(answers: SelectionAnswers) {
-      return { answers };
     },
   };
 

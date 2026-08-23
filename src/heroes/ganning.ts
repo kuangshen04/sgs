@@ -54,7 +54,6 @@ conversionRegistry.register({
       }
       return null;
     },
-    result: (answers) => ({ answers }),
   }),
   resolve: (answers) => ({
     card: makeVirtualGuohe(selectedCards(answers, 'source')),

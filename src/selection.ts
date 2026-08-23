@@ -38,18 +38,12 @@ export interface SelectionStep {
 /** 已答答案：stepId → 所选选项列表（原对象，规则侧直接用 data） */
 export type SelectionAnswers = Record<string, SelectionOption[]>;
 
-/** 确认后的选择结果（暂不强类型，id 由规则解码） */
-export interface SelectionResult {
-  answers: SelectionAnswers;
-}
-
 /**
  * 选择计划：按已答答案逐步产出下一步，全部答完产出最终结果。
  * 步骤候选依赖前序答案时，在这里计算。
  */
 export interface SelectionPlan {
   nextStep(answers: SelectionAnswers): SelectionStep | null;
-  result(answers: SelectionAnswers): SelectionResult;
 }
 
 /**
@@ -109,9 +103,9 @@ export class SelectionSession {
   }
 
   /** 全部步骤完成后确认；未完成返回 null */
-  confirm(): SelectionResult | null {
+  confirm(): SelectionAnswers | null {
     if (!this.canConfirm) return null;
-    return this.plan.result(this.answers);
+    return this.answers;
   }
 }
 
@@ -134,7 +128,7 @@ export async function runSelection(
   game: Game,
   player: Player,
   answerProvider?: (step: SelectionStep) => Promise<SelectionOption[]> | SelectionOption[],
-): Promise<SelectionResult | null> {
+): Promise<SelectionAnswers | null> {
   const session = new SelectionSession(plan);
   while (session.currentStep) {
     const step = session.currentStep;

@@ -237,10 +237,9 @@ async function runAskStep(
 ): Promise<SelectionOption[] | null> {
   const plan: SelectionPlan = {
     nextStep: (answers) => (answers[step.id] ? null : step),
-    result: (answers) => ({ answers }),
   };
-  const result = await runSelection(plan, game, player);
-  return result?.answers[step.id] ?? null;
+  const answers = await runSelection(plan, game, player);
+  return answers?.[step.id] ?? null;
 }
 
 /** 询问玩家打出一张指定类型的牌（闪/杀/桃/无懈）。无牌返回 null。 */

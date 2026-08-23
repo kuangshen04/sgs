@@ -15,7 +15,6 @@ activeSkillRegistry.register({
   canUse: (game, player, ctx) => player.hp >= 1,
   selectionPlan: () => ({
     nextStep: () => null,
-    result: (answers) => ({ answers }),
   }),
   execute: async (game, player) => {
     await loseHp(game, player, 1);

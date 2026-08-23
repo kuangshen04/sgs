@@ -51,7 +51,6 @@ conversionRegistry.register({
       }
       return null;
     },
-    result: (answers) => ({ answers }),
   }),
   resolve: (answers) => ({
     card: makeVirtualSha(selectedCards(answers, 'source')),

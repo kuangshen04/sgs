@@ -34,7 +34,6 @@ activeSkillRegistry.register({
       }
       return null;
     },
-    result: (answers) => ({ answers }),
   }),
   execute: async (game, player, answers) => {
     const cards = selectedCards(answers, 'card');

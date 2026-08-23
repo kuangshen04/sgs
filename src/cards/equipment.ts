@@ -303,7 +303,6 @@ conversionRegistry.register({
       }
       return null;
     },
-    result: (answers) => ({ answers }),
   }),
   resolve: (answers) => ({
     card: makeZhangbaSha(selectedCards(answers, 'source')),

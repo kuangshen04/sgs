@@ -62,9 +62,6 @@ function makeExamplePlan(
       }
       return null;
     },
-    result(answers: SelectionAnswers) {
-      return { answers };
-    },
   };
 }
 
@@ -93,9 +90,9 @@ describe('SelectionSession', () => {
 
     const result = session.confirm();
     expect(result).not.toBeNull();
-    expect((result!.answers.action[0].data as Card | undefined)?.id).toBeUndefined();
-    expect((result!.answers.card[0].data as Card).id).toBe(sha.id);
-    expect((result!.answers.target[0].data as Player).name).toBe(p2.name);
+    expect((result!.action[0].data as Card | undefined)?.id).toBeUndefined();
+    expect((result!.card[0].data as Card).id).toBe(sha.id);
+    expect((result!.target[0].data as Player).name).toBe(p2.name);
   });
 
   it('步骤候选依赖前序答案', () => {
@@ -141,8 +138,8 @@ describe('SelectionSession', () => {
     expect(session.answer(firstOptions(session.currentStep!))).toBe(true);
 
     const result = session.confirm();
-    expect((result!.answers.card[0].data as Card).id).toBe(tao.id);
-    expect((result!.answers.target[0].data as Player).name).toBe(p2.name);
+    expect((result!.card[0].data as Card).id).toBe(tao.id);
+    expect((result!.target[0].data as Player).name).toBe(p2.name);
   });
 
   it('非法回答不推进状态', () => {
@@ -204,9 +201,6 @@ describe('跨选约束', () => {
         }
         return null;
       },
-      result(answers) {
-        return { answers };
-      },
     };
 
     const session = new SelectionSession(plan);
@@ -216,7 +210,7 @@ describe('跨选约束', () => {
 
     const valid = [options[0], options[1], options[2], options[3]];
     expect(session.answer(valid)).toBe(true);
-    expect(session.confirm()!.answers.cards).toEqual(valid);
+    expect(session.confirm()!.cards).toEqual(valid);
   });
 });
 
@@ -235,7 +229,7 @@ describe('runSelection', () => {
     );
 
     expect(result).not.toBeNull();
-    expect((result!.answers.card[0].data as Card).id).toBe(sha.id);
-    expect((result!.answers.target[0].data as Player).name).toBe(p1.name);
+    expect((result!.card[0].data as Card).id).toBe(sha.id);
+    expect((result!.target[0].data as Player).name).toBe(p1.name);
   });
 });
