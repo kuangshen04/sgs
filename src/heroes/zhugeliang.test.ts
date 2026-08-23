@@ -7,6 +7,7 @@ import { describe, it, expect } from 'vitest';
 import { freshGame, giveHand } from '../test-utils.js';
 
 import { computeTargetOptions } from '../choose.js';
+import { asUsedCard } from '../cardRegistry.js';
 
 import { effectRegistry } from '../persistentEffects.js';
 
@@ -29,11 +30,11 @@ describe('空城（诸葛亮锁定技）', () => {
     const attacker = g.state.players[0];
     giveHand(attacker, CardType.Sha);
 
-    const shaTargets = computeTargetOptions(g, attacker.hand[0], attacker);
+    const shaTargets = computeTargetOptions(g, asUsedCard(attacker.hand[0]), attacker);
     expect(shaTargets.map((t) => t.index)).toEqual([2]); // 诸葛亮被排除
 
     giveHand(attacker, CardType.JueDou);
-    const jdTargets = computeTargetOptions(g, attacker.hand[0], attacker);
+    const jdTargets = computeTargetOptions(g, asUsedCard(attacker.hand[0]), attacker);
     expect(jdTargets.map((t) => t.index)).toEqual([2]);
   });
 
@@ -44,7 +45,7 @@ describe('空城（诸葛亮锁定技）', () => {
     giveHand(zhuge, CardType.Sha); // 诸葛亮有手牌
     giveHand(attacker, CardType.Sha);
 
-    const targets = computeTargetOptions(g, attacker.hand[0], attacker);
+    const targets = computeTargetOptions(g, asUsedCard(attacker.hand[0]), attacker);
     expect(targets.map((t) => t.index)).toEqual([1, 2]);
   });
 });

@@ -108,7 +108,7 @@ function buildPlayPlan(
   // 规则层：可用的普通牌 → AI 层：愿意出的牌 → 必须有合法目标
   const cardOptions = computeCardOptions(game, player, shaUsed)
     .filter((o) => o.def.ai.shouldUse(player, shaUsed))
-    .filter((o) => computeTargetOptions(game, o.card, player).length > 0);
+    .filter((o) => computeTargetOptions(game, asUsedCard(o.card), player).length > 0);
   for (const option of cardOptions) {
     actions.push({
       id: `card:${option.card.id}`,
@@ -167,7 +167,7 @@ function buildPlayPlan(
 
       if (action.kind === 'card' && !answers.target) {
         const def = action.option.def;
-        const targetOptions = computeTargetOptions(game, action.option.card, player);
+        const targetOptions = computeTargetOptions(game, asUsedCard(action.option.card), player);
         const tc = def.targetCount;
         const candidates = targetOptions.map((t) => t.player);
         if (tc === 'all') {

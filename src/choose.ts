@@ -9,7 +9,7 @@
 import type { Card, Player } from './types.js';
 import type { UsedCard } from './types.js';
 import { CardType } from './types.js';
-import { cardRegistry } from './cardRegistry.js';
+import { cardRegistry, asUsedCard } from './cardRegistry.js';
 import type { CardDef } from './cardRegistry.js';
 import type { Game } from './game.js';
 import type { AreaName } from './areas.js';
@@ -53,7 +53,7 @@ export function computeCardOptions(
 /** 计算某张牌的合法目标（规则：targetFilter + 距离/免疫等） */
 export function computeTargetOptions(
   game: Game,
-  card: Card | UsedCard,
+  card: UsedCard,
   player: Player,
 ): TargetOption[] {
   const def = cardRegistry.get(card.type);
@@ -89,7 +89,7 @@ export async function chooseCardAndTargets(
   if (!card) return null;
 
   // ---- 规则层：该牌的合法目标 ----
-  const targetOptions = computeTargetOptions(game, card, player);
+  const targetOptions = computeTargetOptions(game, asUsedCard(card), player);
   if (targetOptions.length === 0) return null;
 
   // ---- AI 决策：选目标 ----
