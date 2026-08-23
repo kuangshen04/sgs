@@ -1,6 +1,6 @@
 // ============================================================
 // 三国杀最小原型 — 选择系统单元测试
-// SelectionSession（通用 options + validate + ai）
+// SelectionSession（通用 options + validate + ai，答案即选项对象）
 // ============================================================
 
 import { describe, it, expect } from 'vitest';
@@ -11,24 +11,23 @@ import { SelectionSession, runSelection } from './selection.js';
 
 import { CardType } from './types.js';
 import type { Card, Player } from './types.js';
-import type { SelectionAnswers, SelectionPlan, SelectionStep } from './selection.js';
+import type {
+  SelectionAnswers,
+  SelectionOption,
+  SelectionPlan,
+  SelectionStep,
+} from './selection.js';
 
 /** 示例计划：action → card(依赖 action) → target(依赖 card) */
 function makeExamplePlan(
   sha: Card, tao: Card, shan: Card, p1: Player, p2: Player,
 ): SelectionPlan {
-  const cardById = new Map<string, Card>();
-
   const cardStep = (candidates: Card[]): SelectionStep => ({
     id: 'card',
     prompt: '选择牌',
-    options: candidates.map((c) => {
-      const id = `card:${c.id}`;
-      cardById.set(id, c);
-      return { id, label: c.name, data: c };
-    }),
+    options: candidates.map((c) => ({ id: `card:${c.id}`, label: c.name, data: c })),
     validate: (selected) => selected.length === 1,
-    ai: (ctx) => [ctx.step.options[0].id],
+    ai: (ctx) => [ctx.step.options[0]],
   });
 
   const targetStep = (candidates: Player[]): SelectionStep => ({
@@ -36,7 +35,7 @@ function makeExamplePlan(
     prompt: '选择目标',
     options: candidates.map((c, i) => ({ id: `player:${i}`, label: c.name, data: c })),
     validate: (selected) => selected.length === 1,
-    ai: (ctx) => [ctx.step.options[0].id],
+    ai: (ctx) => [ctx.step.options[0]],
   });
 
   return {
@@ -50,14 +49,15 @@ function makeExamplePlan(
             { id: 'B', label: '动作B' },
           ],
           validate: (selected) => selected.length === 1,
-          ai: (ctx) => [ctx.step.options[0].id],
+          ai: (ctx) => [ctx.step.options[0]],
         };
       }
       if (!answers.card) {
-        return cardStep(answers.action[0] === 'A' ? [sha, tao] : [shan]);
+        const actionLabel = answers.action[0].label;
+        return cardStep(actionLabel === '动作A' ? [sha, tao] : [shan]);
       }
       if (!answers.target) {
-        const card = cardById.get(answers.card[0])!;
+        const card = answers.card[0].data as Card;
         return targetStep(card.type === CardType.Sha ? [p1, p2] : [p2]);
       }
       return null;
@@ -66,6 +66,10 @@ function makeExamplePlan(
       return { answers };
     },
   };
+}
+
+function firstOptions(step: SelectionStep | null): SelectionOption[] {
+  return step ? [step.options[0]] : [];
 }
 
 describe('SelectionSession', () => {
@@ -79,21 +83,19 @@ describe('SelectionSession', () => {
 
     expect(session.currentStep?.id).toBe('action');
     expect(session.canConfirm).toBe(false);
-    expect(session.answer(['A'])).toBe(true);
+    expect(session.answer(firstOptions(session.currentStep))).toBe(true);
     expect(session.currentStep?.id).toBe('card');
-    expect(session.answer([`card:${sha.id}`])).toBe(true);
+    expect(session.answer(firstOptions(session.currentStep))).toBe(true);
     expect(session.currentStep?.id).toBe('target');
-    expect(session.answer(['player:1'])).toBe(true);
+    expect(session.answer([session.currentStep!.options[1]])).toBe(true);
     expect(session.currentStep).toBeNull();
     expect(session.canConfirm).toBe(true);
 
     const result = session.confirm();
     expect(result).not.toBeNull();
-    expect(result!.answers).toEqual({
-      action: ['A'],
-      card: [`card:${sha.id}`],
-      target: ['player:1'],
-    });
+    expect((result!.answers.action[0].data as Card | undefined)?.id).toBeUndefined();
+    expect((result!.answers.card[0].data as Card).id).toBe(sha.id);
+    expect((result!.answers.target[0].data as Player).name).toBe(p2.name);
   });
 
   it('步骤候选依赖前序答案', () => {
@@ -104,11 +106,11 @@ describe('SelectionSession', () => {
     const shan = makeUniqueCard(CardType.Shan);
     const session = new SelectionSession(makeExamplePlan(sha, tao, shan, p1, p2));
 
-    session.answer(['B']);
-    expect(session.currentStep?.options.map((o) => o.data as Card)).toEqual([shan]);
+    session.answer([session.currentStep!.options[1]]); // B
+    expect((session.currentStep!.options[0].data as Card).id).toBe(shan.id);
 
-    session.answer([`card:${shan.id}`]);
-    expect(session.currentStep?.options.map((o) => o.data as Player)).toEqual([p2]);
+    session.answer(firstOptions(session.currentStep!)); // 选闪
+    expect((session.currentStep!.options[0].data as Player).name).toBe(p2.name);
   });
 
   it('back 清空该步答案，重新回答后后续步骤重算', () => {
@@ -119,25 +121,28 @@ describe('SelectionSession', () => {
     const shan = makeUniqueCard(CardType.Shan);
     const session = new SelectionSession(makeExamplePlan(sha, tao, shan, p1, p2));
 
-    session.answer(['A']);
-    session.answer([`card:${sha.id}`]);
-    session.answer(['player:0']);
+    session.answer(firstOptions(session.currentStep!)); // A
+    session.answer(firstOptions(session.currentStep!)); // 杀
+    session.answer(firstOptions(session.currentStep!)); // p1
     expect(session.canConfirm).toBe(true);
 
     session.back();
     expect(session.currentStep?.id).toBe('target');
-    expect(session.answer(['player:1'])).toBe(true);
+    expect(session.answer([session.currentStep!.options[1]])).toBe(true); // p2
 
     session.back();
     session.back();
     expect(session.currentStep?.id).toBe('card');
-    session.answer([`card:${tao.id}`]);
-    expect(session.currentStep?.options.map((o) => o.data as Player)).toEqual([p2]);
-    expect(session.answer(['player:0'])).toBe(true);
+
+    const cardStep = session.currentStep!;
+    const taoOption = cardStep.options.find((o) => (o.data as Card).id === tao.id)!;
+    session.answer([taoOption]);
+    expect((session.currentStep!.options[0].data as Player).name).toBe(p2.name);
+    expect(session.answer(firstOptions(session.currentStep!))).toBe(true);
 
     const result = session.confirm();
-    expect(result!.answers.card).toEqual([`card:${tao.id}`]);
-    expect(result!.answers.target).toEqual(['player:0']);
+    expect((result!.answers.card[0].data as Card).id).toBe(tao.id);
+    expect((result!.answers.target[0].data as Player).name).toBe(p2.name);
   });
 
   it('非法回答不推进状态', () => {
@@ -148,15 +153,15 @@ describe('SelectionSession', () => {
     const shan = makeUniqueCard(CardType.Shan);
     const session = new SelectionSession(makeExamplePlan(sha, tao, shan, p1, p2));
 
-    expect(session.answer(['不存在'])).toBe(false); // action 非法 id
+    expect(session.answer([{ label: '伪造' }])).toBe(false); // 不在当前选项
     expect(session.currentStep?.id).toBe('action');
 
-    session.answer(['A']);
+    session.answer(firstOptions(session.currentStep!));
     expect(session.answer([])).toBe(false); // card 数量非法
     expect(session.currentStep?.id).toBe('card');
 
-    session.answer([`card:${sha.id}`]);
-    expect(session.answer(['player:99'])).toBe(false); // target 非法 id
+    session.answer(firstOptions(session.currentStep!));
+    expect(session.answer([{ label: '不存在' }])).toBe(false); // target 非当前选项
     expect(session.currentStep?.id).toBe('target');
   });
 
@@ -168,7 +173,7 @@ describe('SelectionSession', () => {
     const shan = makeUniqueCard(CardType.Shan);
     const session = new SelectionSession(makeExamplePlan(sha, tao, shan, p1, p2));
 
-    session.answer(['A']);
+    session.answer(firstOptions(session.currentStep!));
     expect(session.confirm()).toBeNull();
   });
 });
@@ -194,7 +199,7 @@ describe('跨选约束', () => {
               return picked.length === 4
                 && new Set(picked.map((c) => c.suit)).size === 4;
             },
-            ai: (ctx) => ctx.step.options.slice(0, 4).map((o) => o.id),
+            ai: (ctx) => ctx.step.options.slice(0, 4),
           };
         }
         return null;
@@ -205,10 +210,11 @@ describe('跨选约束', () => {
     };
 
     const session = new SelectionSession(plan);
-    const invalid = [`card:${spade.id}`, `card:${heart.id}`, `card:${club.id}`, `card:${spade.id}`];
-    expect(session.answer(invalid)).toBe(false); // id 重复也被拒绝
+    const options = session.currentStep!.options;
+    const duplicate = [options[0], options[1], options[2], options[0]];
+    expect(session.answer(duplicate)).toBe(false); // 重复选项被引擎拒绝
 
-    const valid = [`card:${spade.id}`, `card:${heart.id}`, `card:${club.id}`, `card:${diamond.id}`];
+    const valid = [options[0], options[1], options[2], options[3]];
     expect(session.answer(valid)).toBe(true);
     expect(session.confirm()!.answers.cards).toEqual(valid);
   });
@@ -229,10 +235,7 @@ describe('runSelection', () => {
     );
 
     expect(result).not.toBeNull();
-    expect(result!.answers).toEqual({
-      action: ['A'],
-      card: [`card:${sha.id}`],
-      target: ['player:0'],
-    });
+    expect((result!.answers.card[0].data as Card).id).toBe(sha.id);
+    expect((result!.answers.target[0].data as Player).name).toBe(p1.name);
   });
 });

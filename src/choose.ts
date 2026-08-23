@@ -13,7 +13,7 @@ import type { CardDef } from './cardRegistry.js';
 import type { Game } from './game.js';
 import type { AreaName } from './areas.js';
 import { equipmentCards } from './areas.js';
-import type { SelectionContext, SelectionStep } from './selection.js';
+import type { SelectionContext, SelectionOption, SelectionStep } from './selection.js';
 
 // ============================================================
 // 规则层 — 可选集计算（不含 AI 判断）
@@ -188,7 +188,7 @@ export interface HandCardsStepOptions {
   /** 额外跨选约束（与数量约束同时生效） */
   validate?: (selected: Card[]) => boolean;
   /** 覆盖默认 AI（默认选前 min 张） */
-  ai?: (ctx: SelectionContext) => string[];
+  ai?: (ctx: SelectionContext) => SelectionOption[];
 }
 
 /** 从玩家手牌中选牌的步骤 */
@@ -210,7 +210,7 @@ export function handCardsStep(
         && picked.length <= max
         && (!options.validate || options.validate(picked));
     },
-    ai: options.ai ?? ((ctx) => ctx.step.options.slice(0, min).map((o) => o.id)),
+    ai: options.ai ?? ((ctx) => ctx.step.options.slice(0, min)),
   };
 }
 
@@ -221,7 +221,7 @@ export interface TargetsStepOptions {
   /** 额外跨选约束（与数量约束同时生效） */
   validate?: (selected: Player[]) => boolean;
   /** 覆盖默认 AI（默认：单选时偏好自己，否则选前 min 个） */
-  ai?: (ctx: SelectionContext) => string[];
+  ai?: (ctx: SelectionContext) => SelectionOption[];
 }
 
 /** 从候选角色中选目标的步骤 */
@@ -245,7 +245,7 @@ export function targetsStep(
     },
     ai: options.ai ?? ((ctx) => {
       const self = ctx.step.options.find((o) => o.data === player);
-      return self && max === 1 ? [self.id] : ctx.step.options.slice(0, min).map((o) => o.id);
+      return self && max === 1 ? [self] : ctx.step.options.slice(0, min);
     }),
   };
 }
@@ -264,7 +264,7 @@ export function yesNoStep(
       { id: 'no', label: '否' },
     ],
     validate: (selected) => selected.length === 1,
-    ai: () => [defaultValue ? 'yes' : 'no'],
+    ai: (ctx) => [defaultValue ? ctx.step.options[0] : ctx.step.options[1]],
   };
 }
 
@@ -279,7 +279,7 @@ export function optionStep(
     prompt,
     options: choices.map((c) => ({ id: c.value, label: c.label })),
     validate: (selected) => selected.length === 1,
-    ai: (ctx) => (ctx.step.options[0] ? [ctx.step.options[0].id] : []),
+    ai: (ctx) => (ctx.step.options[0] ? [ctx.step.options[0]] : []),
   };
 }
 
@@ -298,6 +298,6 @@ export function actionStep(
       data: a.data,
     })),
     validate: (selected) => selected.length === 1,
-    ai: (ctx) => (ctx.step.options[0] ? [ctx.step.options[0].id] : []),
+    ai: (ctx) => (ctx.step.options[0] ? [ctx.step.options[0]] : []),
   };
 }

@@ -66,11 +66,14 @@ export async function choosePlayAction(
   const result = await runSelection(plan, game, player);
   if (!result) return null;
 
-  const action = actions.find((a) => a.id === result.answers.action[0]);
+  const actionOption = result.answers.action[0];
+  const action = actionOption?.data as PlayAction | undefined;
   if (!action) return null;
 
   if (action.kind === 'card') {
-    const targets = decodeTargets(game, player, action.option, result.answers.target ?? []);
+    const targets = (result.answers.target ?? [])
+      .map((o) => o.data as Player)
+      .filter((p): p is Player => !!p);
     return { kind: 'card', card: action.option.card, targets };
   }
   return { kind: 'skill', skill: action.skill };
@@ -128,7 +131,7 @@ function buildPlayPlan(
         );
       }
 
-      const action = actions.find((a) => a.id === answers.action[0]);
+      const action = (answers.action[0]?.data as PlayAction | undefined);
       if (!action) return null;
 
       if (action.kind === 'card' && !answers.target) {
@@ -152,20 +155,6 @@ function buildPlayPlan(
   };
 
   return { plan, actions };
-}
-
-/** 把 target 步骤的 player:${index} id 解码回目标玩家 */
-function decodeTargets(
-  game: Game,
-  player: Player,
-  option: CardOption,
-  targetIds: string[],
-): Player[] {
-  const targetOptions = computeTargetOptions(game, option.card, player);
-  const byIndex = new Map(targetOptions.map((t, i) => [`player:${i}`, t.player]));
-  return targetIds
-    .map((id) => byIndex.get(id))
-    .filter((p): p is Player => !!p);
 }
 
 /** 收集当前可发动的主动技能（规则 + AI） */

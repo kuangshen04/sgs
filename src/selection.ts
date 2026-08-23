@@ -11,7 +11,7 @@ import type { Player } from './types.js';
 
 /** 一个可选项；data 是任意负载（卡牌/角色/动作等），由规则解码 */
 export interface SelectionOption {
-  id: string;
+  id?: string;
   label: string;
   group?: string;
   data?: unknown;
@@ -31,12 +31,12 @@ export interface SelectionStep {
   options: SelectionOption[];
   /** 校验：数量、跨选约束等；引擎在回答与默认 AI 后都会调用 */
   validate: (selected: SelectionOption[]) => boolean;
-  /** 完整 AI：可读 options/validate/上下文，返回所选选项 id */
-  ai: (ctx: SelectionContext) => string[];
+  /** 完整 AI：可读 options/validate/上下文，返回所选选项 */
+  ai: (ctx: SelectionContext) => SelectionOption[];
 }
 
-/** 已答答案：stepId → 所选选项 id 列表 */
-export type SelectionAnswers = Record<string, string[]>;
+/** 已答答案：stepId → 所选选项列表（原对象，规则侧直接用 data） */
+export type SelectionAnswers = Record<string, SelectionOption[]>;
 
 /** 确认后的选择结果（暂不强类型，id 由规则解码） */
 export interface SelectionResult {
@@ -85,12 +85,12 @@ export class SelectionSession {
   }
 
   /** 回答当前步骤；校验失败返回 false，状态不变 */
-  answer(ids: string[]): boolean {
+  answer(selected: SelectionOption[]): boolean {
     const step = this.currentStep;
     if (!step) return false;
-    if (!isValidIds(step, ids)) return false;
+    if (!isValidSelection(step, selected)) return false;
 
-    this.answers[step.id] = ids;
+    this.answers[step.id] = selected;
     this.answeredCount++;
     this.steps.length = this.answeredCount;
 
@@ -115,16 +115,12 @@ export class SelectionSession {
   }
 }
 
-/** id 必须都存在且不重复；再交给步骤的 validate（数量/跨选约束） */
-function isValidIds(step: SelectionStep, ids: string[]): boolean {
-  const byId = new Map(step.options.map((o) => [o.id, o]));
-  const selected: SelectionOption[] = [];
-  const seen = new Set<string>();
-  for (const id of ids) {
-    const option = byId.get(id);
-    if (!option || seen.has(id)) return false;
-    seen.add(id);
-    selected.push(option);
+/** 选项必须来自当前步骤且不重复；再交给步骤的 validate（数量/跨选约束） */
+function isValidSelection(step: SelectionStep, selected: SelectionOption[]): boolean {
+  const seen = new Set<SelectionOption>();
+  for (const option of selected) {
+    if (!step.options.includes(option) || seen.has(option)) return false;
+    seen.add(option);
   }
   return step.validate(selected);
 }
@@ -137,15 +133,15 @@ export async function runSelection(
   plan: SelectionPlan,
   game: Game,
   player: Player,
-  answerProvider?: (step: SelectionStep) => Promise<string[]> | string[],
+  answerProvider?: (step: SelectionStep) => Promise<SelectionOption[]> | SelectionOption[],
 ): Promise<SelectionResult | null> {
   const session = new SelectionSession(plan);
   while (session.currentStep) {
     const step = session.currentStep;
-    const ids = answerProvider
+    const selected = answerProvider
       ? await answerProvider(step)
       : step.ai({ game, player, step });
-    if (!session.answer(ids)) return null;
+    if (!session.answer(selected)) return null;
   }
   return session.confirm();
 }
