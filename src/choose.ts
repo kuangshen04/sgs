@@ -7,6 +7,7 @@
 // ============================================================
 
 import type { Card, Player } from './types.js';
+import type { UsedCard } from './types.js';
 import { CardType } from './types.js';
 import { cardRegistry } from './cardRegistry.js';
 import type { CardDef } from './cardRegistry.js';
@@ -52,7 +53,7 @@ export function computeCardOptions(
 /** 计算某张牌的合法目标（规则：targetFilter + 距离/免疫等） */
 export function computeTargetOptions(
   game: Game,
-  card: Card,
+  card: Card | UsedCard,
   player: Player,
 ): TargetOption[] {
   const def = cardRegistry.get(card.type);

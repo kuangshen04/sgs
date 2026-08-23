@@ -3,13 +3,17 @@
 //
 // 出牌阶段作为 SelectionSession 的第一个真实例子：
 // 动作选择（普通牌 + 主动技能）→ 按动作执行后续选择（目标）。
-// 主动技能暂不拆 select/execute，先由 content 自己处理；只统一动作入口。
+// 主动技能与转化牌都以 selectionPlan + resolve/execute 形式接入；
+// 转化牌最终仍以 { kind: 'card', card: UsedCard, targets } 返回。
 // ============================================================
 
-import type { Card, Player } from './types.js';
+import type { Player, UsedCard } from './types.js';
 import type { Game } from './game.js';
 import { computeCardOptions, computeTargetOptions, actionStep, targetsStep } from './choose.js';
 import type { CardOption } from './choose.js';
+import { asUsedCard } from './cardRegistry.js';
+import { collectConversions } from './conversions.js';
+import type { ConversionDef } from './conversions.js';
 import { activeSkillRegistry } from './skills.js';
 import type { ActiveSkillContext, ActiveSkillDef } from './skills.js';
 import { runSelection } from './selection.js';
@@ -32,12 +36,20 @@ export type PlayAction =
       priority: number;
       kind: 'skill';
       skill: ActiveSkillDef;
+    }
+  | {
+      id: string;
+      label: string;
+      group: 'conversion';
+      priority: number;
+      kind: 'conversion';
+      conversion: ConversionDef;
     };
 
-/** 选中普通牌后的结果（含目标） */
+/** 选中普通牌或转化牌后的结果（card 为 UsedCard，含目标） */
 export interface CardActionResult {
   kind: 'card';
-  card: Card;
+  card: UsedCard;
   targets: Player[];
 }
 
@@ -75,7 +87,11 @@ export async function choosePlayAction(
     const targets = (result.answers.target ?? [])
       .map((o) => o.data as Player)
       .filter((p): p is Player => !!p);
-    return { kind: 'card', card: action.option.card, targets };
+    return { kind: 'card', card: asUsedCard(action.option.card), targets };
+  }
+  if (action.kind === 'conversion') {
+    const resolved = action.conversion.resolve(result.answers);
+    return { kind: 'card', card: resolved.card, targets: resolved.targets };
   }
   return { kind: 'skill', skill: action.skill, answers: result.answers };
 }
@@ -121,6 +137,20 @@ function buildPlayPlan(
     });
   }
 
+  // 转化牌（武圣等）：源牌存在 + 效果牌规则合法 + AI 愿意用
+  for (const conversion of collectConversions(player)) {
+    if (!conversion.canUse(game, player, shaUsed)) continue;
+    if (!conversion.ai.shouldUse(game, player, shaUsed)) continue;
+    actions.push({
+      id: `conversion:${conversion.name}`,
+      label: conversion.name,
+      group: 'conversion',
+      priority: conversion.ai.usePriority,
+      kind: 'conversion',
+      conversion,
+    });
+  }
+
   actions.sort((a, b) => b.priority - a.priority);
 
   const plan: SelectionPlan = {
@@ -147,6 +177,9 @@ function buildPlayPlan(
           });
         }
         return targetsStep('target', player, candidates, { min: tc, max: tc });
+      }
+      if (action.kind === 'conversion') {
+        return action.conversion.selectionPlan(game, player).nextStep(answers);
       }
       if (action.kind === 'skill') {
         return action.skill.selectionPlan(game, player, ctx).nextStep(answers);
