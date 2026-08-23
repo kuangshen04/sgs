@@ -1,63 +1,51 @@
 // ============================================================
 // 三国杀最小原型 — 选择系统（SelectionSession）
 //
-// 外部边界：一次可回溯的选择会话。choose 只做决策，不执行牌。
-// 原语：action / cards / targets / boolean / option。
-// 组合：有序步骤 + 步骤间依赖；后续步骤由 SelectionPlan 按已答答案产出。
-// 选择结果暂不强类型，统一 Record<stepId, unknown>。
+// 通用选择原语：options + validate + ai。
+// 领域规则（选哪里的牌、选多少、AI 怎么选）由注入的选择规则/工厂负责；
+// 会话只负责：有序步骤、步骤间依赖、回溯、确认。
 // ============================================================
 
-import type { Card, Player } from './types.js';
+import type { Game } from './game.js';
+import type { Player } from './types.js';
 
-// ============================================================
-// 原语类型
-// ============================================================
-
-/** 动作候选（出牌 / 技能 / 转化；具体负载由集成方扩展） */
-export interface ActionOption {
+/** 一个可选项；data 是任意负载（卡牌/角色/动作等），由规则解码 */
+export interface SelectionOption {
   id: string;
   label: string;
   group?: string;
-  priority?: number;
+  data?: unknown;
 }
 
-/** option 原语的候选项 */
-export interface ChoiceOption {
-  value: string;
-  label: string;
+/** AI/规则所在上下文 */
+export interface SelectionContext {
+  game: Game;
+  player: Player;
+  step: SelectionStep;
 }
 
 /** 一个选择步骤（原子问题） */
-export type SelectionStep =
-  | { id: string; kind: 'action'; options: ActionOption[] }
-  | {
-      id: string;
-      kind: 'cards';
-      candidates: Card[];
-      min: number;
-      max: number;
-      /** 跨牌约束（如业炎 4 张花色互异）；回答时校验 */
-      constraint?: (selected: Card[]) => boolean;
-    }
-  | { id: string; kind: 'targets'; candidates: Player[]; min: number; max: number }
-  | { id: string; kind: 'boolean'; prompt: string; default: boolean }
-  | { id: string; kind: 'option'; prompt: string; options: ChoiceOption[] };
+export interface SelectionStep {
+  id: string;
+  prompt?: string;
+  options: SelectionOption[];
+  /** 校验：数量、跨选约束等；引擎在回答与默认 AI 后都会调用 */
+  validate: (selected: SelectionOption[]) => boolean;
+  /** 完整 AI：可读 options/validate/上下文，返回所选选项 id */
+  ai: (ctx: SelectionContext) => string[];
+}
 
-// ============================================================
-// 选择计划与会话
-// ============================================================
+/** 已答答案：stepId → 所选选项 id 列表 */
+export type SelectionAnswers = Record<string, string[]>;
 
-/** 已答答案：stepId → 该步骤的选择值 */
-export type SelectionAnswers = Record<string, unknown>;
-
-/** 确认后的选择结果（暂不强类型） */
+/** 确认后的选择结果（暂不强类型，id 由规则解码） */
 export interface SelectionResult {
   answers: SelectionAnswers;
 }
 
 /**
  * 选择计划：按已答答案逐步产出下一步，全部答完产出最终结果。
- * 步骤候选依赖前序答案时，在这里计算（如选牌后按 targetFilter 算目标）。
+ * 步骤候选依赖前序答案时，在这里计算。
  */
 export interface SelectionPlan {
   nextStep(answers: SelectionAnswers): SelectionStep | null;
@@ -97,14 +85,14 @@ export class SelectionSession {
   }
 
   /** 回答当前步骤；校验失败返回 false，状态不变 */
-  answer(value: unknown): boolean {
+  answer(ids: string[]): boolean {
     const step = this.currentStep;
     if (!step) return false;
-    if (!validateStepAnswer(step, value)) return false;
+    if (!isValidIds(step, ids)) return false;
 
-    this.answers[step.id] = value;
+    this.answers[step.id] = ids;
     this.answeredCount++;
-    this.steps.length = this.answeredCount; // 丢弃旧后续步骤
+    this.steps.length = this.answeredCount;
 
     const next = this.plan.nextStep(this.answers);
     if (next) this.steps.push(next);
@@ -127,74 +115,37 @@ export class SelectionSession {
   }
 }
 
-// ============================================================
-// 步骤校验
-// ============================================================
-
-function validateStepAnswer(step: SelectionStep, value: unknown): boolean {
-  switch (step.kind) {
-    case 'action':
-      return typeof value === 'string'
-        && step.options.some((o) => o.id === value);
-    case 'cards':
-      return Array.isArray(value)
-        && value.length >= step.min
-        && value.length <= step.max
-        && value.every(isCard)
-        && (!step.constraint || step.constraint(value as Card[]));
-    case 'targets':
-      return Array.isArray(value)
-        && value.length >= step.min
-        && value.length <= step.max
-        && value.every(isPlayer);
-    case 'boolean':
-      return typeof value === 'boolean';
-    case 'option':
-      return typeof value === 'string'
-        && step.options.some((o) => o.value === value);
+/** id 必须都存在且不重复；再交给步骤的 validate（数量/跨选约束） */
+function isValidIds(step: SelectionStep, ids: string[]): boolean {
+  const byId = new Map(step.options.map((o) => [o.id, o]));
+  const selected: SelectionOption[] = [];
+  const seen = new Set<string>();
+  for (const id of ids) {
+    const option = byId.get(id);
+    if (!option || seen.has(id)) return false;
+    seen.add(id);
+    selected.push(option);
   }
+  return step.validate(selected);
 }
 
-function isCard(v: unknown): v is Card {
-  return typeof v === 'object' && v !== null
-    && typeof (v as Card).id === 'number'
-    && typeof (v as Card).type === 'string';
-}
-
-function isPlayer(v: unknown): v is Player {
-  return typeof v === 'object' && v !== null
-    && typeof (v as Player).name === 'string';
-}
-
-// ============================================================
-// 默认 AI 答案提供器（写死；真人/前端接入时替换）
-// ============================================================
-
-/** 默认 AI：按候选顺序 / 默认值回答 */
-export function defaultAnswer(step: SelectionStep): unknown {
-  switch (step.kind) {
-    case 'action':
-      return step.options[0]?.id;
-    case 'cards':
-      return step.candidates.slice(0, step.min);
-    case 'targets':
-      return step.candidates.slice(0, step.min);
-    case 'boolean':
-      return step.default;
-    case 'option':
-      return step.options[0]?.value;
-  }
-}
-
-/** 用答案提供器跑完整个会话，返回确认结果；中途失败返回 null */
+/**
+ * 用答案提供器跑完整个会话，返回确认结果；中途失败返回 null。
+ * 默认使用步骤内置的 ai（工厂注入）；真人/前端可传入 answerProvider 覆盖。
+ */
 export async function runSelection(
   plan: SelectionPlan,
-  answerProvider: (step: SelectionStep) => Promise<unknown> | unknown = defaultAnswer,
+  game: Game,
+  player: Player,
+  answerProvider?: (step: SelectionStep) => Promise<string[]> | string[],
 ): Promise<SelectionResult | null> {
   const session = new SelectionSession(plan);
   while (session.currentStep) {
-    const value = await answerProvider(session.currentStep);
-    if (!session.answer(value)) return null;
+    const step = session.currentStep;
+    const ids = answerProvider
+      ? await answerProvider(step)
+      : step.ai({ game, player, step });
+    if (!session.answer(ids)) return null;
   }
   return session.confirm();
 }

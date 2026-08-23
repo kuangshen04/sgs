@@ -13,6 +13,7 @@ import type { CardDef } from './cardRegistry.js';
 import type { Game } from './game.js';
 import type { AreaName } from './areas.js';
 import { equipmentCards } from './areas.js';
+import type { SelectionContext, SelectionStep } from './selection.js';
 
 // ============================================================
 // 规则层 — 可选集计算（不含 AI 判断）
@@ -171,4 +172,132 @@ export function askYesNo(
 ): boolean {
   // ---- AI 决策：是否发动（当前写死：返回默认值；真人/前端接入时在此注入）----
   return defaultAnswer;
+}
+
+// ============================================================
+// 选择步骤工厂
+// 旧的"选牌/选目标/布尔/选项/动作"语义收敛到这些工厂里，
+// 产出统一的 SelectionStep；AI 默认行为也跟随工厂注入。
+// ============================================================
+
+export interface HandCardsStepOptions {
+  prompt?: string;
+  min?: number;
+  max?: number;
+  filter?: (card: Card) => boolean;
+  /** 额外跨选约束（与数量约束同时生效） */
+  validate?: (selected: Card[]) => boolean;
+  /** 覆盖默认 AI（默认选前 min 张） */
+  ai?: (ctx: SelectionContext) => string[];
+}
+
+/** 从玩家手牌中选牌的步骤 */
+export function handCardsStep(
+  id: string,
+  player: Player,
+  options: HandCardsStepOptions = {},
+): SelectionStep {
+  const cards = player.hand.filter(options.filter ?? (() => true));
+  const min = options.min ?? 1;
+  const max = options.max ?? cards.length;
+  return {
+    id,
+    prompt: options.prompt ?? '选择手牌',
+    options: cards.map((c) => ({ id: `card:${c.id}`, label: c.name, data: c })),
+    validate: (selected) => {
+      const picked = selected.map((o) => o.data as Card);
+      return picked.length >= min
+        && picked.length <= max
+        && (!options.validate || options.validate(picked));
+    },
+    ai: options.ai ?? ((ctx) => ctx.step.options.slice(0, min).map((o) => o.id)),
+  };
+}
+
+export interface TargetsStepOptions {
+  prompt?: string;
+  min?: number;
+  max?: number;
+  /** 额外跨选约束（与数量约束同时生效） */
+  validate?: (selected: Player[]) => boolean;
+  /** 覆盖默认 AI（默认：单选时偏好自己，否则选前 min 个） */
+  ai?: (ctx: SelectionContext) => string[];
+}
+
+/** 从候选角色中选目标的步骤 */
+export function targetsStep(
+  id: string,
+  player: Player,
+  candidates: Player[],
+  options: TargetsStepOptions = {},
+): SelectionStep {
+  const min = options.min ?? 1;
+  const max = options.max ?? candidates.length;
+  return {
+    id,
+    prompt: options.prompt ?? '选择目标',
+    options: candidates.map((c, i) => ({ id: `player:${i}`, label: c.name, data: c })),
+    validate: (selected) => {
+      const picked = selected.map((o) => o.data as Player);
+      return picked.length >= min
+        && picked.length <= max
+        && (!options.validate || options.validate(picked));
+    },
+    ai: options.ai ?? ((ctx) => {
+      const self = ctx.step.options.find((o) => o.data === player);
+      return self && max === 1 ? [self.id] : ctx.step.options.slice(0, min).map((o) => o.id);
+    }),
+  };
+}
+
+/** 是/否步骤（两个固定选项，默认值由 AI 返回） */
+export function yesNoStep(
+  id: string,
+  prompt: string,
+  defaultValue: boolean,
+): SelectionStep {
+  return {
+    id,
+    prompt,
+    options: [
+      { id: 'yes', label: '是' },
+      { id: 'no', label: '否' },
+    ],
+    validate: (selected) => selected.length === 1,
+    ai: () => [defaultValue ? 'yes' : 'no'],
+  };
+}
+
+/** 任意选项步骤（花色猜测/位置选择等） */
+export function optionStep(
+  id: string,
+  prompt: string,
+  choices: { value: string; label: string }[],
+): SelectionStep {
+  return {
+    id,
+    prompt,
+    options: choices.map((c) => ({ id: c.value, label: c.label })),
+    validate: (selected) => selected.length === 1,
+    ai: (ctx) => (ctx.step.options[0] ? [ctx.step.options[0].id] : []),
+  };
+}
+
+/** 动作选择步骤（出牌/技能/转化等，默认选第一个，候选应已按优先级排序） */
+export function actionStep(
+  id: string,
+  actions: { id: string; label: string; group?: string; data?: unknown }[],
+): SelectionStep {
+  return {
+    id,
+    prompt: '选择动作',
+    options: actions.map((a) => ({
+      id: a.id,
+      label: a.label,
+      group: a.group,
+      data: a.data,
+    })),
+    validate: (selected) => selected.length === 1,
+    ai: (ctx) => (ctx.step.options[0] ? [ctx.step.options[0].id] : []),
+  };
 }

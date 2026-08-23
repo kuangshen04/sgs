@@ -8,12 +8,12 @@
 
 import type { Card, Player } from './types.js';
 import type { Game } from './game.js';
-import { computeCardOptions, computeTargetOptions } from './choose.js';
+import { computeCardOptions, computeTargetOptions, actionStep, targetsStep } from './choose.js';
 import type { CardOption } from './choose.js';
 import { activeSkillRegistry } from './skills.js';
 import type { ActiveSkillContext, ActiveSkillDef } from './skills.js';
 import { runSelection } from './selection.js';
-import type { SelectionAnswers, SelectionPlan, SelectionStep } from './selection.js';
+import type { SelectionAnswers, SelectionPlan } from './selection.js';
 
 /** 出牌阶段的一个动作候选：普通牌 或 主动技能 */
 export type PlayAction =
@@ -63,14 +63,14 @@ export async function choosePlayAction(
   const { plan, actions } = buildPlayPlan(game, player, shaUsed, usedSkills);
   if (actions.length === 0) return null;
 
-  const result = await runSelection(plan);
+  const result = await runSelection(plan, game, player);
   if (!result) return null;
 
-  const action = actions.find((a) => a.id === result.answers.action);
+  const action = actions.find((a) => a.id === result.answers.action[0]);
   if (!action) return null;
 
   if (action.kind === 'card') {
-    const targets = (result.answers.target as Player[] | undefined) ?? [];
+    const targets = decodeTargets(game, player, action.option, result.answers.target ?? []);
     return { kind: 'card', card: action.option.card, targets };
   }
   return { kind: 'skill', skill: action.skill };
@@ -122,23 +122,27 @@ function buildPlayPlan(
   const plan: SelectionPlan = {
     nextStep(answers: SelectionAnswers) {
       if (!answers.action) {
-        return {
-          id: 'action',
-          kind: 'action',
-          options: actions.map((a) => ({
-            id: a.id,
-            label: a.label,
-            group: a.group,
-            priority: a.priority,
-          })),
-        };
+        return actionStep(
+          'action',
+          actions.map((a) => ({ id: a.id, label: a.label, group: a.group, data: a })),
+        );
       }
 
-      const action = actions.find((a) => a.id === answers.action);
+      const action = actions.find((a) => a.id === answers.action[0]);
       if (!action) return null;
 
       if (action.kind === 'card' && !answers.target) {
-        return targetsStep(game, player, action.option);
+        const def = action.option.def;
+        const targetOptions = computeTargetOptions(game, action.option.card, player);
+        const tc = def.targetCount;
+        const candidates = targetOptions.map((t) => t.player);
+        if (tc === 'all') {
+          return targetsStep('target', player, candidates, {
+            min: candidates.length,
+            max: candidates.length,
+          });
+        }
+        return targetsStep('target', player, candidates, { min: tc, max: tc });
       }
       return null;
     },
@@ -150,34 +154,18 @@ function buildPlayPlan(
   return { plan, actions };
 }
 
-/** 按牌的目标规则产出目标步骤（targetCount='all' 全选；数字优先自己） */
-function targetsStep(game: Game, player: Player, option: CardOption): SelectionStep {
-  const def = option.def;
+/** 把 target 步骤的 player:${index} id 解码回目标玩家 */
+function decodeTargets(
+  game: Game,
+  player: Player,
+  option: CardOption,
+  targetIds: string[],
+): Player[] {
   const targetOptions = computeTargetOptions(game, option.card, player);
-  const tc = def.targetCount;
-
-  if (tc === 'all') {
-    return {
-      id: 'target',
-      kind: 'targets',
-      candidates: targetOptions.map((t) => t.player),
-      min: targetOptions.length,
-      max: targetOptions.length,
-    };
-  }
-
-  // 默认 AI 偏好自己（桃/无中生有）：把玩家排到候选最前
-  const self = targetOptions.find((t) => t.player === player);
-  const candidates = self
-    ? [self.player, ...targetOptions.filter((t) => t !== self).map((t) => t.player)]
-    : targetOptions.map((t) => t.player);
-  return {
-    id: 'target',
-    kind: 'targets',
-    candidates,
-    min: tc,
-    max: tc,
-  };
+  const byIndex = new Map(targetOptions.map((t, i) => [`player:${i}`, t.player]));
+  return targetIds
+    .map((id) => byIndex.get(id))
+    .filter((p): p is Player => !!p);
 }
 
 /** 收集当前可发动的主动技能（规则 + AI） */
