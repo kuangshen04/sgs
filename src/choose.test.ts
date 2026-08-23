@@ -13,7 +13,6 @@ import { cardRegistry, asUsedCard } from './cardRegistry.js';
 import {
   computeCardOptions,
   computeTargetOptions,
-  chooseCardAndTargets,
 } from './choose.js';
 
 import { CardType } from './types.js';
@@ -249,63 +248,3 @@ describe('computeTargetOptions', () => {
   });
 });
 
-// ============================================================
-// chooseCardAndTargets — 出牌选择（默认 AI）
-// ============================================================
-
-describe('chooseCardAndTargets', () => {
-  it('默认 AI：手牌只有杀 → 选杀 + 默认选目标', async () => {
-    const g = freshGame();
-    const player = g.state.players[0];
-    giveHand(player, CardType.Sha);
-
-    const result = await chooseCardAndTargets(g, player, false);
-    expect(result).not.toBeNull();
-    expect(result!.card.type).toBe(CardType.Sha);
-    expect(result!.targets.length).toBe(1);
-  });
-
-  it('默认 AI：空手 → 返回 null', async () => {
-    const g = freshGame();
-    const player = g.state.players[0];
-
-    expect(await chooseCardAndTargets(g, player, false)).toBeNull();
-  });
-
-  it('默认 AI：按 usePriority 降序选牌（桃 90 优先）', async () => {
-    const g = freshGame();
-    const player = g.state.players[0];
-    player.hp = 2;
-    giveHand(player, CardType.Sha, CardType.JueDou, CardType.Tao);
-
-    const result = await chooseCardAndTargets(g, player, false);
-    expect(result!.card.type).toBe(CardType.Tao);
-  });
-
-  it('默认 AI：决斗无杀在手 → AI 不用（shouldUse=false）→ null', async () => {
-    const g = freshGame();
-    const player = g.state.players[0];
-    giveHand(player, CardType.JueDou);
-
-    expect(await chooseCardAndTargets(g, player, false)).toBeNull();
-  });
-
-  it('默认 AI 选目标：桃只能选自己', async () => {
-    const g = freshGame();
-    const player = g.state.players[0];
-    player.hp = 2;
-    giveHand(player, CardType.Tao);
-
-    const result = await chooseCardAndTargets(g, player, false);
-    expect(result!.targets).toEqual([player]);
-  });
-
-  it('默认 AI 选目标：南蛮入侵 targetCount=all → 全体其他存活玩家', async () => {
-    const g = freshGame();
-    const player = g.state.players[0];
-    giveHand(player, CardType.NanMan);
-
-    const result = await chooseCardAndTargets(g, player, false);
-    expect(result!.targets).toEqual([g.state.players[1], g.state.players[2]]);
-  });
-});

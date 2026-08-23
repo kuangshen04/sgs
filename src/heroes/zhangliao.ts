@@ -20,7 +20,7 @@ const tuxiContent = async (game: Game, event: GameEvent<any>, owner: Player): Pr
     (p) => p !== owner && p.alive && p.hand.length > 0,
   );
   // askForTargets：突袭抢哪两名角色（候选人洗牌后取前 2 → 随机；默认 AI）
-  const picks = askForTargets(game, owner, '突袭：抢谁的手牌', shuffle(candidates), 2);
+  const picks = await askForTargets(game, owner, '突袭：抢谁的手牌', shuffle(candidates), 2);
   if (!picks) return;
   for (const target of picks) {
     const card = target.hand[Math.floor(Math.random() * target.hand.length)];

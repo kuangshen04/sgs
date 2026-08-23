@@ -125,7 +125,7 @@ export function registerSkills(game: Game): void {
         if (!player.hero.skills?.includes(skill.name)) continue;
         if (!skill.canTrigger(game, event, player, subject)) continue;
         // askYesNo：触发技能"你可以"的发动与否（默认 AI：自动发动）
-        if (!askYesNo(game, player, `是否发动【${skill.name}】`, true)) continue;
+        if (!(await askYesNo(game, player, `是否发动【${skill.name}】`, true))) continue;
         await skill.content(game, event, player);
       }
     });

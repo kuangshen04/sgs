@@ -95,7 +95,7 @@ export async function dying(
         }
 
         // askForCard：是否使用桃救濒死角色（默认 AI：有就出第一张）
-        const tao = askForCard(game, player, `是否使用桃救 ${dyingPlayer.name}`, [CardType.Tao]);
+        const tao = await askForCard(game, player, `是否使用桃救 ${dyingPlayer.name}`, [CardType.Tao]);
         if (!tao) {
           consecutivePasses++;
           if (consecutivePasses >= aliveCount) break; // 一整轮无人响应

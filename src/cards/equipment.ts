@@ -79,7 +79,7 @@ cardRegistry.register({
       const { target } = event.data as DamageEventData;
       if (!target) return;
       // askFromAreas：弃置目标一张坐骑（默认 AI：随机；原简化"优先防御马"）
-      const mount = askFromAreas(
+      const mount = await askFromAreas(
         game, target, '麒麟弓：弃置目标一张坐骑', ['equipment'],
         (c) => !!cardRegistry.get(c.type)?.tags.some(
           (t) => t === CardTag.DefensiveHorse || t === CardTag.OffensiveHorse,
@@ -130,7 +130,7 @@ cardRegistry.register({
       const discarded: Card[] = [];
       for (let i = 0; i < 2; i++) {
         // askFromAreas：依次弃置哪两张区域牌（默认 AI：随机）
-        const card = askFromAreas(game, target, '寒冰剑：弃置目标一张区域牌');
+        const card = await askFromAreas(game, target, '寒冰剑：弃置目标一张区域牌');
         if (!card) break;
         await moveCards(game, {
           to: { zone: 'discardPile' }, cards: [card], reason: 'discard',
@@ -205,7 +205,7 @@ cardRegistry.register({
       const { target } = event.data as TargetingEventData;
       // askYesNo：目标选择"弃一张手牌"还是"令使用者摸一张牌"
       // （默认 AI：有手牌则弃牌，否则令使用者摸牌）
-      const discardHand = askYesNo(
+      const discardHand = await askYesNo(
         game, target, `是否弃置一张手牌（否则 ${owner.name} 摸一张牌）`, target.hand.length > 0,
       );
       if (discardHand && target.hand.length > 0) {
@@ -279,7 +279,7 @@ cardRegistry.register({
     content: async (game, event, owner) => {
       const { defender } = event.data as ShaCancelledEventData;
       // askForCard：是否再出杀/出哪张（默认 AI：有就出第一张）
-      const sha = askForCard(game, owner, '青龙偃月刀：是否再次使用杀', [CardType.Sha]);
+      const sha = await askForCard(game, owner, '青龙偃月刀：是否再次使用杀', [CardType.Sha]);
       if (!sha) return;
       await useCard(game, { player: owner, card: sha, targets: [defender] });
       console.log(`  🗡️${owner.name} 的青龙偃月刀发动，对 ${defender.name} 再次使用杀`);
@@ -314,7 +314,7 @@ cardRegistry.register({
       // askFromAreas：弃哪两张牌（默认 AI：随机）
       const discarded: Card[] = [];
       for (let i = 0; i < 2; i++) {
-        const card = askFromAreas(game, owner, '贯石斧：弃置一张牌');
+        const card = await askFromAreas(game, owner, '贯石斧：弃置一张牌');
         if (!card) break;
         await moveCards(game, {
           to: { zone: 'discardPile' }, cards: [card], reason: 'discard',

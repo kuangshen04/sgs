@@ -61,7 +61,7 @@ const nanmanContent: CardContentFn = async (game, data, _event) => {
 
   for (const target of data.targets) {
     // askForCard：南蛮中是否出杀/出哪张（默认 AI：有就出第一张）
-    const sha = askForCard(game, target, '是否打出杀', [CardType.Sha]);
+    const sha = await askForCard(game, target, '是否打出杀', [CardType.Sha]);
     if (sha) {
       await playFromHand(game, target, sha);
       console.log(
@@ -82,7 +82,7 @@ const wanjianContent: CardContentFn = async (game, data, _event) => {
 
   for (const target of data.targets) {
     // askForCard：万箭中是否出闪/出哪张（默认 AI：有就出第一张）
-    const shan = askForCard(game, target, '是否打出闪', [CardType.Shan]);
+    const shan = await askForCard(game, target, '是否打出闪', [CardType.Shan]);
     if (shan) {
       await playFromHand(game, target, shan);
       console.log(
@@ -126,7 +126,7 @@ const guoheContent: CardContentFn = async (game, data, _event) => {
   );
 
   // askFromAreas：弃置目标区域内哪张牌（默认 AI：随机）
-  const card = askFromAreas(game, target, '过河拆桥：弃置目标一张牌');
+  const card = await askFromAreas(game, target, '过河拆桥：弃置目标一张牌');
   if (!card) return;
   await moveCards(game, {
     to: { zone: 'discardPile' }, cards: [card], reason: 'discard',
@@ -144,7 +144,7 @@ const shunshouContent: CardContentFn = async (game, data, _event) => {
   );
 
   // askFromAreas：获得目标区域内哪张牌（默认 AI：随机）
-  const card = askFromAreas(game, target, '顺手牵羊：获得目标一张牌');
+  const card = await askFromAreas(game, target, '顺手牵羊：获得目标一张牌');
   if (!card) return;
   await moveCards(game, {
     to: { player: user, zone: 'hand' }, cards: [card], reason: 'give',
@@ -165,7 +165,7 @@ const jiedaoContent: CardContentFn = async (game, data, _event) => {
   );
 
   // askForCard：目标是否出杀（默认 AI：有就出第一张）
-  const sha = askForCard(game, target, '是否用杀响应【借刀杀人】', [CardType.Sha]);
+  const sha = await askForCard(game, target, '是否用杀响应【借刀杀人】', [CardType.Sha]);
   const shaTarget = game.state.players.find(
     (p) => p.alive && p !== target && p !== user
       && distanceTo(game.state.players, target, p) <= attackRange(target),
@@ -227,7 +227,7 @@ export function installWuxieTrigger(game: Game): void {
       if (!judging && user === player) continue;
 
       // askForCard：是否出无懈/出哪张（默认 AI：有就出第一张）
-      const wxCard = askForCard(game, player, '是否打出无懈可击', [CardType.WuXie]);
+      const wxCard = await askForCard(game, player, '是否打出无懈可击', [CardType.WuXie]);
       if (!wxCard) continue;
       console.log(
         `  ✨${player.name} 使用 🛡️无懈可击 ` +

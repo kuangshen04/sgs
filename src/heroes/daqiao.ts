@@ -21,7 +21,7 @@ const liuliContent = async (
   const { user } = targeting.data;
 
   // 弃置一张牌（手牌/装备区；askFromAreas 默认 AI：随机）
-  const cost = askFromAreas(game, owner, '流离：弃置一张牌', ['hand', 'equipment']);
+  const cost = await askFromAreas(game, owner, '流离：弃置一张牌', ['hand', 'equipment']);
   if (!cost) return;
   await discardCards(game, owner, [cost]);
 
@@ -30,7 +30,7 @@ const liuliContent = async (
     (p) => p.alive && p !== owner && p !== user
       && distanceTo(game.state.players, owner, p) <= attackRange(owner),
   );
-  const targets = askForTargets(game, owner, '流离：将杀转移给谁', candidates, 1);
+  const targets = await askForTargets(game, owner, '流离：将杀转移给谁', candidates, 1);
   if (!targets) return;
   const newTarget = targets[0];
 

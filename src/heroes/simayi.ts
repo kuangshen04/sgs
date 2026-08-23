@@ -18,7 +18,7 @@ const fankuiContent = async (game: Game, event: GameEvent<any>, owner: Player): 
   const { source } = event.data as DamageEventData;
   if (!source) return; // 无来源伤害
   // askFromAreas：获得伤害来源区域内哪张牌（默认 AI：随机）
-  const card = askFromAreas(game, source, '反馈：获得伤害来源一张牌');
+  const card = await askFromAreas(game, source, '反馈：获得伤害来源一张牌');
   if (!card) return;
   await moveCards(game, {
     to: { player: owner, zone: 'hand' }, cards: [card], reason: 'give',
@@ -30,7 +30,7 @@ const fankuiContent = async (game: Game, event: GameEvent<any>, owner: Player): 
 const guicaiContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
   const judgeEvent = event as GameEvent<JudgeEventData>;
   // askForCard：打出哪张手牌替换判定牌（默认 AI：第一张；任意手牌均可）
-  const card = askForCard(game, owner, '鬼才：打出一张手牌代替判定牌', Object.values(CardType));
+  const card = await askForCard(game, owner, '鬼才：打出一张手牌代替判定牌', Object.values(CardType));
   if (!card) return;
   const original = judgeEvent.data.card;
   // 原判定牌离开处理区进弃牌堆

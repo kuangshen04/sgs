@@ -17,7 +17,7 @@ const yijiContent = async (game: Game, event: GameEvent<any>, owner: Player): Pr
   const { amount } = event.data as DamageEventData;
   const before = owner.hand.length;
   // askForTargets：遗计牌分配给谁（简化：只给自己）
-  const receivers = askForTargets(game, owner, '遗计：牌分给谁（简化只给自己）', [owner], 1);
+  const receivers = await askForTargets(game, owner, '遗计：牌分给谁（简化只给自己）', [owner], 1);
   if (!receivers) return;
   await drawCards(game, { target: receivers[0], count: amount * 2 });
   console.log(

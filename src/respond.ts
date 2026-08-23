@@ -33,7 +33,7 @@ export async function resolveShaResponse(
   for (let i = 0; i < need; i++) {
     // askForCard：是否出闪/出哪张闪（默认 AI：有就出第一张）
     // 八卦阵将来在此插入：判定红 → 视为出了一张闪，continue
-    const shan = askForCard(game, defender, '是否打出闪', [CardType.Shan]);
+    const shan = await askForCard(game, defender, '是否打出闪', [CardType.Shan]);
     if (!shan) {
       console.log(`  ${defender.name} 无法打出闪！`);
       return false; // 已出的闪不返还，杀命中
@@ -60,7 +60,7 @@ export async function resolveJueDouResponse(
 ): Promise<boolean> {
   for (let i = 0; i < required; i++) {
     // askForCard：决斗中是否出杀/出哪张（默认 AI：有就出第一张）
-    const sha = askForCard(game, player, '是否打出杀', [CardType.Sha]);
+    const sha = await askForCard(game, player, '是否打出杀', [CardType.Sha]);
     if (!sha) {
       console.log(`  ${player.name} 无法打出杀！`);
       return false;
