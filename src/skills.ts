@@ -8,7 +8,7 @@ import type { GameEvent } from './events/index.js';
 import { cardRegistry } from './cardRegistry.js';
 import { installWuxieTrigger } from './cards/trick.js';
 import { CardType } from './types.js';
-import type { Card, Player } from './types.js';
+import type { Player } from './types.js';
 import { askYesNo } from './choose.js';
 
 // ============================================================
@@ -53,8 +53,8 @@ export interface ActiveSkillContext {
   shaUsed: boolean;
   /** 本回合已发动过的限次技能名 */
   usedSkills: ReadonlySet<string>;
-  /** 本轮 AI 选出的要出的牌（null = 没有牌要出） */
-  cardChoice: Card | null;
+  /** 本轮是否存在 AI 愿意使用的可用牌（制衡"没牌能出才换牌"等 AI 参考） */
+  hasCardOption: boolean;
 }
 
 /** 出牌阶段可发动的技能定义 */

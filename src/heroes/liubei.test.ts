@@ -43,7 +43,7 @@ describe('仁德（刘备主动技能）', () => {
     const liubei = g.state.players[0];
     giveHand(liubei, CardType.Shan, CardType.WuXie);
     const skill = activeSkillRegistry.get('仁德')!;
-    const ctx = { shaUsed: false, usedSkills: new Set<string>(), cardChoice: null };
+    const ctx = { shaUsed: false, usedSkills: new Set<string>(), hasCardOption: false };
 
     expect(skill.canUse(g, liubei, ctx)).toBe(true);        // 规则：合法
     expect(skill.ai.shouldUse(g, liubei, ctx)).toBe(false);  // AI：不该用

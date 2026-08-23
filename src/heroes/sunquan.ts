@@ -28,7 +28,7 @@ activeSkillRegistry.register({
   content: zhihengContent,
   ai: {
     // AI：本轮选不出想出的牌时才换牌
-    shouldUse: (_game, _player, ctx) => ctx.cardChoice === null,
+    shouldUse: (_game, _player, ctx) => !ctx.hasCardOption,
     priority: 0,
   },
 });

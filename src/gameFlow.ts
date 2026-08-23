@@ -18,8 +18,7 @@ import { drawCards, useCard, discardCards, judge, moveCards, settleProcessingCar
 import { cardRegistry, cardEmoji, displayNumber, asUsedCard } from './cardRegistry.js';
 import { printState } from './display.js';
 import type { Game } from './game.js';
-import { chooseCardAndTargets } from './choose.js';
-import { pickActiveSkill } from './skills.js';
+import { choosePlayAction } from './playChoices.js';
 
 // ============================================================
 // Boundary 工厂函数（轮/回合/阶段）
@@ -141,19 +140,16 @@ export async function playPhase(
       const usedSkills = new Set<string>(); // 本回合已发动的限次技能
       while (true) {
         if (!player.alive) break; // 出牌阶段中死亡则终止
-        const cardChoice = await chooseCardAndTargets(game, player, shaUsed);
-        const skill = pickActiveSkill(game, player, {
-          shaUsed, usedSkills, cardChoice: cardChoice?.card ?? null,
-        });
+        const action = await choosePlayAction(game, player, shaUsed, usedSkills);
 
-        if (cardChoice) {
-          if (cardChoice.card.type === CardType.Sha) shaUsed = true;
+        if (action?.kind === 'card') {
+          if (action.card.type === CardType.Sha) shaUsed = true;
           await useCard(game, {
-            player, card: cardChoice.card, targets: cardChoice.targets,
+            player, card: action.card, targets: action.targets,
           });
-        } else if (skill) {
-          usedSkills.add(skill.name);
-          await skill.content(game, player);
+        } else if (action?.kind === 'skill') {
+          usedSkills.add(action.skill.name);
+          await action.skill.content(game, player);
         } else {
           break;
         }

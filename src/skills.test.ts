@@ -75,7 +75,7 @@ describe('pickActiveSkill', () => {
     giveHand(sunquan, CardType.Shan);
 
     const skill = pickActiveSkill(g, sunquan, {
-      shaUsed: false, usedSkills: new Set<string>(), cardChoice: null,
+      shaUsed: false, usedSkills: new Set<string>(), hasCardOption: false,
     });
 
     expect(skill).toBeNull();

@@ -43,7 +43,7 @@ describe('结姻（孙尚香主动技能）', () => {
     const sun = g.state.players[0];
     const skill = activeSkillRegistry.get('结姻')!;
     giveHand(sun, CardType.Shan, CardType.Shan);
-    const ctx = { shaUsed: false, usedSkills: new Set<string>(), cardChoice: null };
+    const ctx = { shaUsed: false, usedSkills: new Set<string>(), hasCardOption: false };
 
     expect(skill.canUse(g, sun, ctx)).toBe(false); // 刘备/孙权均满血
   });
@@ -56,7 +56,7 @@ describe('结姻（孙尚香主动技能）', () => {
     const skill = activeSkillRegistry.get('结姻')!;
 
     expect(
-      skill.canUse(g, sun, { shaUsed: false, usedSkills: new Set(['结姻']), cardChoice: null }),
+      skill.canUse(g, sun, { shaUsed: false, usedSkills: new Set(['结姻']), hasCardOption: false }),
     ).toBe(false);
   });
 
@@ -69,9 +69,9 @@ describe('结姻（孙尚香主动技能）', () => {
     giveHand(sun, CardType.Shan, CardType.Shan);
     const skill = activeSkillRegistry.get('结姻')!;
 
-    expect(skill.canUse(g, sun, { shaUsed: false, usedSkills: new Set<string>(), cardChoice: null })).toBe(true);
+    expect(skill.canUse(g, sun, { shaUsed: false, usedSkills: new Set<string>(), hasCardOption: false })).toBe(true);
     expect(
-      skill.ai.shouldUse(g, sun, { shaUsed: false, usedSkills: new Set<string>(), cardChoice: null }),
+      skill.ai.shouldUse(g, sun, { shaUsed: false, usedSkills: new Set<string>(), hasCardOption: false }),
     ).toBe(false); // 自己满血，AI 觉得不值
 
     await playPhase(g, { player: sun });

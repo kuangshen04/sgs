@@ -24,7 +24,7 @@ describe('制衡（孙权主动技能）', () => {
     const sunquan = g.state.players[1];
     giveHand(sunquan, CardType.Sha);
     const skill = activeSkillRegistry.get('制衡')!;
-    const ctx = { shaUsed: false, usedSkills: new Set<string>(), cardChoice: sunquan.hand[0] };
+    const ctx = { shaUsed: false, usedSkills: new Set<string>(), hasCardOption: true };
 
     expect(skill.canUse(g, sunquan, ctx)).toBe(true);        // 规则：合法
     expect(skill.ai.shouldUse(g, sunquan, ctx)).toBe(false);  // AI：不该用
@@ -35,7 +35,7 @@ describe('制衡（孙权主动技能）', () => {
     const sunquan = g.state.players[1];
     giveHand(sunquan, CardType.Shan);
     const skill = activeSkillRegistry.get('制衡')!;
-    const ctx = { shaUsed: false, usedSkills: new Set<string>(), cardChoice: null };
+    const ctx = { shaUsed: false, usedSkills: new Set<string>(), hasCardOption: false };
 
     expect(skill.canUse(g, sunquan, ctx)).toBe(true);
     expect(skill.ai.shouldUse(g, sunquan, ctx)).toBe(true);
@@ -48,7 +48,7 @@ describe('制衡（孙权主动技能）', () => {
     const skill = activeSkillRegistry.get('制衡')!;
 
     expect(
-      skill.canUse(g, sunquan, { shaUsed: false, usedSkills: new Set(['制衡']), cardChoice: null }),
+      skill.canUse(g, sunquan, { shaUsed: false, usedSkills: new Set(['制衡']), hasCardOption: false }),
     ).toBe(false);
   });
 
