@@ -3,12 +3,22 @@
 // ============================================================
 
 import { CardTag, CardType } from '../types.js';
-import type { Card } from '../types.js';
+import type { Card, UsedCard } from '../types.js';
 import { cardRegistry, cardEmoji } from '../cardRegistry.js';
 import { discardCards, drawCards, moveCards, useCard } from '../cardActions.js';
 import type { DamageEventData, ShaCancelledEventData, TargetingEventData } from '../events/index.js';
 import { EventType } from '../events/index.js';
-import { askForCard, askFromAreas, askYesNo } from '../choose.js';
+import {
+  askForCard,
+  askFromAreas,
+  askYesNo,
+  handCardsStep,
+  targetsStep,
+  computeTargetOptions,
+  selectedCards,
+  selectedPlayers,
+} from '../choose.js';
+import { conversionRegistry } from '../conversions.js';
 import { damage } from '../life.js';
 import { effectRegistry } from '../persistentEffects.js';
 import { cardsInAreas, hasCardsInAreas } from '../areas.js';
@@ -262,6 +272,62 @@ function registerBlankWeapon(
 registerBlankWeapon(CardType.QingGangJian, '青釭剑', '🗡️', 2);
 registerBlankWeapon(CardType.ZhangBaSheMao, '丈八蛇矛', '🔱', 3);
 registerBlankWeapon(CardType.FangTianHuaJi, '方天画戟', '🔱', 4);
+
+// 丈八蛇矛：两张手牌当杀
+conversionRegistry.register({
+  name: '丈八蛇矛',
+  toType: CardType.Sha,
+  canUse: (game, player, shaUsed) => {
+    const def = cardRegistry.get(CardType.Sha)!;
+    return player.equipment.weapon?.type === CardType.ZhangBaSheMao
+      && player.hand.length >= 2
+      && def.canUse(player, game.state.players, shaUsed);
+  },
+  selectionPlan: (game, player) => ({
+    nextStep(answers) {
+      if (!answers.source) {
+        return handCardsStep('source', player, {
+          prompt: '丈八蛇矛：选择两张手牌当杀',
+          min: 2,
+          max: 2,
+        });
+      }
+      if (!answers.target) {
+        const used = makeZhangbaSha(selectedCards(answers, 'source'));
+        const targetOptions = computeTargetOptions(game, used, player);
+        return targetsStep('target', player, targetOptions.map((t) => t.player), {
+          prompt: '丈八蛇矛：选择杀的目标',
+          min: 1,
+          max: 1,
+        });
+      }
+      return null;
+    },
+    result: (answers) => ({ answers }),
+  }),
+  resolve: (answers) => ({
+    card: makeZhangbaSha(selectedCards(answers, 'source')),
+    targets: selectedPlayers(answers, 'target'),
+  }),
+  ai: {
+    shouldUse: (_game, player, shaUsed) => {
+      const def = cardRegistry.get(CardType.Sha)!;
+      return def.ai.shouldUse(player, shaUsed);
+    },
+    usePriority: cardRegistry.get(CardType.Sha)!.ai.usePriority,
+  },
+});
+
+function makeZhangbaSha(sources: Card[]): UsedCard {
+  const source = sources[0];
+  return {
+    type: CardType.Sha,
+    name: '杀',
+    suit: source.suit,
+    number: source.number,
+    physicalCards: sources,
+  };
+}
 
 // 青龙偃月刀：杀被闪抵消后，可以对相同的目标再使用一张杀（AI：有杀就再出）
 cardRegistry.register({

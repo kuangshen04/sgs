@@ -5,7 +5,8 @@
 // ============================================================
 
 import type { Game } from './game.js';
-import type { CardType, Player, UsedCard } from './types.js';
+import { CardType } from './types.js';
+import type { Player, UsedCard } from './types.js';
 import type { SelectionAnswers, SelectionPlan } from './selection.js';
 
 export interface ConversionDef {
@@ -25,6 +26,11 @@ export interface ConversionDef {
 
 const _defs = new Map<string, ConversionDef>();
 
+/** 装备在对应栏位时提供的转化规则 */
+const WEAPON_CONVERSIONS: Partial<Record<CardType, string>> = {
+  [CardType.ZhangBaSheMao]: '丈八蛇矛',
+};
+
 export const conversionRegistry = {
   register(def: ConversionDef): void {
     _defs.set(def.name, def);
@@ -37,12 +43,18 @@ export const conversionRegistry = {
   },
 };
 
-/** 收集玩家拥有的转化规则（目前先来自武将技能；装备类后续接入） */
+/** 收集玩家拥有的转化规则（武将技能 + 装备武器） */
 export function collectConversions(player: Player): ConversionDef[] {
   const defs: ConversionDef[] = [];
   for (const skill of player.hero.skills ?? []) {
     const def = conversionRegistry.get(skill);
     if (def) defs.push(def);
+  }
+  const weapon = player.equipment.weapon;
+  if (weapon) {
+    const name = WEAPON_CONVERSIONS[weapon.type];
+    const def = name ? conversionRegistry.get(name) : undefined;
+    if (def && !defs.includes(def)) defs.push(def);
   }
   return defs;
 }

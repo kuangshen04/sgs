@@ -8,6 +8,7 @@ import { describe, it, expect } from 'vitest';
 import { freshGame, giveHand, makeUniqueCard } from './test-utils.js';
 
 import { useCard } from './cardActions.js';
+import { playPhase } from './gameFlow.js';
 
 import { registerSkills } from './skills.js';
 
@@ -278,5 +279,45 @@ describe('贯石斧（杀被抵消后弃牌命中）', () => {
 
     expect(target.hp).toBe(hpBefore); // 被抵消，贯石斧不发动
     expect(attacker.hand.length).toBe(0); // 杀已打出
+  });
+});
+
+describe('丈八蛇矛（转化牌）', () => {
+  it('两张手牌当杀：造成伤害，两张源牌进弃牌堆', async () => {
+    const g = freshGame({}, ['刘备', '孙权', '曹操']);
+    registerSkills(g);
+    const attacker = g.state.players[0];
+    const target = g.state.players[1];
+    attacker.equipment.weapon = makeUniqueCard(CardType.ZhangBaSheMao);
+    const tao = makeUniqueCard(CardType.Tao, '♥', 2);
+    const shan = makeUniqueCard(CardType.Shan, '♦', 3);
+    attacker.hand = [tao, shan];
+    const hpBefore = target.hp;
+
+    await playPhase(g, { player: attacker });
+
+    expect(target.hp).toBe(hpBefore - 1);
+    expect(attacker.hand.length).toBe(0);
+    expect(g.state.discardPile).toContain(tao);
+    expect(g.state.discardPile).toContain(shan);
+    expect(g.state.processing.length).toBe(0);
+  });
+
+  it('奸雄获得丈八对应的全部实体牌', async () => {
+    const g = freshGame({}, ['刘备', '曹操', '孙权']);
+    registerSkills(g);
+    const attacker = g.state.players[0];
+    const caocao = g.state.players[1];
+    attacker.equipment.weapon = makeUniqueCard(CardType.ZhangBaSheMao);
+    const tao = makeUniqueCard(CardType.Tao, '♥', 4);
+    const shan = makeUniqueCard(CardType.Shan, '♦', 5);
+    attacker.hand = [tao, shan];
+
+    await playPhase(g, { player: attacker });
+
+    expect(caocao.hand.map((c) => c.id)).toContain(tao.id);
+    expect(caocao.hand.map((c) => c.id)).toContain(shan.id);
+    expect(g.state.discardPile).not.toContain(tao);
+    expect(g.state.discardPile).not.toContain(shan);
   });
 });
