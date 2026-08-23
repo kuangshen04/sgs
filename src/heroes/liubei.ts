@@ -4,26 +4,11 @@
 
 import { giveCards } from '../cardActions.js';
 import { recover } from '../life.js';
-import { askForTargets } from '../choose.js';
+import { handCardsStep, targetsStep, selectedCards, selectedPlayers } from '../choose.js';
 import { activeSkillRegistry } from '../skills.js';
 import { heroRegistry } from '../heroRegistry.js';
 import type { Game } from '../game.js';
 import type { Player } from '../types.js';
-
-/** 仁德：出牌阶段限一次，交给其他角色两张牌，然后回复 1 点体力 */
-const rendeContent = async (game: Game, player: Player): Promise<void> => {
-  if (player.hand.length < 2) return;
-  // askForTargets：仁德交给谁（默认 AI：第一个其他存活角色）
-  const candidates = game.state.players.filter((p) => p !== player && p.alive);
-  const targets = askForTargets(game, player, '仁德：交给谁', candidates, 1);
-  if (!targets) return;
-  const target = targets[0];
-  const given = await giveCards(game, player, target, player.hand.slice(0, 2));
-  await recover(game, { target: player, amount: 1 });
-  console.log(
-    `  ✨${player.name} 发动【仁德】！交给 ${target.name} ${given.length} 张牌，回复 1 点体力`,
-  );
-};
 
 activeSkillRegistry.register({
   name: '仁德',
@@ -31,7 +16,37 @@ activeSkillRegistry.register({
     !ctx.usedSkills.has('仁德') &&                              // 规则：每回合限一次
     player.hand.length >= 2 &&                                  // 规则：需交出 2 张牌
     game.state.players.some((p) => p !== player && p.alive),    // 规则：需有其他角色
-  content: rendeContent,
+  selectionPlan: (game, player) => ({
+    nextStep(answers) {
+      if (!answers.cards) {
+        return handCardsStep('cards', player, {
+          prompt: '仁德：选择要交给的牌',
+          min: 2,
+          max: 2,
+        });
+      }
+      if (!answers.target) {
+        const candidates = game.state.players.filter((p) => p !== player && p.alive);
+        return targetsStep('target', player, candidates, {
+          prompt: '仁德：交给谁',
+          min: 1,
+          max: 1,
+        });
+      }
+      return null;
+    },
+    result: (answers) => ({ answers }),
+  }),
+  execute: async (game, player, answers) => {
+    const cards = selectedCards(answers, 'cards');
+    const [target] = selectedPlayers(answers, 'target');
+    if (!target || cards.length === 0) return;
+    const given = await giveCards(game, player, target, cards);
+    await recover(game, { target: player, amount: 1 });
+    console.log(
+      `  ✨${player.name} 发动【仁德】！交给 ${target.name} ${given.length} 张牌，回复 1 点体力`,
+    );
+  },
   ai: {
     // AI：受伤才值得交牌换血
     shouldUse: (game, player) => player.hp < player.maxHp,

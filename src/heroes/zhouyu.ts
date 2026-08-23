@@ -4,7 +4,7 @@
 
 import { drawCards, giveCards } from '../cardActions.js';
 import { damage } from '../life.js';
-import { askForTargets } from '../choose.js';
+import { handCardsStep, targetsStep, selectedCards, selectedPlayers } from '../choose.js';
 import { activeSkillRegistry, skillRegistry, subjectIsOwner } from '../skills.js';
 import type { GameEvent } from '../events/index.js';
 import type { DrawPhaseEventData } from '../events/index.js';
@@ -17,21 +17,6 @@ const yingziContent = async (game: Game, event: GameEvent<any>, owner: Player): 
   const drawPhaseEvent = event as GameEvent<DrawPhaseEventData>;
   drawPhaseEvent.data.count += 1;
   console.log(`  ✨${owner.name} 发动【英姿】！摸牌阶段多摸 1 张牌`);
-};
-
-/** 反间：出牌阶段限一次，交给其他角色一张牌，然后对其造成 1 点伤害 */
-const fanjianContent = async (game: Game, player: Player): Promise<void> => {
-  if (player.hand.length === 0) return;
-  // askForTargets：反间指定谁（默认 AI：第一个其他存活角色）
-  const candidates = game.state.players.filter((p) => p !== player && p.alive);
-  const targets = askForTargets(game, player, '反间：指定谁', candidates, 1);
-  if (!targets) return;
-  const target = targets[0];
-  await giveCards(game, player, target, [player.hand[0]]);
-  await damage(game, { target, source: player, amount: 1 });
-  console.log(
-    `  ✨${player.name} 发动【反间】！交给 ${target.name} 1 张牌并造成 1 点伤害`,
-  );
 };
 
 skillRegistry.register({
@@ -47,7 +32,37 @@ activeSkillRegistry.register({
     !ctx.usedSkills.has('反间') &&                              // 规则：每回合限一次
     player.hand.length >= 1 &&                                  // 规则：需交出 1 张牌
     game.state.players.some((p) => p !== player && p.alive),    // 规则：需有其他角色
-  content: fanjianContent,
+  selectionPlan: (game, player) => ({
+    nextStep(answers) {
+      if (!answers.target) {
+        const candidates = game.state.players.filter((p) => p !== player && p.alive);
+        return targetsStep('target', player, candidates, {
+          prompt: '反间：指定谁',
+          min: 1,
+          max: 1,
+        });
+      }
+      if (!answers.card) {
+        return handCardsStep('card', player, {
+          prompt: '反间：选择交出的牌',
+          min: 1,
+          max: 1,
+        });
+      }
+      return null;
+    },
+    result: (answers) => ({ answers }),
+  }),
+  execute: async (game, player, answers) => {
+    const cards = selectedCards(answers, 'card');
+    const [target] = selectedPlayers(answers, 'target');
+    if (!target || cards.length === 0) return;
+    await giveCards(game, player, target, cards);
+    await damage(game, { target, source: player, amount: 1 });
+    console.log(
+      `  ✨${player.name} 发动【反间】！交给 ${target.name} ${cards.length} 张牌并造成 1 点伤害`,
+    );
+  },
   ai: {
     // AI：进攻技能，合法就用
     shouldUse: () => true,

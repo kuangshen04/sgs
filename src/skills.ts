@@ -10,6 +10,7 @@ import { installWuxieTrigger } from './cards/trick.js';
 import { CardType } from './types.js';
 import type { Player } from './types.js';
 import { askYesNo } from './choose.js';
+import type { SelectionAnswers, SelectionPlan } from './selection.js';
 
 // ============================================================
 // 触发技能
@@ -62,8 +63,10 @@ export interface ActiveSkillDef {
   name: string;
   /** 规则层面：当前是否合法可用（次数限制、前提条件等） */
   canUse: (game: Game, player: Player, ctx: ActiveSkillContext) => boolean;
-  /** 发动效果 */
-  content: (game: Game, player: Player) => Promise<void>;
+  /** 该技能的选择计划（从“已选该技能”开始；无选择步骤时 nextStep 直接返回 null） */
+  selectionPlan: (game: Game, player: Player, ctx: ActiveSkillContext) => SelectionPlan;
+  /** 执行：只依据确认后的 answers 执行，不再做选择 */
+  execute: (game: Game, player: Player, answers: SelectionAnswers) => Promise<void>;
   /** AI 层面策略（与 CardDef.ai 同级）：规则合法 ≠ 现在应该用 */
   ai: {
     /** AI 当前是否应该发动（策略，如"没牌能出才换牌"） */

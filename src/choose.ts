@@ -13,7 +13,12 @@ import type { CardDef } from './cardRegistry.js';
 import type { Game } from './game.js';
 import type { AreaName } from './areas.js';
 import { equipmentCards } from './areas.js';
-import type { SelectionContext, SelectionOption, SelectionStep } from './selection.js';
+import type {
+  SelectionAnswers,
+  SelectionContext,
+  SelectionOption,
+  SelectionStep,
+} from './selection.js';
 
 // ============================================================
 // 规则层 — 可选集计算（不含 AI 判断）
@@ -300,4 +305,18 @@ export function actionStep(
     validate: (selected) => selected.length === 1,
     ai: (ctx) => (ctx.step.options[0] ? [ctx.step.options[0]] : []),
   };
+}
+
+/** 从确认结果中解码某一步选中的实体卡牌 */
+export function selectedCards(answers: SelectionAnswers, stepId: string): Card[] {
+  return (answers[stepId] ?? [])
+    .map((o) => o.data as Card)
+    .filter((c): c is Card => !!c);
+}
+
+/** 从确认结果中解码某一步选中的目标玩家 */
+export function selectedPlayers(answers: SelectionAnswers, stepId: string): Player[] {
+  return (answers[stepId] ?? [])
+    .map((o) => o.data as Player)
+    .filter((p): p is Player => !!p);
 }

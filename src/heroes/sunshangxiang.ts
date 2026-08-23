@@ -4,36 +4,12 @@
 
 import { discardCards, drawCards } from '../cardActions.js';
 import { recover } from '../life.js';
-import { askForTargets, askFromAreas } from '../choose.js';
+import { handCardsStep, targetsStep, selectedCards, selectedPlayers } from '../choose.js';
 import { activeSkillRegistry, skillRegistry } from '../skills.js';
 import { heroRegistry } from '../heroRegistry.js';
 import type { CardMoveEventData, GameEvent } from '../events/index.js';
 import type { Game } from '../game.js';
 import type { Player } from '../types.js';
-
-/** 结姻：出牌阶段限一次，弃置两张手牌，选择一名已受伤的男性角色，你与其各回复 1 点体力 */
-const jieyinContent = async (game: Game, player: Player): Promise<void> => {
-  // askForTargets：结姻选择谁（默认 AI：第一个已受伤的男性角色）
-  const candidates = game.state.players.filter(
-    (p) => p.alive && p !== player && p.hero.sex === 'male' && p.hp < p.maxHp,
-  );
-  const targets = askForTargets(game, player, '结姻：选择谁', candidates, 1);
-  if (!targets) return;
-  const target = targets[0];
-
-  // askFromAreas：弃置哪两张手牌（默认 AI：逐张随机）
-  for (let i = 0; i < 2; i++) {
-    const card = askFromAreas(game, player, '结姻：弃置一张手牌', ['hand']);
-    if (!card) break;
-    await discardCards(game, player, [card]);
-  }
-  await recover(game, { target: player, amount: 1 });
-  await recover(game, { target, amount: 1 });
-  console.log(
-    `  ✨${player.name} 发动【结姻】！弃置两张手牌，` +
-    `自己与 ${target.name} 各回复 1 点体力`,
-  );
-};
 
 activeSkillRegistry.register({
   name: '结姻',
@@ -44,7 +20,41 @@ activeSkillRegistry.register({
     game.state.players.some(
       (p) => p.alive && p !== player && p.hero.sex === 'male' && p.hp < p.maxHp,
     ),
-  content: jieyinContent,
+  selectionPlan: (game, player) => ({
+    nextStep(answers) {
+      if (!answers.target) {
+        const candidates = game.state.players.filter(
+          (p) => p.alive && p !== player && p.hero.sex === 'male' && p.hp < p.maxHp,
+        );
+        return targetsStep('target', player, candidates, {
+          prompt: '结姻：选择谁',
+          min: 1,
+          max: 1,
+        });
+      }
+      if (!answers.cards) {
+        return handCardsStep('cards', player, {
+          prompt: '结姻：选择弃置的两张手牌',
+          min: 2,
+          max: 2,
+        });
+      }
+      return null;
+    },
+    result: (answers) => ({ answers }),
+  }),
+  execute: async (game, player, answers) => {
+    const [target] = selectedPlayers(answers, 'target');
+    const cards = selectedCards(answers, 'cards');
+    if (!target || cards.length === 0) return;
+    await discardCards(game, player, cards);
+    await recover(game, { target: player, amount: 1 });
+    await recover(game, { target, amount: 1 });
+    console.log(
+      `  ✨${player.name} 发动【结姻】！弃置 ${cards.length} 张手牌，` +
+      `自己与 ${target.name} 各回复 1 点体力`,
+    );
+  },
   ai: {
     // AI：自己受伤且有余牌时才发动（保守：至少自己回 1 血）
     shouldUse: (game, player) => player.hp < player.maxHp && player.hand.length >= 2,

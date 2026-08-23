@@ -149,7 +149,7 @@ export async function playPhase(
           });
         } else if (action?.kind === 'skill') {
           usedSkills.add(action.skill.name);
-          await action.skill.content(game, player);
+          await action.skill.execute(game, player, action.answers);
         } else {
           break;
         }

@@ -41,10 +41,11 @@ export interface CardActionResult {
   targets: Player[];
 }
 
-/** 选中主动技能后的结果（暂由 content 自行选择/执行） */
+/** 选中主动技能后的结果（含确认后的选择结果，execute 据此执行） */
 export interface SkillActionResult {
   kind: 'skill';
   skill: ActiveSkillDef;
+  answers: SelectionAnswers;
 }
 
 export type PlayActionResult = CardActionResult | SkillActionResult;
@@ -76,7 +77,7 @@ export async function choosePlayAction(
       .filter((p): p is Player => !!p);
     return { kind: 'card', card: action.option.card, targets };
   }
-  return { kind: 'skill', skill: action.skill };
+  return { kind: 'skill', skill: action.skill, answers: result.answers };
 }
 
 /** 构建出牌阶段的选择计划与动作列表 */
@@ -146,6 +147,9 @@ function buildPlayPlan(
           });
         }
         return targetsStep('target', player, candidates, { min: tc, max: tc });
+      }
+      if (action.kind === 'skill') {
+        return action.skill.selectionPlan(game, player, ctx).nextStep(answers);
       }
       return null;
     },
