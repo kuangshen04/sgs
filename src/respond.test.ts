@@ -128,3 +128,48 @@ describe('resolveJueDouResponse', () => {
     expect(ok).toBe(false);
   });
 });
+
+describe('杀→闪响应窗口的转化', () => {
+  it('龙胆②：杀当闪，受伤免掉，源牌进弃牌堆', async () => {
+    const g = freshGame({}, ['赵云', '刘备', '孙权']);
+    const attacker = g.state.players[1];
+    const defender = g.state.players[0];
+    const sha = makeUniqueCard(CardType.Sha);
+    defender.hand = [makeUniqueCard(CardType.Sha)];
+
+    const cancelled = await resolveShaResponse(g, attacker, defender, sha, {});
+
+    expect(cancelled).toBe(true);
+    expect(defender.hand.length).toBe(0);
+    expect(g.state.discardPile.some((c) => c.type === CardType.Sha)).toBe(true);
+  });
+
+  it('倾国：黑牌当闪，受伤免掉，源牌进弃牌堆', async () => {
+    const g = freshGame({}, ['甄宓', '刘备', '孙权']);
+    const attacker = g.state.players[1];
+    const defender = g.state.players[0];
+    const sha = makeUniqueCard(CardType.Sha);
+    defender.hand = [makeUniqueCard(CardType.Tao, '♠', 5)];
+
+    const cancelled = await resolveShaResponse(g, attacker, defender, sha, {});
+
+    expect(cancelled).toBe(true);
+    expect(defender.hand.length).toBe(0);
+    expect(g.state.discardPile.some((c) => c.suit === '♠')).toBe(true);
+  });
+
+  it('有真闪时默认优先真闪，不用转化', async () => {
+    const g = freshGame({}, ['赵云', '刘备', '孙权']);
+    const attacker = g.state.players[1];
+    const defender = g.state.players[0];
+    const realShan = makeUniqueCard(CardType.Shan);
+    const shaSource = makeUniqueCard(CardType.Sha);
+    defender.hand = [realShan, shaSource];
+
+    const cancelled = await resolveShaResponse(g, attacker, defender, makeUniqueCard(CardType.Sha), {});
+
+    expect(cancelled).toBe(true);
+    expect(defender.hand.map((c) => c.id)).toContain(shaSource.id); // 杀未被打出
+    expect(g.state.discardPile).toContain(realShan);
+  });
+});

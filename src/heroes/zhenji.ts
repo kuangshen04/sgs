@@ -38,4 +38,4 @@ skillRegistry.register({
   content: luoshenContent,
 });
 
-heroRegistry.register({ name: '甄宓', maxHp: 3, sex: 'female', group: '魏', skills: ['洛神'] });
+heroRegistry.register({ name: '甄宓', maxHp: 3, sex: 'female', group: '魏', skills: ['洛神', '倾国'] });

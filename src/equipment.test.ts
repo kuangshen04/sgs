@@ -134,7 +134,7 @@ describe('仁王盾（装备触发）', () => {
 });
 
 describe('雌雄双股剑（装备触发）', () => {
-  const mixedHeroes = ['刘备', '甄宓', '孙权']; // 男/女/男
+  const mixedHeroes = ['刘备', '孙尚香', '孙权']; // 男/女/男（孙尚香无响应转化，避免干扰）
 
   it('使用杀指定异性目标后，目标弃置一张手牌', async () => {
     const g = freshGame({}, mixedHeroes);

@@ -12,7 +12,10 @@ import { EventType, GameEvent } from './events/index.js';
 import type { ShaCancelledEventData } from './events/index.js';
 import { cardEmoji, displayNumber, asUsedCard } from './cardRegistry.js';
 import { playFromHand } from './cardActions.js';
-import { askForCard } from './choose.js';
+import { askForCard, handCardsStep, selectedCards } from './choose.js';
+import { chooseUseAction } from './useWindow.js';
+import type { UseAction } from './useWindow.js';
+import type { SelectionPlan } from './selection.js';
 
 /**
  * 结算一张杀的闪响应，返回是否被抵消。
@@ -31,13 +34,14 @@ export async function resolveShaResponse(
 
   const need = marks.shanRequired ?? 1;
   for (let i = 0; i < need; i++) {
-    // askForCard：是否出闪/出哪张闪（默认 AI：有就出第一张）
-    // 八卦阵将来在此插入：判定红 → 视为出了一张闪，continue
-    const shan = await askForCard(game, defender, '是否打出闪', [CardType.Shan]);
-    if (!shan) {
+    const choice = await chooseUseAction(game, defender, shanResponseActions(game, defender));
+    if (!choice || choice.action.group === 'decline') {
       console.log(`  ${defender.name} 无法打出闪！`);
       return false; // 已出的闪不返还，杀命中
     }
+    const shan = choice.action.group === 'real'
+      ? (choice.action.data as Card)
+      : selectedCards(choice.answers, 'source')[0];
     await playFromHand(game, defender, shan);
     console.log(
       `  ${defender.name} 使用了 ${cardEmoji(CardType.Shan)} (${shan.suit}${displayNumber(shan.number)})，抵消了攻击`,
@@ -49,6 +53,57 @@ export async function resolveShaResponse(
   }, game).execute(async () => {});
 
   return true;
+}
+
+/** 杀→闪响应窗口的动作候选：真闪、龙胆②、倾国、放弃 */
+function shanResponseActions(game: Game, defender: Player): UseAction[] {
+  const actions: UseAction[] = [];
+
+  for (const shan of defender.hand.filter((c) => c.type === CardType.Shan)) {
+    actions.push({
+      id: `shan:${shan.id}`,
+      label: `闪${displayNumber(shan.number)}`,
+      group: 'real',
+      priority: 100,
+      data: shan,
+    });
+  }
+
+  if (defender.hero.skills?.includes('龙胆')) {
+    actions.push({
+      id: 'longdan-shan',
+      label: '龙胆：杀当闪',
+      group: 'conversion',
+      priority: 50,
+      continuation: sourceCardPlan('龙胆②：选择一张杀当闪', (c) => c.type === CardType.Sha),
+    });
+  }
+
+  if (defender.hero.skills?.includes('倾国')) {
+    actions.push({
+      id: 'qingguo-shan',
+      label: '倾国：黑牌当闪',
+      group: 'conversion',
+      priority: 40,
+      continuation: sourceCardPlan(
+        '倾国：选择一张黑色牌当闪',
+        (c) => c.suit === '♠' || c.suit === '♣',
+      ),
+    });
+  }
+
+  actions.push({ id: 'decline', label: '不出闪', group: 'decline', priority: -1 });
+  return actions;
+}
+
+/** 从手牌选一张源牌的后续计划 */
+function sourceCardPlan(prompt: string, filter: (c: Card) => boolean): (game: Game, player: Player) => SelectionPlan {
+  return (_game, player) => ({
+    nextStep(answers) {
+      if (answers.source) return null;
+      return handCardsStep('source', player, { prompt, filter, min: 1, max: 1 });
+    },
+  });
 }
 
 /**
