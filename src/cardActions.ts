@@ -52,10 +52,12 @@ export async function putTop(
   cards: Card[],
   reason: CardMoveReason = 'reshuffle',
 ): Promise<Card[]> {
-  return moveCards(game, { to: { zone: 'deck' }, cards, reason, toPosition: 'top' });
+  return moveCards(game, {
+    to: { zone: 'deck' }, cards: [...cards].reverse(), reason, toPosition: 'top',
+  });
 }
 
-/** 把一组牌放到牌堆底 */
+/** 把一组牌放到牌堆底（cards[0] 为底块中最靠上的一张，cards[last] 为最底） */
 export async function putBottom(
   game: Game,
   cards: Card[],

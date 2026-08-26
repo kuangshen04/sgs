@@ -2,9 +2,11 @@
 // 郭嘉 — 遗计 / 天妒
 // ============================================================
 
-import { drawCards, takeFromProcessing } from '../cardActions.js';
+import { takeFromProcessing, takeTop, moveCards } from '../cardActions.js';
 import { cardEmoji, displayNumber } from '../cardRegistry.js';
-import { askForTargets } from '../choose.js';
+import { targetsStep, selectedPlayers } from '../choose.js';
+import { runSelection } from '../selection.js';
+import type { SelectionPlan } from '../selection.js';
 import { skillRegistry, subjectIsOwner } from '../skills.js';
 import type { GameEvent } from '../events/index.js';
 import type { DamageEventData, JudgeEventData } from '../events/index.js';
@@ -12,17 +14,40 @@ import { heroRegistry } from '../heroRegistry.js';
 import type { Game } from '../game.js';
 import type { Player } from '../types.js';
 
-/** 遗计：受到伤害后，每 1 点伤害摸 2 张牌 */
+/** 遗计：受到伤害后，观看牌堆顶 2×伤害 张牌，按顺序分配任意角色 */
 const yijiContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
   const { amount } = event.data as DamageEventData;
-  const before = owner.hand.length;
-  // askForTargets：遗计牌分配给谁（简化：只给自己）
-  const receivers = await askForTargets(game, owner, '遗计：牌分给谁（简化只给自己）', [owner], 1);
-  if (!receivers) return;
-  await drawCards(game, { target: receivers[0], count: amount * 2 });
+  const revealed = await takeTop(game, amount * 2, { zone: 'processing' }, 'reveal');
+  if (revealed.length === 0) return;
+  const receivers = game.state.players.filter((p) => p.alive);
+
+  const plan: SelectionPlan = {
+    nextStep(answers) {
+      for (let i = 0; i < revealed.length; i++) {
+        const id = `give:${i}`;
+        if (!answers[id]) {
+          return targetsStep(id, owner, receivers, {
+            prompt: `遗计：第 ${i + 1} 张牌给谁`,
+            min: 1,
+            max: 1,
+          });
+        }
+      }
+      return null;
+    },
+  };
+
+  const answers = await runSelection(plan, game, owner);
+  if (!answers) return;
+  for (let i = 0; i < revealed.length; i++) {
+    const [receiver] = selectedPlayers(answers, `give:${i}`);
+    if (!receiver) continue;
+    await moveCards(game, {
+      to: { player: receiver, zone: 'hand' }, cards: [revealed[i]], reason: 'give',
+    });
+  }
   console.log(
-    `  ✨${owner.name} 发动【遗计】！受到 ${amount} 点伤害，摸了 ${amount * 2} 张牌` +
-    `（${before} → ${owner.hand.length}）`,
+    `  ✨${owner.name} 发动【遗计】！受到 ${amount} 点伤害，分配了 ${revealed.length} 张牌`,
   );
 };
 
