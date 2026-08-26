@@ -128,6 +128,7 @@ export type CardMoveReason =
   | 'obtain'      // 从弃牌堆/牌堆取回
   | 'transfer'    // 判定区转移（闪电）
   | 'resolve'     // 延时牌结算
+  | 'reveal'      // 亮出（五谷丰登等）
   | 'reshuffle';  // 洗牌（弃牌堆 → 牌堆）
 
 /**

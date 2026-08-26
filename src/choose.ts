@@ -288,6 +288,22 @@ export async function askFromAreas(
   return selected?.[0]?.data as Card ?? null;
 }
 
+/** 询问从任意牌池中选一张牌（五谷丰登亮出的牌等）。无候选返回 null。 */
+export async function askFromCards(
+  game: Game,
+  player: Player,
+  prompt: string,
+  candidates: Card[],
+): Promise<Card | null> {
+  if (candidates.length === 0) return null;
+  const selected = await runAskStep(
+    game,
+    player,
+    cardsStep('card', candidates, { prompt, min: 1, max: 1 }),
+  );
+  return selected?.[0]?.data as Card ?? null;
+}
+
 /** 询问从候选人中选择目标（技能选目标：遗计/流离/突袭等）。无可选返回 null。 */
 export async function askForTargets(
   game: Game,

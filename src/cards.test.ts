@@ -261,6 +261,25 @@ describe('useCard — 五谷丰登', () => {
     expect(p3.hand.length).toBe(1);
     expect(g.state.deck.length).toBe(deckBefore - 3); // 共摸 3 张
   });
+
+  it('亮出存活人数张牌，按座次每人选一张', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    const p2 = g.state.players[1];
+    const p3 = g.state.players[2];
+    const a = makeUniqueCard(CardType.Sha);
+    const b = makeUniqueCard(CardType.Tao);
+    const c = makeUniqueCard(CardType.Shan);
+    g.state.deck = [a, b, c]; // 顶 = c
+    giveHand(player, CardType.WuGu);
+
+    await useCard(g, { player, card: player.hand[0], targets: [player, p2, p3] });
+
+    const ids = [...player.hand, ...p2.hand, ...p3.hand].map((card) => card.id).sort();
+    expect(ids).toEqual([a.id, b.id, c.id].sort());
+    expect(g.state.deck).toHaveLength(0);
+    expect(g.state.processing).toHaveLength(0); // 五谷与亮出的牌都清理完
+  });
 });
 
 describe('useCard — 乐不思蜀（延时锦囊）', () => {

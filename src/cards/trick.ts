@@ -5,11 +5,11 @@
 import { CardTag, CardType } from '../types.js';
 import type { CardContentFn } from '../cardRegistry.js';
 import { cardRegistry, cardEmoji, displayNumber } from '../cardRegistry.js';
-import { drawCards, moveCards, useCard } from '../cardActions.js';
+import { drawCards, moveCards, useCard, takeTop } from '../cardActions.js';
 import { damage, recover } from '../life.js';
 import { distanceTo, attackRange } from '../distance.js';
 import { hasCardsInAreas } from '../areas.js';
-import { askForCard, askFromAreas } from '../choose.js';
+import { askForCard, askFromAreas, askFromCards } from '../choose.js';
 import type { TargetingEventData } from '../events/index.js';
 import { EventType } from '../events/index.js';
 import { effectRegistry } from '../persistentEffects.js';
@@ -98,13 +98,34 @@ const taoyuanContent: CardContentFn = async (game, data, _event) => {
 
 const wuguContent: CardContentFn = async (game, data, _event) => {
   const user = data.player;
-  console.log(
-    `  ${user.name} 使用了 🌾五谷丰登 (${data.card.suit}${displayNumber(data.card.number)})！` +
-    `所有角色各摸 1 张牌（简化版：亮牌选牌尚未实现）`,
-  );
+  const alive = game.state.players.filter((p) => p.alive).length;
+  const revealed = await takeTop(game, alive, { zone: 'processing' }, 'reveal');
+  if (revealed.length === 0) return;
+  const pool = [...revealed];
+  console.log(`  ${user.name} 使用了 🌾五谷丰登！亮出 ${pool.length} 张牌`);
+  for (const c of pool) {
+    console.log(`    ${cardEmoji(c.type)}(${c.suit}${displayNumber(c.number)})`);
+  }
 
-  for (const target of data.targets) {
-    await drawCards(game, { target, count: 1 });
+  // 从使用者开始按座次，每人选一张
+  const start = game.state.players.indexOf(user);
+  for (let offset = 0; offset < game.state.players.length; offset++) {
+    const player = game.state.players[(start + offset) % game.state.players.length];
+    if (!player.alive) continue;
+    if (pool.length === 0) break;
+    const card = await askFromCards(game, player, '五谷丰登：选择一张牌', pool);
+    if (!card) continue;
+    await moveCards(game, {
+      to: { player, zone: 'hand' }, cards: [card], reason: 'obtain',
+    });
+    pool.splice(pool.indexOf(card), 1);
+  }
+
+  if (pool.length > 0) {
+    await moveCards(game, {
+      to: { zone: 'discardPile' }, cards: pool, reason: 'discard',
+    });
+    console.log(`  剩余 ${pool.length} 张进弃牌堆`);
   }
 };
 
