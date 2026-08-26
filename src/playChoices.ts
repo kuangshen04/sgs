@@ -6,6 +6,7 @@
 // 响应窗口复用同一窗口，只是候选不同且不含主动技能。
 // ============================================================
 
+import { CardType } from './types.js';
 import type { Player, UsedCard } from './types.js';
 import type { Game } from './game.js';
 import { computeCardOptions, computeTargetOptions, targetsStep } from './choose.js';
@@ -139,6 +140,17 @@ function cardTargetPlan(
       const targetOptions = computeTargetOptions(game, used, player);
       const tc = option.def.targetCount;
       const candidates = targetOptions.map((t) => t.player);
+      if (option.card.type === CardType.Sha) {
+        const multiMax = fangtianMaxTargets(player);
+        if (multiMax && targetOptions.length > 1) {
+          const max = Math.min(multiMax, targetOptions.length);
+          return targetsStep('target', player, candidates, {
+            min: 1,
+            max,
+            ai: (ctx) => ctx.step.options.slice(0, max),
+          });
+        }
+      }
       if (tc === 'all') {
         return targetsStep('target', player, candidates, {
           min: candidates.length,
@@ -148,6 +160,13 @@ function cardTargetPlan(
       return targetsStep('target', player, candidates, { min: tc, max: tc });
     },
   };
+}
+
+/** 方天画戟：最后一张手牌使用杀时可额外目标（至多 3），否则返回 null */
+function fangtianMaxTargets(player: Player): number | null {
+  if (player.equipment.weapon?.type !== CardType.FangTianHuaJi) return null;
+  if (player.hand.length !== 1) return null;
+  return 3;
 }
 
 /** 收集当前可发动的主动技能（规则 + AI） */

@@ -12,16 +12,17 @@ import { resolveShaResponse } from '../respond.js';
 
 const shaContent: CardContentFn = async (game, data, event) => {
   const attacker = data.player;
-  const defender = data.targets[0];
   console.log(
-    `  ${attacker.name} 对 ${defender.name} 使用了 🗡️杀 (${data.card.suit}${displayNumber(data.card.number)})`,
+    `  ${attacker.name} 使用了 🗡️杀 (${data.card.suit}${displayNumber(data.card.number)})，目标 ${data.targets.length} 名`,
   );
 
-  // 响应流程：能否响应（铁骑）/ 所需闪数（无双）/ 抵消时点（shaCancelled）
   const marks = event.data.marks ?? {};
-  const cancelled = await resolveShaResponse(game, attacker, defender, data.card, marks);
-  if (!cancelled) {
-    await damage(game, { target: defender, source: attacker, amount: 1 });
+  // 逐个目标结算：能否响应（铁骑）/ 所需闪数（无双）/ 抵消时点（shaCancelled）
+  for (const defender of data.targets) {
+    const cancelled = await resolveShaResponse(game, attacker, defender, data.card, marks);
+    if (!cancelled) {
+      await damage(game, { target: defender, source: attacker, amount: 1 });
+    }
   }
 };
 

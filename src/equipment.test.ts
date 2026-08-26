@@ -9,6 +9,7 @@ import { freshGame, giveHand, makeUniqueCard } from './test-utils.js';
 
 import { useCard } from './cardActions.js';
 import { playPhase } from './gameFlow.js';
+import { choosePlayAction } from './playChoices.js';
 
 import { registerSkills } from './skills.js';
 
@@ -319,6 +320,38 @@ describe('丈八蛇矛（转化牌）', () => {
     expect(caocao.hand.map((c) => c.id)).toContain(shan.id);
     expect(g.state.discardPile).not.toContain(tao);
     expect(g.state.discardPile).not.toContain(shan);
+  });
+});
+
+describe('方天画戟（多目标杀）', () => {
+  it('最后一张手牌杀可指定至多三个目标', async () => {
+    const g = freshGame({}, ['刘备', '孙权', '张辽', '黄盖']);
+    registerSkills(g);
+    const attacker = g.state.players[0];
+    attacker.equipment.weapon = makeUniqueCard(CardType.FangTianHuaJi);
+    attacker.hand = [makeUniqueCard(CardType.Sha)];
+    const targets = g.state.players.slice(1);
+    const hpBefore = targets.map((p) => p.hp);
+
+    await playPhase(g, { player: attacker });
+
+    expect(targets.map((p) => p.hp)).toEqual(hpBefore.map((h) => h - 1));
+    expect(attacker.hand.length).toBe(0);
+  });
+
+  it('杀不是最后一张手牌 → 只选一个目标', async () => {
+    const g = freshGame({}, ['刘备', '孙权', '张辽', '黄盖']);
+    registerSkills(g);
+    const attacker = g.state.players[0];
+    attacker.equipment.weapon = makeUniqueCard(CardType.FangTianHuaJi);
+    attacker.hand = [makeUniqueCard(CardType.Sha), makeUniqueCard(CardType.Shan)];
+
+    const result = await choosePlayAction(g, attacker, false, new Set());
+
+    expect(result?.kind).toBe('card');
+    if (result?.kind === 'card') {
+      expect(result.targets.length).toBe(1);
+    }
   });
 });
 
