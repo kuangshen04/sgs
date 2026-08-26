@@ -4,7 +4,7 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { freshGame, giveHand } from '../test-utils.js';
+import { freshGame, giveHand, makeUniqueCard } from '../test-utils.js';
 
 import { damage } from '../life.js';
 import { useCard } from '../cardActions.js';
@@ -70,5 +70,25 @@ describe('奸雄（曹操技能）', () => {
     await useCard(g, { player: attacker, card: shaCard, targets: [liubei] });
 
     expect(liubei.hand.length).toBe(0);
+  });
+});
+
+describe('护驾（曹操主公技）', () => {
+  it('魏盟友代打闪，曹操免伤', async () => {
+    const g = freshGame({}, ['曹操', '郭嘉', '刘备']);
+    registerSkills(g);
+    const caocao = g.state.players[0];
+    const guojia = g.state.players[1];
+    const attacker = g.state.players[2];
+    caocao.hand = [];
+    guojia.hand = [makeUniqueCard(CardType.Shan)];
+    attacker.hand = [makeUniqueCard(CardType.Sha)];
+    const hpBefore = caocao.hp;
+
+    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [caocao] });
+
+    expect(caocao.hp).toBe(hpBefore);
+    expect(guojia.hand.length).toBe(0);
+    expect(g.state.discardPile.some((c) => c.type === CardType.Shan)).toBe(true);
   });
 });

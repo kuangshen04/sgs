@@ -4,9 +4,10 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { freshGame, giveHand } from '../test-utils.js';
+import { freshGame, giveHand, makeUniqueCard } from '../test-utils.js';
 
 import { playPhase } from '../gameFlow.js';
+import { useCard } from '../cardActions.js';
 
 import { activeSkillRegistry, registerSkills } from '../skills.js';
 
@@ -47,5 +48,25 @@ describe('仁德（刘备主动技能）', () => {
 
     expect(skill.canUse(g, liubei, ctx)).toBe(true);        // 规则：合法
     expect(skill.ai.shouldUse(g, liubei, ctx)).toBe(false);  // AI：不该用
+  });
+});
+
+describe('激将（刘备主公技）', () => {
+  it('蜀盟友代打杀（决斗）', async () => {
+    const g = freshGame({}, ['刘备', '关羽', '曹操']);
+    registerSkills(g);
+    const liubei = g.state.players[0];
+    const guanyu = g.state.players[1];
+    const caocao = g.state.players[2];
+    liubei.hand = [];
+    guanyu.hand = [makeUniqueCard(CardType.Sha)];
+    caocao.hand = [makeUniqueCard(CardType.JueDou)];
+    const hpBefore = caocao.hp;
+
+    await useCard(g, { player: caocao, card: caocao.hand[0], targets: [liubei] });
+
+    expect(caocao.hp).toBe(hpBefore - 1); // 刘备代打成功，曹操无杀受伤
+    expect(liubei.hp).toBe(4);
+    expect(guanyu.hand.length).toBe(0); // 关羽的杀被代打消耗
   });
 });

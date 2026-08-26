@@ -6,8 +6,11 @@ import { giveCards } from '../cardActions.js';
 import { recover } from '../life.js';
 import { handCardsStep, targetsStep, selectedCards, selectedPlayers } from '../choose.js';
 import { activeSkillRegistry } from '../skills.js';
+import { responseRuleRegistry } from '../responses.js';
+import { resolvePlayResponse } from '../respond.js';
 import { heroRegistry } from '../heroRegistry.js';
 import type { Game } from '../game.js';
+import { CardType } from '../types.js';
 import type { Player } from '../types.js';
 
 activeSkillRegistry.register({
@@ -55,4 +58,27 @@ activeSkillRegistry.register({
   },
 });
 
-heroRegistry.register({ name: '刘备', maxHp: 4, sex: 'male', group: '蜀', isLord: true, skills: ['仁德'] });
+/** 激将：需要打出杀时，可请其他蜀势力角色代打 */
+responseRuleRegistry.register({
+  name: '激将',
+  respondsTo: CardType.Sha,
+  ownerSkill: '激将',
+  lordOnly: true,
+  canUse: (_game, _player, request) => request.type === 'play',
+  selectionPlan: () => ({ nextStep: () => null }),
+  resolve: async (game, player) => {
+    const allies = game.state.players.filter(
+      (p) => p.alive && p !== player && p.hero.group === player.hero.group,
+    );
+    for (const ally of allies) {
+      if (await resolvePlayResponse(game, ally, CardType.Sha)) return 'done';
+    }
+    return 'retry';
+  },
+  ai: {
+    shouldUse: () => true,
+    priority: 90,
+  },
+});
+
+heroRegistry.register({ name: '刘备', maxHp: 4, sex: 'male', group: '蜀', isLord: true, skills: ['仁德', '激将'] });

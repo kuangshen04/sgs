@@ -28,6 +28,8 @@ export interface ResponseRule {
   respondsTo: CardType;
   /** 需要玩家拥有的武将技能；装备类与武将无关则省略 */
   ownerSkill?: string;
+  /** 主公技：身份场开启且自己不是主公时不提供 */
+  lordOnly?: boolean;
   canUse: (game: Game, player: Player, request: ResponseRequest) => boolean;
   selectionPlan: (game: Game, player: Player, request: ResponseRequest) => SelectionPlan;
   resolve: (
@@ -68,6 +70,7 @@ export function collectResponseRules(
     if (rule.respondsTo !== request.cardType) continue;
     if (usedRules.has(rule.name)) continue;
     if (rule.ownerSkill && !player.hero.skills?.includes(rule.ownerSkill)) continue;
+    if (rule.lordOnly && game.state.lord && player !== game.state.lord) continue;
     if (!rule.canUse(game, player, request)) continue;
     if (!rule.ai.shouldUse(game, player, request)) continue;
     rules.push(rule);
