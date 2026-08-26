@@ -79,6 +79,8 @@ export interface HeroDef {
   maxHp: number;
   sex: HeroSex;
   group: HeroGroup;
+  /** 能否当主公（身份场用；标包主公候选 = 刘备/曹操/孙权） */
+  isLord?: boolean;
   /** 拥有的技能名列表（引用 skillRegistry 中的 SkillDef.name） */
   skills?: string[];
 }
@@ -162,6 +164,8 @@ export interface GameState {
   discardPile: Card[];
   /** 处理区：正在结算中的牌（使用/打出后、结算完成前） */
   processing: Card[];
+  /** 当前主公（身份场）；undefined = 未启用身份场，主公技按普通技能处理 */
+  lord?: Player;
   round: number;
   gameOver: boolean;
   winner: Player | null;

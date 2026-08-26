@@ -55,4 +55,4 @@ activeSkillRegistry.register({
   },
 });
 
-heroRegistry.register({ name: '刘备', maxHp: 4, sex: 'male', group: '蜀', skills: ['仁德'] });
+heroRegistry.register({ name: '刘备', maxHp: 4, sex: 'male', group: '蜀', isLord: true, skills: ['仁德'] });

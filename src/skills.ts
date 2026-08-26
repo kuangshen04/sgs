@@ -18,6 +18,8 @@ import type { SelectionAnswers, SelectionPlan } from './selection.js';
 
 export interface SkillDef {
   name: string;
+  /** 主公技：身份场开启（state.lord 已设）且自己不是主公时不发动 */
+  lordSkill?: boolean;
   /** 触发时点，如 'damage.after'（事件类型 + before/after 阶段） */
   trigger: string;
   /**
@@ -123,6 +125,8 @@ export function registerSkills(game: Game): void {
       for (const player of game.state.players) {
         if (!player.alive) continue; // 死亡后技能失效
         if (!player.hero.skills?.includes(skill.name)) continue;
+        // 身份场：主公技仅主公自己可发动
+        if (skill.lordSkill && game.state.lord && player !== game.state.lord) continue;
         if (!skill.canTrigger(game, event, player, subject)) continue;
         // askYesNo：触发技能"你可以"的发动与否（默认 AI：自动发动）
         if (!(await askYesNo(game, player, `是否发动【${skill.name}】`, true))) continue;

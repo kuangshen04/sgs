@@ -7,6 +7,7 @@ import { describe, it, expect } from 'vitest';
 import { freshGame, giveHand, makeUniqueCard } from '../test-utils.js';
 
 import { playPhase } from '../gameFlow.js';
+import { useCard } from '../cardActions.js';
 
 import { activeSkillRegistry, registerSkills, skillRegistry } from '../skills.js';
 
@@ -132,5 +133,47 @@ describe('制衡（孙权主动技能）', () => {
     expect(liubei.hand.length).toBe(1);
     expect(liubei.hand[0].suit).toBe('♠'); // 还是原来的闪，没摸牌
     expect(g.state.discardPile.length).toBe(0);
+  });
+});
+
+describe('救援（孙权主公技）', () => {
+  it('吴势力桃对孙权 → 回复 +1', async () => {
+    const g = freshGame({}, ['孙权', '周瑜', '刘备']);
+    registerSkills(g);
+    const sunquan = g.state.players[0];
+    const zhouyu = g.state.players[1];
+    sunquan.hp = 2;
+    zhouyu.hand = [makeUniqueCard(CardType.Tao)]; // 周瑜：吴
+
+    await useCard(g, { player: zhouyu, card: zhouyu.hand[0], targets: [sunquan] });
+
+    expect(sunquan.hp).toBe(4); // 2 + 1(桃) + 1(救援)
+  });
+
+  it('非吴势力桃对孙权 → 不触发救援', async () => {
+    const g = freshGame({}, ['孙权', '刘备', '曹操']); // 刘备：蜀
+    registerSkills(g);
+    const sunquan = g.state.players[0];
+    const liubei = g.state.players[1];
+    sunquan.hp = 2;
+    liubei.hand = [makeUniqueCard(CardType.Tao)];
+
+    await useCard(g, { player: liubei, card: liubei.hand[0], targets: [sunquan] });
+
+    expect(sunquan.hp).toBe(3); // 2 + 1(桃)
+  });
+
+  it('身份场开启且孙权非主公 → 不发动', async () => {
+    const g = freshGame({}, ['孙权', '周瑜', '刘备']);
+    registerSkills(g);
+    g.state.lord = g.state.players[2]; // 刘备是主公（孙权非主公）
+    const sunquan = g.state.players[0];
+    const zhouyu = g.state.players[1];
+    sunquan.hp = 2;
+    zhouyu.hand = [makeUniqueCard(CardType.Tao)];
+
+    await useCard(g, { player: zhouyu, card: zhouyu.hand[0], targets: [sunquan] });
+
+    expect(sunquan.hp).toBe(3); // 救援不触发
   });
 });

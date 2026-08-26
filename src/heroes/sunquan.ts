@@ -5,10 +5,13 @@
 import { moveCards, drawCards } from '../cardActions.js';
 import { cardsStep, selectedCards } from '../choose.js';
 import { equipmentCards } from '../areas.js';
-import { activeSkillRegistry } from '../skills.js';
+import { activeSkillRegistry, skillRegistry } from '../skills.js';
+import { recover } from '../life.js';
 import { heroRegistry } from '../heroRegistry.js';
 import type { Game } from '../game.js';
 import type { Player } from '../types.js';
+import { CardType } from '../types.js';
+import type { UseCardEventData } from '../events/index.js';
 
 activeSkillRegistry.register({
   name: '制衡',
@@ -47,4 +50,23 @@ activeSkillRegistry.register({
   },
 });
 
-heroRegistry.register({ name: '孙权', maxHp: 4, sex: 'male', group: '吴', skills: ['制衡'] });
+/** 救援：当吴势力角色对主公（孙权）使用桃时，回复 +1 */
+skillRegistry.register({
+  name: '救援',
+  lordSkill: true,
+  trigger: 'useCard.after',
+  canTrigger: (game, event, owner) => {
+    const d = event.data as UseCardEventData;
+    return d.card.type === CardType.Tao
+      && d.targets[0] === owner
+      && d.player.hero.group === '吴';
+  },
+  content: async (game, event, owner) => {
+    await recover(game, { target: owner, amount: 1 });
+    console.log(`  ✨${owner.name} 发动【救援】！吴势力桃使其额外回复 1 点体力`);
+  },
+});
+
+heroRegistry.register({
+  name: '孙权', maxHp: 4, sex: 'male', group: '吴', isLord: true, skills: ['制衡', '救援'],
+});

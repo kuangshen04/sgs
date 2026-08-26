@@ -35,4 +35,4 @@ skillRegistry.register({
   content: jianxiongContent,
 });
 
-heroRegistry.register({ name: '曹操', maxHp: 4, sex: 'male', group: '魏', skills: ['奸雄'] });
+heroRegistry.register({ name: '曹操', maxHp: 4, sex: 'male', group: '魏', isLord: true, skills: ['奸雄'] });
