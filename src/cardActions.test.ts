@@ -8,6 +8,7 @@ import { freshGame, giveHand, makeUniqueCard } from './test-utils.js';
 
 import {
   discardCards, drawCards, getCardArea, giveCards, moveCards, peekTop, playFromHand, reshuffle,
+  takeTop, takeBottom, putTop, putBottom, findInDeck, findInDeckAndDiscard,
 } from './cardActions.js';
 
 import type { CardMoveEventData } from './events/index.js';
@@ -81,6 +82,87 @@ describe('peekTop / reshuffle', () => {
     expect(g.state.discardPile).toHaveLength(0);
     expect(g.state.deck).toHaveLength(2);
     expect(g.state.deck).toEqual(expect.arrayContaining([a, b]));
+  });
+});
+
+describe('牌堆原语', () => {
+  it('takeTop：从牌堆顶取 N 张到目标', async () => {
+    const g = freshGame();
+    const a = makeUniqueCard(CardType.Sha);
+    const b = makeUniqueCard(CardType.Tao);
+    const c = makeUniqueCard(CardType.Shan);
+    g.state.deck = [a, b, c];
+    const player = g.state.players[0];
+
+    await takeTop(g, 2, { player, zone: 'hand' }, 'draw');
+
+    expect(player.hand).toEqual([b, c]); // 顶 = 数组尾
+    expect(g.state.deck).toEqual([a]);
+  });
+
+  it('takeTop：牌堆空时自动洗入弃牌堆', async () => {
+    const g = freshGame();
+    const x = makeUniqueCard(CardType.Tao);
+    g.state.deck = [];
+    g.state.discardPile = [x];
+    const player = g.state.players[0];
+
+    await takeTop(g, 1, { player, zone: 'hand' }, 'draw');
+
+    expect(player.hand).toEqual([x]);
+    expect(g.state.deck).toHaveLength(0);
+  });
+
+  it('takeBottom：从牌堆底取一张', async () => {
+    const g = freshGame();
+    const a = makeUniqueCard(CardType.Sha);
+    const b = makeUniqueCard(CardType.Tao);
+    g.state.deck = [a, b]; // a 在底
+    const player = g.state.players[0];
+
+    await takeBottom(g, 1, { player, zone: 'hand' }, 'draw');
+
+    expect(player.hand).toEqual([a]);
+    expect(g.state.deck).toEqual([b]);
+  });
+
+  it('putTop / putBottom：把手牌放回牌堆顶 / 底', async () => {
+    const g = freshGame();
+    const player = g.state.players[0];
+    const top = makeUniqueCard(CardType.Sha);
+    const bottom = makeUniqueCard(CardType.Tao);
+    g.state.deck = [makeUniqueCard(CardType.Shan)];
+    player.hand = [bottom, top];
+
+    await putBottom(g, [bottom]);
+    await putTop(g, [top]);
+
+    expect(g.state.deck[0]).toBe(bottom); // 底
+    expect(g.state.deck[g.state.deck.length - 1]).toBe(top); // 顶
+  });
+
+  it('findInDeck：从顶往下找第一张符合条件', () => {
+    const g = freshGame();
+    const a = makeUniqueCard(CardType.Sha);
+    const b = makeUniqueCard(CardType.Tao);
+    const c = makeUniqueCard(CardType.Shan);
+    g.state.deck = [a, b, c];
+
+    expect(findInDeck(g, (card) => card.type === CardType.Tao)).toBe(b);
+    expect(findInDeck(g, (card) => card.type === CardType.JueDou)).toBeNull();
+  });
+
+  it('findInDeckAndDiscard：牌堆 + 弃牌堆，牌堆先', () => {
+    const g = freshGame();
+    const deckTao = makeUniqueCard(CardType.Tao);
+    const deckSha = makeUniqueCard(CardType.Sha);
+    const discardShan = makeUniqueCard(CardType.Shan);
+    g.state.deck = [deckSha, deckTao];
+    g.state.discardPile = [discardShan];
+
+    const found = findInDeckAndDiscard(g, (card) => card.type === CardType.Shan);
+
+    expect(found).toEqual([discardShan]);
   });
 });
 
