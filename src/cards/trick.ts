@@ -5,7 +5,7 @@
 import { CardTag, CardType } from '../types.js';
 import type { CardContentFn } from '../cardRegistry.js';
 import { cardRegistry, cardEmoji, displayNumber } from '../cardRegistry.js';
-import { drawCards, moveCards, playFromHand, useCard } from '../cardActions.js';
+import { drawCards, moveCards, useCard } from '../cardActions.js';
 import { damage, recover } from '../life.js';
 import { distanceTo, attackRange } from '../distance.js';
 import { hasCardsInAreas } from '../areas.js';
@@ -76,13 +76,8 @@ const wanjianContent: CardContentFn = async (game, data, _event) => {
   );
 
   for (const target of data.targets) {
-    // askForCard：万箭中是否出闪/出哪张（默认 AI：有就出第一张）
-    const shan = await askForCard(game, target, '是否打出闪', [CardType.Shan]);
-    if (shan) {
-      await playFromHand(game, target, shan);
-      console.log(
-        `  ${target.name} 打出了 🛡️闪 (${shan.suit}${displayNumber(shan.number)})`,
-      );
+    if (await resolvePlayResponse(game, target, CardType.Shan)) {
+      console.log(`  ${target.name} 打出了 🛡️闪`);
     } else {
       await damage(game, { target, source: user, amount: 1 });
     }

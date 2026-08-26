@@ -73,9 +73,9 @@ describe('寒冰剑（装备触发）', () => {
     const attacker = g.state.players[0];
     const target = g.state.players[1];
     attacker.equipment.weapon = makeUniqueCard(CardType.HanBingJian);
-    target.equipment.armor = makeUniqueCard(CardType.BaGuaZhen);
+    target.equipment.armor = makeUniqueCard(CardType.RenWangDun); // 不挡红杀
     target.equipment.offensiveHorse = makeUniqueCard(CardType.ChiTu);
-    giveHand(attacker, CardType.Sha);
+    attacker.hand = [makeUniqueCard(CardType.Sha, '♥', 9)];
     const hpBefore = target.hp;
 
     await useCard(g, { player: attacker, card: attacker.hand[0], targets: [target] });
@@ -319,5 +319,44 @@ describe('丈八蛇矛（转化牌）', () => {
     expect(caocao.hand.map((c) => c.id)).toContain(shan.id);
     expect(g.state.discardPile).not.toContain(tao);
     expect(g.state.discardPile).not.toContain(shan);
+  });
+});
+
+describe('八卦阵（响应规则）', () => {
+  it('判定红 → 视为出了一张闪，免伤且不消耗手牌', async () => {
+    const g = freshGame();
+    registerSkills(g);
+    const attacker = g.state.players[0];
+    const defender = g.state.players[1];
+    attacker.hand = [makeUniqueCard(CardType.Sha)];
+    defender.equipment.armor = makeUniqueCard(CardType.BaGuaZhen);
+    const red = makeUniqueCard(CardType.Tao, '♥', 5);
+    g.state.deck = [red];
+    const hpBefore = defender.hp;
+
+    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [defender] });
+
+    expect(defender.hp).toBe(hpBefore);
+    expect(defender.hand.length).toBe(0);
+    expect(g.state.discardPile).toContain(red); // 判定牌进弃牌堆
+  });
+
+  it('判定黑 → 失败后可再出真闪', async () => {
+    const g = freshGame();
+    registerSkills(g);
+    const attacker = g.state.players[0];
+    const defender = g.state.players[1];
+    attacker.hand = [makeUniqueCard(CardType.Sha)];
+    defender.equipment.armor = makeUniqueCard(CardType.BaGuaZhen);
+    const realShan = makeUniqueCard(CardType.Shan);
+    defender.hand = [realShan];
+    g.state.deck = [makeUniqueCard(CardType.Tao, '♠', 5)];
+    const hpBefore = defender.hp;
+
+    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [defender] });
+
+    expect(defender.hp).toBe(hpBefore);
+    expect(defender.hand.length).toBe(0); // 八卦阵黑失败后出了真闪
+    expect(g.state.discardPile).toContain(realShan);
   });
 });

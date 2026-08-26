@@ -5,7 +5,7 @@
 import { CardTag, CardType } from '../types.js';
 import type { Card, UsedCard } from '../types.js';
 import { cardRegistry, cardEmoji } from '../cardRegistry.js';
-import { discardCards, drawCards, moveCards, useCard } from '../cardActions.js';
+import { discardCards, drawCards, moveCards, useCard, judge } from '../cardActions.js';
 import type { DamageEventData, ShaCancelledEventData, TargetingEventData } from '../events/index.js';
 import { EventType } from '../events/index.js';
 import {
@@ -19,6 +19,7 @@ import {
   selectedPlayers,
 } from '../choose.js';
 import { conversionRegistry } from '../conversions.js';
+import { responseRuleRegistry } from '../responses.js';
 import { damage } from '../life.js';
 import { effectRegistry } from '../persistentEffects.js';
 import { cardsInAreas, hasCardsInAreas } from '../areas.js';
@@ -432,3 +433,26 @@ registerBlankHorse(CardType.DaYuan, '大宛', CardTag.OffensiveHorse);
 registerBlankHorse(CardType.ZiXin, '紫骍', CardTag.OffensiveHorse);
 registerBlankHorse(CardType.JueYing, '绝影', CardTag.DefensiveHorse);
 registerBlankHorse(CardType.ChiTu, '赤兔', CardTag.OffensiveHorse);
+
+// 八卦阵：需要打出闪时可以先判定，红桃/方块视为出了一张闪；黑色失败可再出闪
+responseRuleRegistry.register({
+  name: '八卦阵',
+  respondsTo: CardType.Shan,
+  canUse: (_game, player) => player.equipment.armor?.type === CardType.BaGuaZhen,
+  selectionPlan: () => ({
+    nextStep: () => null,
+  }),
+  resolve: async (game, player, _request, _answers) => {
+    const judgeCard = await judge(game, player);
+    if (judgeCard.suit === '♥' || judgeCard.suit === '♦') {
+      console.log(`  ☯️${player.name} 的八卦阵判定为红色，视为出了一张闪`);
+      return 'done';
+    }
+    console.log(`  ☯️${player.name} 的八卦阵判定为黑色，未视为闪`);
+    return 'retry';
+  },
+  ai: {
+    shouldUse: () => true,
+    priority: 110,
+  },
+});

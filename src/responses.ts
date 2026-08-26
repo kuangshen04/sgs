@@ -61,10 +61,12 @@ export function collectResponseRules(
   game: Game,
   player: Player,
   request: ResponseRequest,
+  usedRules: ReadonlySet<string> = new Set(),
 ): ResponseRule[] {
   const rules: ResponseRule[] = [];
   for (const rule of responseRuleRegistry.all()) {
     if (rule.respondsTo !== request.cardType) continue;
+    if (usedRules.has(rule.name)) continue;
     if (rule.ownerSkill && !player.hero.skills?.includes(rule.ownerSkill)) continue;
     if (!rule.canUse(game, player, request)) continue;
     if (!rule.ai.shouldUse(game, player, request)) continue;
@@ -78,6 +80,7 @@ export function buildResponseActions(
   game: Game,
   player: Player,
   request: ResponseRequest,
+  usedRules: ReadonlySet<string> = new Set(),
 ): UseAction[] {
   const actions: UseAction[] = [];
 
@@ -91,7 +94,7 @@ export function buildResponseActions(
     });
   }
 
-  for (const rule of collectResponseRules(game, player, request)) {
+  for (const rule of collectResponseRules(game, player, request, usedRules)) {
     actions.push({
       id: `rule:${rule.name}`,
       label: rule.name,

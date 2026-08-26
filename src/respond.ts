@@ -12,7 +12,7 @@ import type { ShaCancelledEventData } from './events/index.js';
 import { cardEmoji, asUsedCard } from './cardRegistry.js';
 import { chooseUseAction } from './useWindow.js';
 import { buildResponseActions, executeResponse } from './responses.js';
-import type { ResponseRequest } from './responses.js';
+import type { ResponseRequest, ResponseRule } from './responses.js';
 
 /**
  * 结算一张杀的闪响应，返回是否被抵消。
@@ -33,19 +33,23 @@ export async function resolveShaResponse(
   const request: ResponseRequest = { type: 'play', cardType: CardType.Shan };
 
   for (let i = 0; i < need; i++) {
+    const usedRules = new Set<string>();
     // 八卦阵失败（retry）时重新询问
     while (true) {
       const choice = await chooseUseAction(
         game,
         defender,
-        buildResponseActions(game, defender, request),
+        buildResponseActions(game, defender, request, usedRules),
       );
       if (!choice || choice.action.group === 'decline') {
         console.log(`  ${defender.name} 无法打出闪！`);
         return false; // 已出的闪不返还，杀命中
       }
       const outcome = await executeResponse(game, defender, request, choice.action, choice.answers);
-      if (outcome === 'retry') continue;
+      if (outcome === 'retry') {
+        usedRules.add((choice.action.data as ResponseRule).name);
+        continue;
+      }
       if (outcome === 'done') {
         console.log(`  ${defender.name} 使用了 ${cardEmoji(CardType.Shan)}，抵消了攻击`);
         break;
@@ -71,11 +75,15 @@ export async function resolvePlayResponse(
   cardType: CardType,
 ): Promise<boolean> {
   const request: ResponseRequest = { type: 'play', cardType };
+  const usedRules = new Set<string>();
   while (true) {
-    const choice = await chooseUseAction(game, player, buildResponseActions(game, player, request));
+    const choice = await chooseUseAction(game, player, buildResponseActions(game, player, request, usedRules));
     if (!choice || choice.action.group === 'decline') return false;
     const outcome = await executeResponse(game, player, request, choice.action, choice.answers);
-    if (outcome === 'retry') continue;
+    if (outcome === 'retry') {
+      usedRules.add((choice.action.data as ResponseRule).name);
+      continue;
+    }
     return outcome === 'done';
   }
 }
