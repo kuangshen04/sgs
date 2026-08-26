@@ -173,6 +173,49 @@
 - 遗计：摸牌全给自己（原：观看牌堆顶 2 张并分配任意角色）
 - 突袭/借刀杀人/无懈/洛神等：AI 策略写死（选择系统接入 ask 后统一改为决策注入）
 
+## 四、写死/特判清单（待标包完成后统一清理）
+
+> 这些是已实现但仍是“规则级特判 / 单例写死”的地方，按项目“有例子再抽象”的约定先保留，
+> 等整个标包跑通后再决定哪些值得抽成通用机制。
+
+### 响应/杀相关
+
+- 铁骑：`RespondMarks.unavoidable`，马超 `targeting.after` 写死设置（唯一用例）
+- 无双：`RespondMarks.shanRequired = 2`；决斗 content 里 `hero.skills.includes('无双')` 特判
+- 方天画戟：`playChoices.fangtianMaxTargets`，按装备 + 最后一张手牌放宽目标上限到 3
+- 青龙偃月刀 / 贯石斧：`shaCancelled.after` 装备 trigger，分别再出杀 / 弃两张牌
+- 仁王盾：`targeting.before` 黑色杀 prevent
+- 雌雄双股剑：`targeting.after` 异性目标触发
+- 寒冰剑 / 麒麟弓：`damage.before/after`，判定 useCard 是杀
+
+### 锦囊/延时锦囊
+
+- 借刀杀人：content 里“有杀则出杀（目标取第一个）否则交武器”，决策写死
+- 决斗：循环内无双特判；响应杀不产生 useCard（奸雄只拿决斗）
+- 无懈可击：AI 只保护自己（`target===player && 非自己`）写死
+- 乐不思蜀 / 闪电：各自 `delayContent` 写死；闪电按点数/花色特判转移
+- 五谷丰登：简化版每人摸 1 张，未实现真“亮牌选牌”
+
+### 武将技能
+
+- 鬼才：`judge.judging` 任意手牌替换判定
+- 反馈 / 天妒：`askFromAreas` / 拿判定牌
+- 遗计：简化摸牌全给自己（未做分配任意角色）
+- 洛神：`preparePhase` 里 judge 循环 + `askYesNo` 写死“继续判定”
+- 突袭：`drawPhase.before` shuffle + `askForTargets` 抢牌
+- 裸衣：`drawPhase.before` 减摸牌 + 临时 `damage.before` handler（手动注册/注销，无通用临时标记）
+
+### 系统级“单例特判”结构（刻意保留）
+
+- `RespondMarks { shanRequired, unavoidable }`：挂在 useCard 上的响应状态（无双/铁骑用）
+- `TargetingEventData.judging`：判定阶段无懈窗口标记（判定区延时牌用）
+- `shaCancelled` 时点：目前青龙/贯石斧监听
+- `judge.judging`：鬼才替换判定牌
+
+### 尚未实现（白板/待做，不属于“写死”但要一起清）
+
+- 青釭剑（无视防具）、观星、克己（依赖事件历史）、主公技、离间、国色
+
 ## 下一步（建议）
 
 1. 事件历史（#7）+ 牌堆顶操作（#9）：解锁吕蒙·克己、观星、五谷丰登真版
