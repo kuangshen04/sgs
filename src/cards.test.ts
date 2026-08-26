@@ -619,3 +619,39 @@ describe('targeting', () => {
     expect(g.state.discardPile.find((c) => c.id === card.id)).toBeDefined();
   });
 });
+
+describe('决斗/南蛮 响应窗口转化', () => {
+  it('关羽通过武圣·当杀 响应决斗', async () => {
+    const g = freshGame({}, ['关羽', '刘备', '孙权']);
+    registerSkills(g);
+    const guanyu = g.state.players[0];
+    const attacker = g.state.players[1]; // 刘备
+    const red = { id: 9101, type: CardType.Shan, name: '闪', suit: '♥', number: 3 };
+    guanyu.hand = [red];
+    giveHand(attacker, CardType.JueDou);
+    const hpBefore = attacker.hp;
+
+    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [guanyu] });
+
+    expect(guanyu.hand.length).toBe(0); // 红色源牌被武圣消耗
+    expect(attacker.hp).toBe(hpBefore - 1); // 我方无杀 → 受伤
+    expect(g.state.discardPile).toContain(red);
+  });
+
+  it('赵云通过龙胆·当杀 响应南蛮，免伤', async () => {
+    const g = freshGame({}, ['赵云', '刘备']);
+    registerSkills(g);
+    const zhaoyun = g.state.players[0];
+    const user = g.state.players[1]; // 刘备
+    const shan = { id: 9102, type: CardType.Shan, name: '闪', suit: '♦', number: 5 };
+    zhaoyun.hand = [shan];
+    giveHand(user, CardType.NanMan);
+    const hpBefore = zhaoyun.hp;
+
+    await useCard(g, { player: user, card: user.hand[0], targets: [zhaoyun] });
+
+    expect(zhaoyun.hp).toBe(hpBefore); // 免伤
+    expect(zhaoyun.hand.length).toBe(0); // 闪被龙胆消耗
+    expect(g.state.discardPile).toContain(shan);
+  });
+});

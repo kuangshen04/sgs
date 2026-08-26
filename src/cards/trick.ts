@@ -15,7 +15,7 @@ import { EventType } from '../events/index.js';
 import { effectRegistry } from '../persistentEffects.js';
 import { otherAlive, allAlive } from './helpers.js';
 import type { Game } from '../game.js';
-import { resolveJueDouResponse } from '../respond.js';
+import { resolveJueDouResponse, resolvePlayResponse } from '../respond.js';
 
 const wuzhongContent: CardContentFn = async (game, data, _event) => {
   const player = data.player;
@@ -60,13 +60,8 @@ const nanmanContent: CardContentFn = async (game, data, _event) => {
   );
 
   for (const target of data.targets) {
-    // askForCard：南蛮中是否出杀/出哪张（默认 AI：有就出第一张）
-    const sha = await askForCard(game, target, '是否打出杀', [CardType.Sha]);
-    if (sha) {
-      await playFromHand(game, target, sha);
-      console.log(
-        `  ${target.name} 打出了 🗡️杀 (${sha.suit}${displayNumber(sha.number)})`,
-      );
+    if (await resolvePlayResponse(game, target, CardType.Sha)) {
+      console.log(`  ${target.name} 打出了 🗡️杀`);
     } else {
       await damage(game, { target, source: user, amount: 1 });
     }

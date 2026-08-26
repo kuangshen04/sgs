@@ -1,7 +1,7 @@
 // ============================================================
 // 三国杀最小原型 — 响应流程
-// 杀→闪已由 ResponseRequest 驱动（真牌 + 注册规则 + 放弃）；
-// 决斗响应暂保留 askForCard，后续迁到同一响应窗口。
+// 杀→闪、决斗、南蛮的“打出”响应都走同一响应窗口：
+// ResponseRequest(type: 'play') + buildResponseActions + executeResponse。
 // ============================================================
 
 import { CardType } from './types.js';
@@ -9,9 +9,7 @@ import type { Card, Player, RespondMarks, UsedCard } from './types.js';
 import type { Game } from './game.js';
 import { EventType, GameEvent } from './events/index.js';
 import type { ShaCancelledEventData } from './events/index.js';
-import { cardEmoji, displayNumber, asUsedCard } from './cardRegistry.js';
-import { playFromHand } from './cardActions.js';
-import { askForCard } from './choose.js';
+import { cardEmoji, asUsedCard } from './cardRegistry.js';
 import { chooseUseAction } from './useWindow.js';
 import { buildResponseActions, executeResponse } from './responses.js';
 import type { ResponseRequest } from './responses.js';
@@ -19,7 +17,7 @@ import type { ResponseRequest } from './responses.js';
 /**
  * 结算一张杀的闪响应，返回是否被抵消。
  * - 不可闪避（铁骑标记）→ 跳过响应，未抵消
- * - 所需闪数（无双标记）→ 逐张询问：出一张后再问下一张
+ * - 所需闪数（无双标记）→ 逐张询问；成功后再问下一张
  * - 全部出完 → 触发 shaCancelled 抵消时点（青龙偃月刀/贯石斧监听）
  */
 export async function resolveShaResponse(
@@ -35,7 +33,7 @@ export async function resolveShaResponse(
   const request: ResponseRequest = { type: 'play', cardType: CardType.Shan };
 
   for (let i = 0; i < need; i++) {
-    // 八卦阵失败（retry）时从头重新询问
+    // 八卦阵失败（retry）时重新询问
     while (true) {
       const choice = await chooseUseAction(
         game,
@@ -64,6 +62,25 @@ export async function resolveShaResponse(
 }
 
 /**
+ * 一次通用的“打出”响应（决斗的杀 / 南蛮的杀 / 万箭的闪）。
+ * 成功后返回 true（源牌已消费）；放弃或失败返回 false。
+ */
+export async function resolvePlayResponse(
+  game: Game,
+  player: Player,
+  cardType: CardType,
+): Promise<boolean> {
+  const request: ResponseRequest = { type: 'play', cardType };
+  while (true) {
+    const choice = await chooseUseAction(game, player, buildResponseActions(game, player, request));
+    if (!choice || choice.action.group === 'decline') return false;
+    const outcome = await executeResponse(game, player, request, choice.action, choice.answers);
+    if (outcome === 'retry') continue;
+    return outcome === 'done';
+  }
+}
+
+/**
  * 决斗中一个角色的单次响应：需打出 required 张杀（无双②），逐张询问。
  * 不足则失败（打不出杀 → 受到伤害）；已打出的杀不返还。
  */
@@ -71,16 +88,11 @@ export async function resolveJueDouResponse(
   game: Game, player: Player, required: number,
 ): Promise<boolean> {
   for (let i = 0; i < required; i++) {
-    // askForCard：决斗中是否出杀/出哪张（默认 AI：有就出第一张）
-    const sha = await askForCard(game, player, '是否打出杀', [CardType.Sha]);
-    if (!sha) {
+    if (!(await resolvePlayResponse(game, player, CardType.Sha))) {
       console.log(`  ${player.name} 无法打出杀！`);
       return false;
     }
-    await playFromHand(game, player, sha);
-    console.log(
-      `  ${player.name} 打出了 ${cardEmoji(CardType.Sha)} (${sha.suit}${displayNumber(sha.number)})`,
-    );
+    console.log(`  ${player.name} 打出了 ${cardEmoji(CardType.Sha)}`);
   }
   return true;
 }
