@@ -89,6 +89,28 @@ export async function resolvePlayResponse(
 }
 
 /**
+ * 一次通用的“使用”响应（求桃 / 无懈 / 急救等），
+ * 走 useCard 生命周期；target 由 request 提供。
+ */
+export async function resolveUseResponse(
+  game: Game,
+  player: Player,
+  request: ResponseRequest,
+): Promise<boolean> {
+  const usedRules = new Set<string>();
+  while (true) {
+    const choice = await chooseUseAction(game, player, buildResponseActions(game, player, request, usedRules));
+    if (!choice || choice.action.group === 'decline') return false;
+    const outcome = await executeResponse(game, player, request, choice.action, choice.answers);
+    if (outcome === 'retry') {
+      usedRules.add((choice.action.data as ResponseRule).name);
+      continue;
+    }
+    return outcome === 'done';
+  }
+}
+
+/**
  * 决斗中一个角色的单次响应：需打出 required 张杀（无双②），逐张询问。
  * 不足则失败（打不出杀 → 受到伤害）；已打出的杀不返还。
  */

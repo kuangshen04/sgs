@@ -8,8 +8,7 @@ import { EventType, GameEvent } from './events/index.js';
 import type {
   DamageEventData, RecoverEventData, DyingEventData, DieEventData,
 } from './events/index.js';
-import { useCard } from './cardActions.js';
-import { askForCard } from './choose.js';
+import { resolveUseResponse } from './respond.js';
 import type { Game } from './game.js';
 
 // ============================================================
@@ -94,9 +93,13 @@ export async function dying(
           continue;
         }
 
-        // askForCard：是否使用桃救濒死角色（默认 AI：有就出第一张）
-        const tao = await askForCard(game, player, `是否使用桃救 ${dyingPlayer.name}`, [CardType.Tao]);
-        if (!tao) {
+        // 使用型响应窗口：真桃 + 急救（如有） + 放弃
+        const ok = await resolveUseResponse(game, player, {
+          type: 'use',
+          cardType: CardType.Tao,
+          target: dyingPlayer,
+        });
+        if (!ok) {
           consecutivePasses++;
           if (consecutivePasses >= aliveCount) break; // 一整轮无人响应
           idx = (idx + 1) % players.length;
@@ -106,7 +109,6 @@ export async function dying(
         consecutivePasses = 0;
         usedTao = true;
         console.log(`  🩸${dyingPlayer.name} 濒死！${player.name} 使用 🍑桃 救援`);
-        await useCard(game, { player, card: tao, targets: [dyingPlayer] });
         // 用了桃但未脱离：指针停在原处，下一轮继续问同一玩家（可再用桃）
       }
 

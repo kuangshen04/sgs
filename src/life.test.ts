@@ -4,7 +4,7 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { freshGame, giveHand } from './test-utils.js';
+import { freshGame, giveHand, makeUniqueCard } from './test-utils.js';
 
 import { damage, dying, loseHp, recover } from './life.js';
 
@@ -125,6 +125,23 @@ describe('dying', () => {
     expect(target.hp).toBe(1);
     expect(a.hand.length).toBe(0); // 刘备无桃
     expect(b.hand.length).toBe(0); // 曹操连续用了两张（指针停在用桃者身上）
+  });
+
+  it('回合外华佗可用急救（红牌当桃）救人', async () => {
+    const g = freshGame({}, ['刘备', '华佗', '孙权']);
+    const liubei = g.state.players[0];
+    const huatuo = g.state.players[1];
+    const sunquan = g.state.players[2];
+    sunquan.hp = 0;
+    liubei.hand = []; // 刘备无桃，先跳过
+    huatuo.hand = [makeUniqueCard(CardType.Shan, '♥', 2)]; // 红色牌当桃
+
+    await dying(g, { player: sunquan });
+
+    expect(sunquan.hp).toBe(1);
+    expect(sunquan.alive).toBe(true);
+    expect(huatuo.hand.length).toBe(0); // 红色牌被急救消耗
+    expect(g.state.discardPile.some((c) => c.suit === '♥')).toBe(true);
   });
 });
 

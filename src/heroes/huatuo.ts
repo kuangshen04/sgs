@@ -2,13 +2,16 @@
 // 华佗 — 青囊
 // ============================================================
 
-import { discardCards } from '../cardActions.js';
+import { discardCards, useCard } from '../cardActions.js';
 import { recover } from '../life.js';
 import { handCardsStep, targetsStep, selectedCards, selectedPlayers } from '../choose.js';
 import { activeSkillRegistry } from '../skills.js';
+import { responseRuleRegistry } from '../responses.js';
 import { heroRegistry } from '../heroRegistry.js';
+import { CardType } from '../types.js';
 import type { Game } from '../game.js';
 import type { Player } from '../types.js';
+import type { UsedCard } from '../types.js';
 
 activeSkillRegistry.register({
   name: '青囊',
@@ -50,4 +53,44 @@ activeSkillRegistry.register({
   },
 });
 
-heroRegistry.register({ name: '华佗', maxHp: 3, sex: 'male', group: '群', skills: ['青囊'] });
+/** 急救：回合外，可以将一张红色牌当桃使用（救人） */
+responseRuleRegistry.register({
+  name: '急救',
+  respondsTo: CardType.Tao,
+  ownerSkill: '急救',
+  canUse: (game, player, request) =>
+    request.type === 'use'
+    && !!request.target
+    && game.state.players[game.state.currentIndex] !== player // 回合外
+    && player.hand.some((c) => c.suit === '♥' || c.suit === '♦'),
+  selectionPlan: (_game, player) => ({
+    nextStep(answers) {
+      if (answers.source) return null;
+      return handCardsStep('source', player, {
+        prompt: '急救：选择一张红色牌当桃',
+        filter: (c) => c.suit === '♥' || c.suit === '♦',
+        min: 1,
+        max: 1,
+      });
+    },
+  }),
+  resolve: async (game, player, request, answers) => {
+    const source = selectedCards(answers, 'source')[0];
+    if (!source || !request.target) return 'done';
+    const used: UsedCard = {
+      type: CardType.Tao,
+      name: '桃',
+      suit: source.suit,
+      number: source.number,
+      physicalCards: [source],
+    };
+    await useCard(game, { player, card: used, targets: [request.target] });
+    return 'done';
+  },
+  ai: {
+    shouldUse: () => true,
+    priority: 50,
+  },
+});
+
+heroRegistry.register({ name: '华佗', maxHp: 3, sex: 'male', group: '群', skills: ['青囊', '急救'] });

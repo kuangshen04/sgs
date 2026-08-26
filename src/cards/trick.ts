@@ -15,7 +15,7 @@ import { EventType } from '../events/index.js';
 import { effectRegistry } from '../persistentEffects.js';
 import { otherAlive, allAlive } from './helpers.js';
 import type { Game } from '../game.js';
-import { resolveJueDouResponse, resolvePlayResponse } from '../respond.js';
+import { resolveJueDouResponse, resolvePlayResponse, resolveUseResponse } from '../respond.js';
 
 const wuzhongContent: CardContentFn = async (game, data, _event) => {
   const player = data.player;
@@ -216,14 +216,13 @@ export function installWuxieTrigger(game: Game): void {
       if (target !== player) continue;
       if (!judging && user === player) continue;
 
-      // askForCard：是否出无懈/出哪张（默认 AI：有就出第一张）
-      const wxCard = await askForCard(game, player, '是否打出无懈可击', [CardType.WuXie]);
-      if (!wxCard) continue;
-      console.log(
-        `  ✨${player.name} 使用 🛡️无懈可击 ` +
-        `(${wxCard.suit}${displayNumber(wxCard.number)}) 抵消对 ${target.name} 的效果`,
-      );
-      await useCard(game, { player, card: wxCard, targets: [] });
+      // 使用型响应窗口：真无懈 + 放弃
+      const ok = await resolveUseResponse(game, player, {
+        type: 'use',
+        cardType: CardType.WuXie,
+      });
+      if (!ok) continue;
+      console.log(`  ✨${player.name} 使用 🛡️无懈可击 抵消对 ${target.name} 的效果`);
 
       // 无论无懈成功或被反无懈，只尝试一次就停止
       break;
