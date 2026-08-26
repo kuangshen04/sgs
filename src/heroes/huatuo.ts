@@ -22,8 +22,10 @@ activeSkillRegistry.register({
   selectionPlan: (game, player) => ({
     nextStep(answers) {
       if (!answers.target) {
-        return targetsStep('target', player, [player], {
-          prompt: '青囊：回复谁（简化只给自己）',
+        // 原版：任意受伤角色；AI 默认优先自己
+        const candidates = game.state.players.filter((p) => p.alive && p.hp < p.maxHp);
+        return targetsStep('target', player, candidates, {
+          prompt: '青囊：选择回复的受伤角色',
           min: 1,
           max: 1,
         });
