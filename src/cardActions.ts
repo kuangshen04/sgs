@@ -256,6 +256,17 @@ export async function playFromHand(game: Game, player: Player, card: Card): Prom
   });
 }
 
+/** 打出：消费 UsedCard 的全部实体源牌（支持多源，如丈八蛇矛响应） */
+export async function playUsedCard(game: Game, player: Player, used: UsedCard): Promise<Card[]> {
+  const inHand = used.physicalCards.filter((c) => {
+    const area = getCardArea(game, c);
+    return !!area && 'player' in area && area.player === player && area.zone === 'hand';
+  });
+  return moveCards(game, {
+    to: { zone: 'discardPile' }, cards: inHand, reason: 'play',
+  });
+}
+
 /**
  * 交给：把一组牌从 from 的手牌移入 to 的手牌，返回实际移走的牌。
  * 用于仁德/反间/顺手牵羊这类"获得/交给"移动（手牌区 ↔ 手牌区）。

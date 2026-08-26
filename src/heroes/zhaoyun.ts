@@ -3,9 +3,11 @@
 // ② 杀当闪/响应方向仍挂起，等响应窗口建模。
 // ============================================================
 
-import { cardRegistry } from '../cardRegistry.js';
+import { cardRegistry, asUsedCard } from '../cardRegistry.js';
 import { handCardsStep, targetsStep, computeTargetOptions, selectedCards, selectedPlayers } from '../choose.js';
+import { playUsedCard } from '../cardActions.js';
 import { conversionRegistry } from '../conversions.js';
+import { responseRuleRegistry } from '../responses.js';
 import { heroRegistry } from '../heroRegistry.js';
 import { CardType } from '../types.js';
 import type { Card, UsedCard } from '../types.js';
@@ -62,6 +64,61 @@ conversionRegistry.register({
       return def.ai.shouldUse(_player, shaUsed);
     },
     usePriority: cardRegistry.get(CardType.Sha)!.ai.usePriority,
+  },
+});
+
+responseRuleRegistry.register({
+  name: '龙胆·当杀',
+  respondsTo: CardType.Sha,
+  ownerSkill: '龙胆',
+  canUse: (_game, player, request) =>
+    request.type === 'play' && player.hand.some((c) => c.type === CardType.Shan),
+  selectionPlan: (_game, player) => ({
+    nextStep(answers) {
+      if (answers.source) return null;
+      return handCardsStep('source', player, {
+        prompt: '龙胆：选择一张闪当杀',
+        filter: (c) => c.type === CardType.Shan,
+        min: 1,
+        max: 1,
+      });
+    },
+  }),
+  resolve: async (game, player, _request, answers) => {
+    const source = selectedCards(answers, 'source')[0];
+    if (source) await playUsedCard(game, player, asUsedCard(source));
+    return 'done';
+  },
+  ai: {
+    shouldUse: () => true,
+    priority: 50,
+  },
+});
+
+responseRuleRegistry.register({
+  name: '龙胆·当闪',
+  respondsTo: CardType.Shan,
+  ownerSkill: '龙胆',
+  canUse: (_game, player) => player.hand.some((c) => c.type === CardType.Sha),
+  selectionPlan: (_game, player) => ({
+    nextStep(answers) {
+      if (answers.source) return null;
+      return handCardsStep('source', player, {
+        prompt: '龙胆：选择一张杀当闪',
+        filter: (c) => c.type === CardType.Sha,
+        min: 1,
+        max: 1,
+      });
+    },
+  }),
+  resolve: async (game, player, _request, answers) => {
+    const source = selectedCards(answers, 'source')[0];
+    if (source) await playUsedCard(game, player, asUsedCard(source));
+    return 'done';
+  },
+  ai: {
+    shouldUse: () => true,
+    priority: 50,
   },
 });
 

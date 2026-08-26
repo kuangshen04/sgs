@@ -3,12 +3,15 @@
 // ============================================================
 
 import { judge, takeFromDiscard } from '../cardActions.js';
-import { cardEmoji, displayNumber } from '../cardRegistry.js';
-import { askYesNo } from '../choose.js';
+import { playUsedCard } from '../cardActions.js';
+import { cardEmoji, displayNumber, asUsedCard } from '../cardRegistry.js';
+import { askYesNo, handCardsStep, selectedCards } from '../choose.js';
 import { skillRegistry, subjectIsOwner } from '../skills.js';
+import { responseRuleRegistry } from '../responses.js';
 import type { GameEvent } from '../events/index.js';
 import { heroRegistry } from '../heroRegistry.js';
 import type { Game } from '../game.js';
+import { CardType } from '../types.js';
 import type { Player } from '../types.js';
 
 /** 洛神：准备阶段判定，黑色获得判定牌并继续，红色停止 */
@@ -36,6 +39,34 @@ skillRegistry.register({
   trigger: 'preparePhase.before',
   canTrigger: subjectIsOwner,
   content: luoshenContent,
+});
+
+responseRuleRegistry.register({
+  name: '倾国·当闪',
+  respondsTo: CardType.Shan,
+  ownerSkill: '倾国',
+  canUse: (_game, player) =>
+    player.hand.some((c) => c.suit === '♠' || c.suit === '♣'),
+  selectionPlan: (_game, player) => ({
+    nextStep(answers) {
+      if (answers.source) return null;
+      return handCardsStep('source', player, {
+        prompt: '倾国：选择一张黑色牌当闪',
+        filter: (c) => c.suit === '♠' || c.suit === '♣',
+        min: 1,
+        max: 1,
+      });
+    },
+  }),
+  resolve: async (game, player, _request, answers) => {
+    const source = selectedCards(answers, 'source')[0];
+    if (source) await playUsedCard(game, player, asUsedCard(source));
+    return 'done';
+  },
+  ai: {
+    shouldUse: () => true,
+    priority: 50,
+  },
 });
 
 heroRegistry.register({ name: '甄宓', maxHp: 3, sex: 'female', group: '魏', skills: ['洛神', '倾国'] });

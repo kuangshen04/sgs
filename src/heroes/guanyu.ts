@@ -2,9 +2,11 @@
 // 关羽 — 武圣（红色牌当杀）
 // ============================================================
 
-import { cardRegistry } from '../cardRegistry.js';
+import { cardRegistry, asUsedCard } from '../cardRegistry.js';
 import { handCardsStep, targetsStep, computeTargetOptions, selectedCards, selectedPlayers } from '../choose.js';
+import { playUsedCard } from '../cardActions.js';
 import { conversionRegistry } from '../conversions.js';
+import { responseRuleRegistry } from '../responses.js';
 import { heroRegistry } from '../heroRegistry.js';
 import { CardType } from '../types.js';
 import type { Card, UsedCard } from '../types.js';
@@ -65,6 +67,34 @@ conversionRegistry.register({
       return def.ai.shouldUse(player, shaUsed);
     },
     usePriority: cardRegistry.get(CardType.Sha)!.ai.usePriority,
+  },
+});
+
+responseRuleRegistry.register({
+  name: '武圣·当杀',
+  respondsTo: CardType.Sha,
+  ownerSkill: '武圣',
+  canUse: (_game, player, request) =>
+    request.type === 'play' && player.hand.some(isRed),
+  selectionPlan: (_game, player) => ({
+    nextStep(answers) {
+      if (answers.source) return null;
+      return handCardsStep('source', player, {
+        prompt: '武圣：选择一张红色牌当杀',
+        filter: isRed,
+        min: 1,
+        max: 1,
+      });
+    },
+  }),
+  resolve: async (game, player, _request, answers) => {
+    const source = selectedCards(answers, 'source')[0];
+    if (source) await playUsedCard(game, player, asUsedCard(source));
+    return 'done';
+  },
+  ai: {
+    shouldUse: () => true,
+    priority: 50,
   },
 });
 
