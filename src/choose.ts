@@ -178,13 +178,14 @@ export function optionStep(
   id: string,
   prompt: string,
   choices: { value: string; label: string }[],
+  ai?: (ctx: SelectionContext) => SelectionOption[],
 ): SelectionStep {
   return {
     id,
     prompt,
     options: choices.map((c) => ({ id: c.value, label: c.label })),
     validate: (selected) => selected.length === 1,
-    ai: (ctx) => (ctx.step.options[0] ? [ctx.step.options[0]] : []),
+    ai: ai ?? ((ctx) => (ctx.step.options[0] ? [ctx.step.options[0]] : [])),
   };
 }
 
@@ -320,4 +321,17 @@ export async function askYesNo(
 ): Promise<boolean> {
   const selected = await runAskStep(game, player, yesNoStep('yesNo', prompt, defaultValue));
   return selected?.[0]?.id === 'yes';
+}
+
+/** 询问一个任意选项（花色猜测/位置选择等），返回所选 value 或 null */
+export async function askOption(
+  game: Game,
+  player: Player,
+  prompt: string,
+  choices: { value: string; label: string }[],
+  ai?: (ctx: SelectionContext) => SelectionOption[],
+): Promise<string | null> {
+  if (choices.length === 0) return null;
+  const selected = await runAskStep(game, player, optionStep('option', prompt, choices, ai));
+  return selected?.[0]?.id ?? null;
 }

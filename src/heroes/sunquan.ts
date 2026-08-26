@@ -2,8 +2,9 @@
 // 孙权 — 制衡
 // ============================================================
 
-import { discardCards, drawCards } from '../cardActions.js';
-import { handCardsStep, selectedCards } from '../choose.js';
+import { moveCards, drawCards } from '../cardActions.js';
+import { cardsStep, selectedCards } from '../choose.js';
+import { equipmentCards } from '../areas.js';
 import { activeSkillRegistry } from '../skills.js';
 import { heroRegistry } from '../heroRegistry.js';
 import type { Game } from '../game.js';
@@ -13,15 +14,16 @@ activeSkillRegistry.register({
   name: '制衡',
   canUse: (game, player, ctx) =>
     !ctx.usedSkills.has('制衡') && // 规则：每回合限一次
-    player.hand.length > 0,        // 规则：简化模型需有牌可弃
+    (player.hand.length > 0 || equipmentCards(player).length > 0), // 需有可弃的牌
   selectionPlan: (game, player) => ({
     nextStep(answers) {
       if (!answers.cards) {
-        return handCardsStep('cards', player, {
+        const candidates = [...player.hand, ...equipmentCards(player)];
+        return cardsStep('cards', candidates, {
           prompt: '制衡：选择要弃置的手牌',
           min: 0,
-          max: player.hand.length,
-          ai: (ctx) => ctx.step.options, // 默认全选（保留旧行为）
+          max: candidates.length,
+          ai: (ctx) => ctx.step.options, // 默认全选
         });
       }
       return null;
@@ -30,7 +32,9 @@ activeSkillRegistry.register({
   execute: async (game, player, answers) => {
     const cards = selectedCards(answers, 'cards');
     if (cards.length === 0) return;
-    await discardCards(game, player, cards);
+    await moveCards(game, {
+      to: { zone: 'discardPile' }, cards, reason: 'discard',
+    });
     await drawCards(game, { target: player, count: cards.length });
     console.log(
       `  ✨${player.name} 发动【制衡】！弃置 ${cards.length} 张牌，摸了 ${cards.length} 张牌`,

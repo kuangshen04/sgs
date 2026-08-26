@@ -4,7 +4,7 @@
 
 import { drawCards, giveCards } from '../cardActions.js';
 import { damage } from '../life.js';
-import { handCardsStep, targetsStep, selectedCards, selectedPlayers } from '../choose.js';
+import { handCardsStep, targetsStep, selectedCards, selectedPlayers, askOption } from '../choose.js';
 import { activeSkillRegistry, skillRegistry, subjectIsOwner } from '../skills.js';
 import type { GameEvent } from '../events/index.js';
 import type { DrawPhaseEventData } from '../events/index.js';
@@ -57,10 +57,19 @@ activeSkillRegistry.register({
     const [target] = selectedPlayers(answers, 'target');
     if (!target || cards.length === 0) return;
     await giveCards(game, player, target, cards);
-    await damage(game, { target, source: player, amount: 1 });
-    console.log(
-      `  ✨${player.name} 发动【反间】！交给 ${target.name} ${cards.length} 张牌并造成 1 点伤害`,
-    );
+    // 目标猜花色；不同才造成伤害
+    const guess = await askOption(game, target, '反间：猜这张牌的花色', [
+      { value: '♠', label: '黑桃' },
+      { value: '♥', label: '红桃' },
+      { value: '♣', label: '梅花' },
+      { value: '♦', label: '方块' },
+    ], (ctx) => [ctx.step.options[Math.floor(Math.random() * ctx.step.options.length)]]);
+    if (guess && cards[0].suit !== guess) {
+      await damage(game, { target, source: player, amount: 1 });
+      console.log(`  ✨${player.name} 发动【反间】！${target.name} 猜 ${guess} 不对，受到 1 点伤害`);
+    } else {
+      console.log(`  ✨${player.name} 发动【反间】！${target.name} 猜对了，未受伤`);
+    }
   },
   ai: {
     // AI：进攻技能，合法就用

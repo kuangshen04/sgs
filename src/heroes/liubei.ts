@@ -14,15 +14,16 @@ activeSkillRegistry.register({
   name: '仁德',
   canUse: (game, player, ctx) =>
     !ctx.usedSkills.has('仁德') &&                              // 规则：每回合限一次
-    player.hand.length >= 2 &&                                  // 规则：需交出 2 张牌
+    player.hand.length >= 1 &&                                  // 规则：需交出至少 1 张牌
     game.state.players.some((p) => p !== player && p.alive),    // 规则：需有其他角色
   selectionPlan: (game, player) => ({
     nextStep(answers) {
       if (!answers.cards) {
         return handCardsStep('cards', player, {
           prompt: '仁德：选择要交给的牌',
-          min: 2,
-          max: 2,
+          min: 1,
+          max: player.hand.length,
+          ai: (ctx) => ctx.step.options.slice(0, 2), // AI 默认给前两张
         });
       }
       if (!answers.target) {
@@ -41,9 +42,10 @@ activeSkillRegistry.register({
     const [target] = selectedPlayers(answers, 'target');
     if (!target || cards.length === 0) return;
     const given = await giveCards(game, player, target, cards);
-    await recover(game, { target: player, amount: 1 });
+    if (given.length >= 2) await recover(game, { target: player, amount: 1 });
     console.log(
-      `  ✨${player.name} 发动【仁德】！交给 ${target.name} ${given.length} 张牌，回复 1 点体力`,
+      `  ✨${player.name} 发动【仁德】！交给 ${target.name} ${given.length} 张牌` +
+      (given.length >= 2 ? '，回复 1 点体力' : ''),
     );
   },
   ai: {

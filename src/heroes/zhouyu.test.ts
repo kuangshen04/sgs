@@ -58,7 +58,7 @@ describe('反间（周瑜主动技能）', () => {
 
     await playPhase(g, { player: zhouyu });
 
-    expect(target.hp).toBe(hpBefore - 1);
+    expect([hpBefore - 1, hpBefore]).toContain(target.hp); // 猜对则不受伤
     expect(zhouyu.hand.length).toBe(0);
     expect(target.hand.map((c) => c.id)).toContain(givenId);
     expect(g.state.discardPile.length).toBe(0); // 牌到了目标手牌
