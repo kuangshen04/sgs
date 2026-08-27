@@ -200,7 +200,7 @@ const jiedaoContent: CardContentFn = async (game, data, _event) => {
 };
 
 /**
- * 无懈可击的 content：沿事件栈向上找到原始锦囊的 targeting 事件并 prevent。
+ * 无懈可击的 content：沿事件栈向上找到原始锦囊的 targeting 事件并置位 cancelled。
  *
  * 运行时事件栈：[… useCard(锦囊) → targeting(目标) → useCard(无懈)]
  * 无懈自己的 targeting 已出栈，getParent('targeting') 命中锦囊的 targeting。
@@ -208,14 +208,15 @@ const jiedaoContent: CardContentFn = async (game, data, _event) => {
 const wuxieContent: CardContentFn = async (_game, _data, event) => {
   const targetEvent = event.getParent(EventType.Targeting);
   if (targetEvent) {
-    targetEvent.prevent();
+    targetEvent.data.cancelled = true;
   }
 };
 
 /**
  * 注册无懈可击 trigger handler（挂到指定对局的触发器注册表）。
  * 响应链无需显式实现：每个无懈使用都会生成自身 targeting 事件 → 递归触发本 handler，
- * 后出的无懈在 content 中 prevent 前一个（last-wins），前一个的 content 便不会执行。
+ * 后出的无懈在 content 中给前一个的 targeting 置位 cancelled（last-wins），
+ * 前一个的 content 便不会执行。
  * 本循环只剩 AI 策略：从当前回合角色起按座次、只对目标为自己且使用者不是自己的锦囊出无懈。
  */
 export function installWuxieTrigger(game: Game): void {

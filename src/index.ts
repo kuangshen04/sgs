@@ -8,6 +8,7 @@ import { registerSkills } from './skills.js';
 import { createGame } from './game.js';
 import { printState } from './display.js';
 import { runGame } from './gameFlow.js';
+import { GameOverError } from './life.js';
 
 // ============================================================
 // 主程序
@@ -20,7 +21,11 @@ async function main() {
   console.clear();
   printState(game.state);
 
-  await runGame(game);
+  try {
+    await runGame(game);
+  } catch (e) {
+    if (!(e instanceof GameOverError)) throw e;
+  }
 
   console.log('\n' + '='.repeat(42));
   console.log(`🏆 游戏结束！${game.state.winner!.name} 获胜！`);

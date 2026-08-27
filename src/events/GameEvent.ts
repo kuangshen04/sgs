@@ -3,22 +3,13 @@
 //
 // GameEvent 维护自己的生命周期（created → executing → completed），
 // 通过 execute() 方法执行 before → content → after 三段式流程。
-// prevent() 抛出 EventPreventError，沿事件栈向上传播，
-// 直到被匹配的父事件 execute() 捕获。
+// 可取消的事件（damage / targeting）在 data 上携带 cancelled 标志；
+// execute() 检测到 data.cancelled 后跳过 content 与 after。
+// "打断整局"这类需要中断完全部调用栈的语义（如游戏结束）改由 GameOverError
+// 抛到入口统一捕获，不在此事件系统里处理。
 // ============================================================
 
 import type { Game } from '../game.js';
-
-// ============================================================
-// EventPreventError
-// ============================================================
-
-export class EventPreventError extends Error {
-  constructor(public readonly event: GameEvent<any>) {
-    super(`Event "${event.type}" was prevented`);
-    this.name = 'EventPreventError';
-  }
-}
 
 // ============================================================
 // GameEvent
@@ -34,7 +25,6 @@ export class GameEvent<T = Record<string, unknown>> {
   readonly game: Game;
   private _phase: EventPhase = 'created';
   private _parent: GameEvent<any> | null;
-  private _prevented = false;
 
   constructor(type: string, data: T, game: Game) {
     this.type = type;
@@ -66,9 +56,6 @@ export class GameEvent<T = Record<string, unknown>> {
    *   // 加伤
    * }
    *
-   * @example
-   * // 胜负判定中阻止游戏继续：
-   * event.getParent('game')?.prevent();
    */
   getParent(name: string): GameEvent<any> | null {
     let p = this._parent;
@@ -80,35 +67,11 @@ export class GameEvent<T = Record<string, unknown>> {
   }
 
   /**
-   * 阻止当前事件继续执行。
-   *
-   * 只能在 executing 阶段调用（即 before trigger 或 content 中）。
-   * 抛出 EventPreventError，向上传播直到被匹配事件的 execute() 捕获。
-   * 捕获后该事件的 after trigger 被跳过，但父事件继续正常执行。
-   */
-  prevent(): void {
-    if (this._phase !== 'executing') {
-      throw new Error(
-        `Cannot prevent event "${this.type}" in ${this._phase} phase — ` +
-        `prevent() can only be called during execution.`,
-      );
-    }
-    this._prevented = true;
-    throw new EventPreventError(this);
-  }
-
-  /** 查询事件是否被 prevent 过 */
-  isPrevented(): boolean {
-    return this._prevented;
-  }
-
-  /**
    * 执行事件：before triggers → content → after triggers。
    *
    * 只能在 created 阶段调用一次。重复调用抛出异常。
-   * 如果本事件被 prevent()，after trigger 被跳过，但父事件继续。
-   * 如果父事件被 prevent()，异常继续向上传播。
-   * content 抛出一般异常时仍保证事件栈正确弹出。
+   * 若 data.cancelled 为真，content 与 after 都被跳过。
+   * content 抛出异常时仍保证事件栈正确弹出，异常向上传播。
    */
   async execute(content: (event: this) => Promise<void>): Promise<this> {
     if (this._phase !== 'created') {
@@ -134,21 +97,21 @@ export class GameEvent<T = Record<string, unknown>> {
 
     try {
       await this.game.triggerSystem.trigger(`${this.type}.before`, this);
+      if (this._isCancelled()) return this; // 取消：跳过 content 与 after
       await content(this);
+      if (this._isCancelled()) return this; // content 内取消：跳过 after
       await this.game.triggerSystem.trigger(`${this.type}.after`, this);
-    } catch (e) {
-      if (e instanceof EventPreventError && e.event === this) {
-        // 本事件被 prevent — after 跳过，父事件不受影响
-      } else {
-        // 父事件被 prevent 或普通异常 — 继续向上抛
-        throw e;
-      }
     } finally {
       this.game.eventStack.pop();
       this._phase = 'completed';
     }
 
     return this;
+  }
+
+  /** 事件 data 上是否有 cancelled 标志（damage / targeting 等可取消事件） */
+  private _isCancelled(): boolean {
+    return (this.data as { cancelled?: boolean }).cancelled === true;
   }
 }
 

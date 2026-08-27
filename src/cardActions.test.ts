@@ -394,22 +394,6 @@ describe('moveCards（统一移动）', () => {
     expect(player.hand.length).toBe(0);
   });
 
-  it('before prevent → 移动取消，牌留在原处', async () => {
-    const g = freshGame();
-    const player = g.state.players[0];
-    const card = makeUniqueCard(CardType.Sha);
-    player.hand = [card];
-    g.triggerSystem.on('cardMove.before', async (event) => { event.prevent(); });
-
-    const moved = await moveCards(g, {
-      to: { zone: 'discardPile' }, cards: [card], reason: 'discard',
-    });
-
-    expect(moved).toEqual([]);
-    expect(player.hand).toContain(card);
-    expect(g.state.discardPile.length).toBe(0);
-  });
-
   it('事件数据：reason / fromAreas / to / mover 正确', async () => {
     const g = freshGame();
     const player = g.state.players[0];

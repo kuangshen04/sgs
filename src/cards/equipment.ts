@@ -137,7 +137,7 @@ cardRegistry.register({
       if (!target) return;
       // 依次弃置两张区域内的牌，然后防止伤害。
       // 逐张 select → moveCards（select 只读；取走一张后才能选第二张）。
-      // prevent() 抛异常，之后的代码不会执行，所以必须先弃牌再 prevent。
+      // cancelled 只是置位标志不中断，所以必须先弃牌再置位。
       const discarded: Card[] = [];
       for (let i = 0; i < 2; i++) {
         // askFromAreas：依次弃置哪两张区域牌（默认 AI：随机）
@@ -151,7 +151,7 @@ cardRegistry.register({
       console.log(
         `  ✨${owner.name} 的寒冰剑发动！防止 ${target.name} 受到伤害，弃置 ${discarded.length} 张牌`,
       );
-      event.prevent();
+      event.data.cancelled = true;
     },
   },
   tags: [CardTag.Equip, CardTag.Weapon],
@@ -185,7 +185,7 @@ cardRegistry.register({
       console.log(
         `  🔰${owner.name} 的仁王盾发动！黑色 ${cardEmoji(card.type)} 对其无效`,
       );
-      event.prevent(); // targeting 时取消目标
+      event.data.cancelled = true; // targeting 时取消目标
     },
   },
   tags: [CardTag.Equip, CardTag.Armor],

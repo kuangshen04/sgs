@@ -2,7 +2,7 @@
 // 事件系统 — 统一导出
 // ============================================================
 
-export { GameEvent, createEventStack, EventPreventError } from './GameEvent.js';
+export { GameEvent, createEventStack } from './GameEvent.js';
 export type { EventStack } from './GameEvent.js';
 export { TriggerSystem } from './TriggerSystem.js';
 export { EventType } from './types.js';

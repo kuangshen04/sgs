@@ -228,7 +228,7 @@ export interface CardMoveSpec {
  * - 来源区域由引擎对每张牌实时查询（from 派生）
  * - 不在任何位置的牌自动跳过（部分成功语义）
  * - 空移动不发事件
- * - before 可 prevent（移动取消）；物理移动在事件 content 中完成
+ * - 物理移动在事件 content 中完成
  * - 返回实际移动的牌
  */
 export async function moveCards(game: Game, spec: CardMoveSpec): Promise<Card[]> {
@@ -462,7 +462,7 @@ export async function useCard(
               // content 为空 — targeting 纯粹是 trigger 检查点
             });
 
-            if (!targetingEvent.isPrevented()) {
+            if (!targetingEvent.data.cancelled) {
               // 读事件内的 target：流离等技能可在 targeting.before 中转移目标
               remaining.push(targetingEvent.data.target);
             } else {
@@ -483,7 +483,7 @@ export async function useCard(
             game,
           ).execute(async () => {});
 
-          if (targetingEvent.isPrevented()) {
+          if (targetingEvent.data.cancelled) {
             console.log(`  🚫${event.data.player.name} 的 ${cardRegistry.get(event.data.card.type)?.name ?? '牌'} 效果已被抵消`);
             shouldExecute = false;
           }

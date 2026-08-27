@@ -38,6 +38,8 @@ export interface DamageEventData {
   /** 伤害来源；无来源伤害（如闪电）为 undefined */
   source?: Player;
   amount: number;
+  /** 伤害被防止（如寒冰剑）时置真，content 与 after 均被跳过 */
+  cancelled?: boolean;
 }
 
 export interface RecoverEventData {
@@ -70,6 +72,8 @@ export interface TargetingEventData {
   target: Player;   // 当前正在指定的单个目标
   /** 判定阶段的无懈窗口标记（允许被判定者抵消自己的延时锦囊） */
   judging?: boolean;
+  /** 目标指定被抵消（仁王盾 / 无懈）时置真，该 target 被剔除 */
+  cancelled?: boolean;
 }
 
 export interface UseCardEventData {

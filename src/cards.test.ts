@@ -452,7 +452,7 @@ describe('无懈可击', () => {
     giveHand(p3);                   // 空手 — 若无懈成功则不受伤
 
     // 南蛮 targets [p2, p3]
-    // p2 的 AI 会出无懈保护自己 → p2 的 targeting 被 prevent → p2 跳过
+    // p2 的 AI 会出无懈保护自己 → p2 的 targeting 被 cancel → p2 跳过
     // p3 没有无懈 → p3 必须出杀或受伤
     const hp2Before = p2.hp;
     const hp3Before = p3.hp;
@@ -520,7 +520,7 @@ describe('无懈可击', () => {
     const hpBefore = p1.hp;
     await useCard(g, { player: attacker, card: attacker.hand[0], targets: [p1] });
 
-    // 无懈₁ 被无懈₂ 反制 → 南蛮 targeting 未被 prevent → p1 受伤
+    // 无懈₁ 被无懈₂ 反制 → 南蛮 targeting 未被 cancel → p1 受伤
     expect(p1.hp).toBe(hpBefore - 1);
 
     // 只移除自定义 handler，不影响默认无懈 handler
@@ -552,7 +552,7 @@ describe('targeting', () => {
     expect(targets).toEqual(['曹操', '孙权']);
   });
 
-  it('prevent targeting → 该 target 被跳过', async () => {
+  it('cancel targeting → 该 target 被跳过', async () => {
     const g = freshGame();
     const attacker = g.state.players[0];
     const p2 = g.state.players[1];
@@ -563,7 +563,7 @@ describe('targeting', () => {
 
     // 抵消 p2 的目标指定
     g.triggerSystem.on(`${EventType.Targeting}.before`, (e) => {
-      if (e.data.target === p2) e.prevent();
+      if (e.data.target === p2) e.data.cancelled = true;
     });
 
     const hp2Before = p2.hp;
@@ -574,7 +574,7 @@ describe('targeting', () => {
     expect(p3.hp).toBe(hp3Before - 1); // p3 未被抵消，受伤
   });
 
-  it('全部 target 被 prevent → content 不执行，所有目标不受伤', async () => {
+  it('全部 target 被 cancel → content 不执行，所有目标不受伤', async () => {
     const g = freshGame();
     const attacker = g.state.players[0];
     const p2 = g.state.players[1];
@@ -583,7 +583,7 @@ describe('targeting', () => {
     giveHand(p2);
     giveHand(p3);
 
-    g.triggerSystem.on(`${EventType.Targeting}.before`, (e) => e.prevent());
+    g.triggerSystem.on(`${EventType.Targeting}.before`, (e) => { e.data.cancelled = true; });
 
     const hp2Before = p2.hp;
     const hp3Before = p3.hp;
@@ -608,12 +608,12 @@ describe('targeting', () => {
     expect(triggered).toEqual([player.name]);
   });
 
-  it('无目标牌的 targeting 被 prevent → content 不执行', async () => {
+  it('无目标牌的 targeting 被 cancel → content 不执行', async () => {
     const g = freshGame();
     const player = g.state.players[0];
     giveHand(player, CardType.WuZhong); // 本来会摸 2 张
 
-    g.triggerSystem.on(`${EventType.Targeting}.before`, (e) => e.prevent());
+    g.triggerSystem.on(`${EventType.Targeting}.before`, (e) => { e.data.cancelled = true; });
 
     const before = player.hand.length;
     await useCard(g, { player, card: player.hand[0], targets: [] });
@@ -627,7 +627,7 @@ describe('targeting', () => {
     const attacker = g.state.players[0];
     giveHand(attacker, CardType.NanMan);
 
-    g.triggerSystem.on(`${EventType.Targeting}.before`, (e) => e.prevent());
+    g.triggerSystem.on(`${EventType.Targeting}.before`, (e) => { e.data.cancelled = true; });
 
     const card = attacker.hand[0];
     await useCard(g, { player: attacker, card, targets: [g.state.players[1], g.state.players[2]] });

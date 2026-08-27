@@ -1,13 +1,12 @@
 // ============================================================
 // 事件系统 — GameEvent 单元测试
-// 生命周期 / before→content→after / prevent 语义 / 事件栈 / 异常传播
+// 生命周期 / before→content→after / cancel 语义 / 事件栈
 // ============================================================
 
 import { describe, it, expect } from 'vitest';
 
 import {
   GameEvent,
-  EventPreventError,
   createEventStack,
   TriggerSystem,
 } from './index.js';
@@ -132,60 +131,67 @@ describe('before → content → after', () => {
 });
 
 // ============================================================
-// prevent 语义
+// cancel（data.cancelled）语义
 // ============================================================
 
-describe('prevent', () => {
-  it('prevent 自己 → content 与 after 跳过，execute 正常返回', async () => {
+describe('cancel（data.cancelled）', () => {
+  it('data.cancelled = true → content 与 after 跳过，execute 正常返回', async () => {
     const game = makeGame();
     const executed: string[] = [];
-    game.triggerSystem.on('test.before', (e) => e.prevent());
     game.triggerSystem.on('test.after', () => { executed.push('after'); });
 
-    const event = new GameEvent('test', {}, game);
+    const event = new GameEvent('test', { cancelled: true }, game);
     await expect(event.execute(async () => {
       executed.push('content');
     })).resolves.toBe(event);
 
     expect(executed).toEqual([]);
-    expect(event.isPrevented()).toBe(true);
   });
 
-  it('prevent 抛出 EventPreventError 并携带被阻止的事件', async () => {
+  it('before 里置位 data.cancelled → content 与 after 跳过', async () => {
     const game = makeGame();
-    let caught: unknown = null;
+    const executed: string[] = [];
     game.triggerSystem.on('test.before', (e) => {
-      try {
-        e.prevent();
-      } catch (err) {
-        caught = err;
-      }
+      (e.data as { cancelled?: boolean }).cancelled = true;
+    });
+    game.triggerSystem.on('test.after', () => { executed.push('after'); });
+
+    const event = new GameEvent('test', {}, game);
+    await event.execute(async () => {
+      executed.push('content');
     });
 
-    const event = new GameEvent('test', {}, game);
-    await event.execute(async () => {});
-
-    expect(caught).toBeInstanceOf(EventPreventError);
-    expect((caught as EventPreventError).event).toBe(event);
-    expect(event.isPrevented()).toBe(true);
+    expect(executed).toEqual([]);
   });
 
-  it('created 阶段调用 prevent 抛错', () => {
+  it('content 里置位 data.cancelled → after 跳过', async () => {
     const game = makeGame();
-    const event = new GameEvent('test', {}, game);
+    const executed: string[] = [];
+    game.triggerSystem.on('test.after', () => { executed.push('after'); });
 
-    expect(() => event.prevent()).toThrow(/Cannot prevent event "test" in created phase/);
+    const event = new GameEvent('test', {}, game);
+    await event.execute(async () => {
+      executed.push('content');
+      (event.data as { cancelled?: boolean }).cancelled = true;
+    });
+
+    expect(executed).toEqual(['content']);
   });
 
-  it('completed 阶段调用 prevent 抛错', async () => {
+  it('无 cancelled 字段的事件照常执行', async () => {
     const game = makeGame();
-    const event = new GameEvent('test', {}, game);
-    await event.execute(async () => {});
+    const executed: string[] = [];
+    game.triggerSystem.on('test.after', () => { executed.push('after'); });
 
-    expect(() => event.prevent()).toThrow(/Cannot prevent event "test" in completed phase/);
+    const event = new GameEvent('test', {}, game);
+    await event.execute(async () => {
+      executed.push('content');
+    });
+
+    expect(executed).toEqual(['content', 'after']);
   });
 
-  it('prevent 父事件 → 父 content/after 与子 after 都跳过', async () => {
+  it('父事件 data.cancelled → 父 after 跳过，子事件不受影响', async () => {
     const game = makeGame();
     const executed: string[] = [];
     game.triggerSystem.on('parent.after', () => { executed.push('parent.after'); });
@@ -199,16 +205,22 @@ describe('prevent', () => {
       childRef = child;
       await child.execute(async () => {
         executed.push('child.content');
-        child.getParent('parent')!.prevent();
-        executed.push('child.content-after-prevent'); // 不可达
+        (child.getParent('parent')!.data as { cancelled?: boolean }).cancelled = true;
+        executed.push('child.content-after-cancel'); // cooperative：继续执行
       });
-      executed.push('parent.content-after-child'); // 不可达
+      executed.push('parent.content-after-child'); // 父 content 跑完，但父 after 被跳过
     });
 
-    expect(executed).toEqual(['parent.content-before', 'child.content']);
-    expect(parent.isPrevented()).toBe(true);
+    expect(executed).toEqual([
+      'parent.content-before',
+      'child.content',
+      'child.content-after-cancel',
+      'child.after',
+      'parent.content-after-child',
+    ]);
+    expect((parent.data as { cancelled?: boolean }).cancelled).toBe(true);
     expect(parent.phase).toBe('completed');
-    expect(childRef!.isPrevented()).toBe(false);
+    expect((childRef!.data as { cancelled?: boolean }).cancelled).toBeUndefined();
     expect(childRef!.phase).toBe('completed');
   });
 });

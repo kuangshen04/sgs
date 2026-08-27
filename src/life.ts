@@ -12,6 +12,18 @@ import { resolveUseResponse } from './respond.js';
 import type { Game } from './game.js';
 
 // ============================================================
+// 游戏结束
+// ============================================================
+
+/** 胜负判定出结果时抛出，由入口（index）统一捕获并展示冠军 */
+export class GameOverError extends Error {
+  constructor(public readonly winner: Player) {
+    super(`Game over: ${winner.name} wins`);
+    this.name = 'GameOverError';
+  }
+}
+
+// ============================================================
 // 伤害与恢复
 // ============================================================
 
@@ -138,7 +150,7 @@ export async function die(
       if (winner) {
         state.gameOver = true;
         state.winner = winner;
-        event.getParent(EventType.Game)?.prevent();
+        throw new GameOverError(winner);
       }
     });
 }

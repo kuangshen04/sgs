@@ -108,7 +108,7 @@ export async function judgePhase(
             game,
           ).execute(async () => {});
 
-          if (windowEvent.isPrevented()) {
+          if (windowEvent.data.cancelled) {
             console.log(`  🚫${player.name} 判定区的 ${cardEmoji(card.type)} 被无懈可击抵消`);
             continue;
           }
