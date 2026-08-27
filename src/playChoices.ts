@@ -7,11 +7,18 @@
 // ============================================================
 
 import { CardType } from './types.js';
-import type { Player, UsedCard } from './types.js';
+import type { Card, Player, UsedCard } from './types.js';
 import type { Game } from './game.js';
-import { computeCardOptions, computeTargetOptions, targetsStep } from './choose.js';
+import {
+  computeCardOptions,
+  computeTargetOptions,
+  cardsStep,
+  targetsStep,
+  selectedCards,
+  selectedPlayers,
+} from './choose.js';
 import type { CardOption } from './choose.js';
-import { asUsedCard } from './cardRegistry.js';
+import { asUsedCard, cardRegistry } from './cardRegistry.js';
 import { collectConversions } from './conversions.js';
 import type { ConversionDef } from './conversions.js';
 import { activeSkillRegistry } from './skills.js';
@@ -61,6 +68,23 @@ export async function choosePlayAction(
     const conversion = choice.action.data as ConversionDef;
     const resolved = conversion.resolve(choice.answers);
     return { kind: 'card', card: resolved.card, targets: resolved.targets };
+  }
+  if (choice.action.group === 'lord') {
+    const source = selectedCards(choice.answers, 'source')[0];
+    const targets = (choice.answers.target ?? [])
+      .map((o) => o.data as Player)
+      .filter((p): p is Player => !!p);
+    return {
+      kind: 'card',
+      card: {
+        type: CardType.Sha,
+        name: '杀',
+        suit: source.suit,
+        number: source.number,
+        physicalCards: [source],
+      },
+      targets,
+    };
   }
   return {
     kind: 'skill',
@@ -124,6 +148,9 @@ function buildPlayActions(
     });
   }
 
+  // 激将：出牌阶段借蜀盟友的杀（杀次数由 Sha.canUse 把关）
+  actions.push(...lordShaActions(game, player, shaUsed));
+
   return actions;
 }
 
@@ -158,6 +185,63 @@ function cardTargetPlan(
         });
       }
       return targetsStep('target', player, candidates, { min: tc, max: tc });
+    },
+  };
+}
+
+/** 激将（出牌阶段借杀）：有蜀盟友提供真杀且杀次数合法时可选用 */
+function lordShaActions(game: Game, player: Player, shaUsed: boolean): UseAction[] {
+  if (!player.hero.skills?.includes('激将')) return [];
+  if (game.state.lord && player !== game.state.lord) return []; // 身份场非主公不可用
+  const shaDef = cardRegistry.get(CardType.Sha)!;
+  if (!shaDef.canUse(player, game.state.players, shaUsed)) return [];
+
+  const sources = game.state.players
+    .filter((p) => p.alive && p !== player && p.hero.group === '蜀')
+    .flatMap((p) => p.hand.filter((c) => c.type === CardType.Sha));
+  if (sources.length === 0) return [];
+
+  return [{
+    id: 'lord:激将',
+    label: '激将（借杀）',
+    group: 'lord',
+    priority: shaDef.ai.usePriority,
+    continuation: (g, p) => lordShaTargetPlan(g, p, sources),
+  }];
+}
+
+/** 激将的后续选择：先选盟友提供的杀，再按杀规则选目标 */
+function lordShaTargetPlan(
+  game: Game,
+  player: Player,
+  sources: Card[],
+): SelectionPlan {
+  return {
+    nextStep(answers) {
+      if (!answers.source) {
+        return cardsStep('source', sources, {
+          prompt: '激将：选择盟友提供的杀',
+          min: 1,
+          max: 1,
+        });
+      }
+      if (!answers.target) {
+        const source = selectedCards(answers, 'source')[0];
+        const used: UsedCard = {
+          type: CardType.Sha,
+          name: '杀',
+          suit: source.suit,
+          number: source.number,
+          physicalCards: [source],
+        };
+        const targetOptions = computeTargetOptions(game, used, player);
+        return targetsStep('target', player, targetOptions.map((t) => t.player), {
+          prompt: '激将：选择杀的目标',
+          min: 1,
+          max: 1,
+        });
+      }
+      return null;
     },
   };
 }

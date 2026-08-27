@@ -69,4 +69,21 @@ describe('激将（刘备主公技）', () => {
     expect(liubei.hp).toBe(4);
     expect(guanyu.hand.length).toBe(0); // 关羽的杀被代打消耗
   });
+
+  it('出牌阶段可借蜀盟友的杀', async () => {
+    const g = freshGame({}, ['刘备', '孙权', '关羽']);
+    registerSkills(g);
+    const liubei = g.state.players[0];
+    const sunquan = g.state.players[1];
+    const guanyu = g.state.players[2];
+    liubei.hand = [];
+    guanyu.hand = [makeUniqueCard(CardType.Sha)];
+    const hpBefore = sunquan.hp;
+
+    await playPhase(g, { player: liubei });
+
+    expect(sunquan.hp).toBe(hpBefore - 1);
+    expect(guanyu.hand.length).toBe(0); // 关羽的杀被借走
+    expect(liubei.hand.length).toBe(0);
+  });
 });

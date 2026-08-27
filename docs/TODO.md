@@ -201,6 +201,11 @@
 - 洛神：`preparePhase` 里 judge 循环 + `askYesNo` 写死“继续判定”
 - 突袭：`drawPhase.before` shuffle + `askForTargets` 抢牌
 - 裸衣：`drawPhase.before` 减摸牌 + 临时 `damage.before` handler（手动注册/注销，无通用临时标记）
+- 观星：`zhugeliang` 里两步“选顶子集 → 排底顺序”的选择计划（单例）
+- 遗计：`guojia` 里逐张 `targetsStep` 分配（单例）
+- 救援：`useCard.after` 判定“吴势力桃对孙权（主公）”→ 回复 +1（单例）
+- 护驾 / 激将（响应）：`ResponseRule.resolve` 轮询同势力盟友 `resolvePlayResponse`（借牌，单例）
+- 激将（出牌阶段）：`playChoices.lordShaActions` 走 `group:'lord'` 特判，仅蜀盟友真杀（单例）
 
 ### 系统级“单例特判”结构（刻意保留）
 
