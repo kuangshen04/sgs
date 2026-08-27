@@ -105,6 +105,10 @@ export interface Player {
   alive: boolean;
   /** 本回合是否被乐不思蜀跳过出牌阶段（回合开始重置） */
   skipPlayPhase?: boolean;
+  /** 本回合是否使用或打出过【杀】（克己等回合内标记使用；回合开始重置） */
+  usedShaThisTurn?: boolean;
+  /** 本回合是否跳过弃牌阶段（克己可设置；回合开始重置） */
+  skipDiscardPhase?: boolean;
 }
 
 /**

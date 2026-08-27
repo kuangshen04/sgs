@@ -33,6 +33,8 @@ export async function turn(
   return new GameEvent<TurnEventData>(EventType.Turn, data, game)
     .execute(async () => {
       data.player.skipPlayPhase = false; // 回合开始重置瞬时标记
+      data.player.usedShaThisTurn = false;
+      data.player.skipDiscardPhase = false;
       await preparePhase(game, { player: data.player });
       if (!data.player.alive) return; // 死亡后跳过剩余阶段
       await judgePhase(game, { player: data.player });
@@ -143,7 +145,10 @@ export async function playPhase(
         const action = await choosePlayAction(game, player, shaUsed, usedSkills);
 
         if (action?.kind === 'card') {
-          if (action.card.type === CardType.Sha) shaUsed = true;
+          if (action.card.type === CardType.Sha) {
+            shaUsed = true;
+            player.usedShaThisTurn = true;
+          }
           await useCard(game, {
             player, card: action.card, targets: action.targets,
           });
@@ -165,6 +170,11 @@ export async function discardPhase(
   return new GameEvent<PhaseEventData>(EventType.DiscardPhase, data, game)
     .execute(async (event) => {
       const player = event.data.player;
+
+      if (player.skipDiscardPhase) {
+        console.log(`  ⏭️ ${player.name} 被跳过弃牌阶段`);
+        return;
+      }
 
       if (player.hand.length <= player.hp) {
         if (player.hand.length > 0) {

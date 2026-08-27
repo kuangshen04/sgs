@@ -14,6 +14,7 @@ import './huatuo.js';
 import './liubei.js';
 import './lvbu.js';
 import './luxun.js';
+import './lvmeng.js';
 import './machao.js';
 import './simayi.js';
 import './sunquan.js';
