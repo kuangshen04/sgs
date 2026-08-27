@@ -3,8 +3,8 @@
 //
 // GameEvent 维护自己的生命周期（created → executing → completed），
 // 通过 execute() 方法执行 before → content → after 三段式流程。
-// 可取消的事件（damage / targeting）在 data 上携带 cancelled 标志；
-// execute() 检测到 data.cancelled 后跳过 content 与 after。
+// execute 默认自动触发 before/after；需要自己编排触发时机的事件可传
+// { triggers: false }，此时 content 自行调用 game.triggerSystem.trigger（如 judge）。
 // "打断整局"这类需要中断完全部调用栈的语义（如游戏结束）改由 GameOverError
 // 抛到入口统一捕获，不在此事件系统里处理。
 // ============================================================
@@ -70,10 +70,13 @@ export class GameEvent<T = Record<string, unknown>> {
    * 执行事件：before triggers → content → after triggers。
    *
    * 只能在 created 阶段调用一次。重复调用抛出异常。
-   * 若 data.cancelled 为真，content 与 after 都被跳过。
    * content 抛出异常时仍保证事件栈正确弹出，异常向上传播。
+   * @param opts.triggers 默认 true：自动触发 before/after；设 false 后由 content 自己触发。
    */
-  async execute(content: (event: this) => Promise<void>): Promise<this> {
+  async execute(
+    content: (event: this) => Promise<void>,
+    opts?: { triggers?: boolean },
+  ): Promise<this> {
     if (this._phase !== 'created') {
       throw new Error(
         `Event "${this.type}" has already been ${this._phase} and cannot be executed again.`,
@@ -94,24 +97,18 @@ export class GameEvent<T = Record<string, unknown>> {
 
     this._phase = 'executing';
     this.game.eventStack.push(this);
+    const runTriggers = opts?.triggers !== false;
 
     try {
-      await this.game.triggerSystem.trigger(`${this.type}.before`, this);
-      if (this._isCancelled()) return this; // 取消：跳过 content 与 after
+      if (runTriggers) await this.game.triggerSystem.trigger(`${this.type}.before`, this);
       await content(this);
-      if (this._isCancelled()) return this; // content 内取消：跳过 after
-      await this.game.triggerSystem.trigger(`${this.type}.after`, this);
+      if (runTriggers) await this.game.triggerSystem.trigger(`${this.type}.after`, this);
     } finally {
       this.game.eventStack.pop();
       this._phase = 'completed';
     }
 
     return this;
-  }
-
-  /** 事件 data 上是否有 cancelled 标志（damage / targeting 等可取消事件） */
-  private _isCancelled(): boolean {
-    return (this.data as { cancelled?: boolean }).cancelled === true;
   }
 }
 

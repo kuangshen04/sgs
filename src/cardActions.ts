@@ -458,9 +458,12 @@ export async function useCard(
               EventType.Targeting,
               { user: event.data.player, card: event.data.card, target },
               game,
-            ).execute(async () => {
-              // content 为空 — targeting 纯粹是 trigger 检查点
-            });
+            ).execute(async (evt) => {
+              // targeting 是 trigger 检查点：自行编排 before / after，便于在 cancelled 时跳过
+              await game.triggerSystem.trigger(`${EventType.Targeting}.before`, evt);
+              if (evt.data.cancelled) return;
+              await game.triggerSystem.trigger(`${EventType.Targeting}.after`, evt);
+            }, { triggers: false });
 
             if (!targetingEvent.data.cancelled) {
               // 读事件内的 target：流离等技能可在 targeting.before 中转移目标
@@ -481,7 +484,11 @@ export async function useCard(
             EventType.Targeting,
             { user: event.data.player, card: event.data.card, target: event.data.player },
             game,
-          ).execute(async () => {});
+          ).execute(async (evt) => {
+            await game.triggerSystem.trigger(`${EventType.Targeting}.before`, evt);
+            if (evt.data.cancelled) return;
+            await game.triggerSystem.trigger(`${EventType.Targeting}.after`, evt);
+          }, { triggers: false });
 
           if (targetingEvent.data.cancelled) {
             console.log(`  🚫${event.data.player.name} 的 ${cardRegistry.get(event.data.card.type)?.name ?? '牌'} 效果已被抵消`);

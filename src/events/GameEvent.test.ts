@@ -131,29 +131,14 @@ describe('before → content → after', () => {
 });
 
 // ============================================================
-// cancel（data.cancelled）语义
+// execute 的 triggers 开关
 // ============================================================
 
-describe('cancel（data.cancelled）', () => {
-  it('data.cancelled = true → content 与 after 跳过，execute 正常返回', async () => {
+describe('execute triggers 开关', () => {
+  it('默认自动触发 before / content / after', async () => {
     const game = makeGame();
     const executed: string[] = [];
-    game.triggerSystem.on('test.after', () => { executed.push('after'); });
-
-    const event = new GameEvent('test', { cancelled: true }, game);
-    await expect(event.execute(async () => {
-      executed.push('content');
-    })).resolves.toBe(event);
-
-    expect(executed).toEqual([]);
-  });
-
-  it('before 里置位 data.cancelled → content 与 after 跳过', async () => {
-    const game = makeGame();
-    const executed: string[] = [];
-    game.triggerSystem.on('test.before', (e) => {
-      (e.data as { cancelled?: boolean }).cancelled = true;
-    });
+    game.triggerSystem.on('test.before', () => { executed.push('before'); });
     game.triggerSystem.on('test.after', () => { executed.push('after'); });
 
     const event = new GameEvent('test', {}, game);
@@ -161,67 +146,43 @@ describe('cancel（data.cancelled）', () => {
       executed.push('content');
     });
 
-    expect(executed).toEqual([]);
+    expect(executed).toEqual(['before', 'content', 'after']);
   });
 
-  it('content 里置位 data.cancelled → after 跳过', async () => {
+  it('triggers:false → 不自动触发 before/after，仅执行 content', async () => {
     const game = makeGame();
     const executed: string[] = [];
+    game.triggerSystem.on('test.before', () => { executed.push('before'); });
     game.triggerSystem.on('test.after', () => { executed.push('after'); });
 
     const event = new GameEvent('test', {}, game);
     await event.execute(async () => {
       executed.push('content');
-      (event.data as { cancelled?: boolean }).cancelled = true;
-    });
+    }, { triggers: false });
 
     expect(executed).toEqual(['content']);
   });
 
-  it('无 cancelled 字段的事件照常执行', async () => {
+  it('triggers:false 时 content 可自行触发 trigger', async () => {
     const game = makeGame();
     const executed: string[] = [];
+    game.triggerSystem.on('test.before', () => { executed.push('before'); });
     game.triggerSystem.on('test.after', () => { executed.push('after'); });
 
     const event = new GameEvent('test', {}, game);
-    await event.execute(async () => {
+    await event.execute(async (e) => {
+      await game.triggerSystem.trigger('test.before', e);
       executed.push('content');
-    });
+      await game.triggerSystem.trigger('test.after', e);
+    }, { triggers: false });
 
-    expect(executed).toEqual(['content', 'after']);
+    expect(executed).toEqual(['before', 'content', 'after']);
   });
 
-  it('父事件 data.cancelled → 父 after 跳过，子事件不受影响', async () => {
+  it('execute 返回值仍是该事件本身', async () => {
     const game = makeGame();
-    const executed: string[] = [];
-    game.triggerSystem.on('parent.after', () => { executed.push('parent.after'); });
-    game.triggerSystem.on('child.after', () => { executed.push('child.after'); });
-
-    const parent = new GameEvent('parent', {}, game);
-    let childRef: GameEvent | null = null;
-    await parent.execute(async () => {
-      executed.push('parent.content-before');
-      const child = new GameEvent('child', {}, game);
-      childRef = child;
-      await child.execute(async () => {
-        executed.push('child.content');
-        (child.getParent('parent')!.data as { cancelled?: boolean }).cancelled = true;
-        executed.push('child.content-after-cancel'); // cooperative：继续执行
-      });
-      executed.push('parent.content-after-child'); // 父 content 跑完，但父 after 被跳过
-    });
-
-    expect(executed).toEqual([
-      'parent.content-before',
-      'child.content',
-      'child.content-after-cancel',
-      'child.after',
-      'parent.content-after-child',
-    ]);
-    expect((parent.data as { cancelled?: boolean }).cancelled).toBe(true);
-    expect(parent.phase).toBe('completed');
-    expect((childRef!.data as { cancelled?: boolean }).cancelled).toBeUndefined();
-    expect(childRef!.phase).toBe('completed');
+    const event = new GameEvent('test', {}, game);
+    await expect(event.execute(async () => {})).resolves.toBe(event);
   });
 });
 

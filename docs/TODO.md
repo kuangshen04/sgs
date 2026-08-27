@@ -39,7 +39,7 @@
 - [x] 杀使用次数限制修改（咆哮、诸葛连弩，effectRegistry kind: unlimitedSha）
 - [x] 目标合法性限制（空城/谦逊：targetFilter 排除，effectRegistry kind: immuneSha/immuneJueDou/immuneShunShou/immuneLeBu）
 - [x] 响应要求修改（无双：需两张闪/杀，依赖杀响应流程）
-- [x] 防具效果：仁王盾（targeting 时取消目标，equipTrigger prevent，不依赖杀响应流程）
+- [x] 防具效果：仁王盾（targeting 时取消目标，equipTrigger 置 targeting.data.cancelled，不依赖杀响应流程）
 - [x] 防具效果：八卦阵（判定红视为闪、黑可再出闪；以 responseRule 实现）
 - [ ] 锁定技标记：区分锁定技与主动/触发技能
 
@@ -68,7 +68,7 @@
 
 ### 8. 事件清理钩子
 
-- [ ] 无论事件结局如何（正常 / 被 prevent / 被杀）都执行的事件级收尾函数（FreeKill 的 clear / extra_clear）
+- [ ] 无论事件结局如何（正常 / 被取消 / 被杀）都执行的事件级收尾函数（FreeKill 的 clear / extra_clear）
 - [ ] 用途：临时状态/标记清理、临时区域牌归位、关闭请求窗口、移除临时 handler
 - 注：我们已有 finally 弹栈（等价于出栈部分）；缺的是自定义收尾钩子；与事件历史（end_id 定稿）绑定
 
@@ -124,7 +124,7 @@
     - 发动询问：触发技能"你可以"（洛神继续判定等），接入 registerSkills 分发
   - [x] C. 回合外响应框架（ask 原语的上层应用）：
     - [x] 求桃按座次：从当前回合角色起按行动顺序询问桃；有人用桃后不重置回开头，指针停在用桃者身上（可连续用桃），一整轮无人响应才死亡
-    - [x] 无懈响应链：机制已由 `wuxieContent` 的 prevent + targeting 递归实现（后手无懈抵消先手），无需另建显式链；仅剩 AI 策略（只保护自己、不反无懈）写在 trigger 内，真人/前端接入时改为决策注入
+    - [x] 无懈响应链：机制已由 `wuxieContent` 置 targeting.data.cancelled + targeting 递归实现（后手无懈抵消先手），无需另建显式链；仅剩 AI 策略（只保护自己、不反无懈）写在 trigger 内，真人/前端接入时改为决策注入
   - 已完成：八卦阵（判定红视为闪，黑 retry 后可再出真闪）；离间 / 国色仍待
 - 下游（依赖本项，不并入本 todo）：主公技（护驾/激将/救援）、五谷丰登亮牌选择、转化牌选源牌/目标（#3）
 
@@ -180,7 +180,7 @@
 - 无双：`RespondMarks.shanRequired = 2`；决斗 content 里 `hero.skills.includes('无双')` 特判
 - 方天画戟：`playChoices.fangtianMaxTargets`，按装备 + 最后一张手牌放宽目标上限到 3
 - 青龙偃月刀 / 贯石斧：`shaCancelled.after` 装备 trigger，分别再出杀 / 弃两张牌
-- 仁王盾：`targeting.before` 黑色杀 prevent
+- 仁王盾：`targeting.before` 黑色杀置 targeting.data.cancelled
 - 雌雄双股剑：`targeting.after` 异性目标触发
 - 寒冰剑 / 麒麟弓：`damage.before/after`，判定 useCard 是杀
 

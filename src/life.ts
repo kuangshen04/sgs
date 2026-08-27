@@ -33,6 +33,8 @@ export async function damage(
 ): Promise<GameEvent<DamageEventData>> {
   return new GameEvent<DamageEventData>(EventType.Damage, data, game)
     .execute(async (event) => {
+      await game.triggerSystem.trigger(`${EventType.Damage}.before`, event);
+      if (event.data.cancelled) return; // 伤害被防止（寒冰剑等）：content 与 after 都不执行
       event.data.target.hp -= event.data.amount;
       console.log(
         `  💥 ${event.data.target.name} 受到${event.data.amount}点伤害！` +
@@ -41,7 +43,9 @@ export async function damage(
       if (event.data.target.hp <= 0) {
         await dying(game, { player: event.data.target });
       }
-    });
+      if (event.data.cancelled) return; // content 内又被防止：跳过 after
+      await game.triggerSystem.trigger(`${EventType.Damage}.after`, event);
+    }, { triggers: false });
 }
 
 export async function recover(

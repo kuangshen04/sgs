@@ -106,7 +106,11 @@ export async function judgePhase(
             EventType.Targeting,
             { user: player, card: asUsedCard(card), target: player, judging: true },
             game,
-          ).execute(async () => {});
+          ).execute(async (evt) => {
+            await game.triggerSystem.trigger(`${EventType.Targeting}.before`, evt);
+            if (evt.data.cancelled) return;
+            await game.triggerSystem.trigger(`${EventType.Targeting}.after`, evt);
+          }, { triggers: false });
 
           if (windowEvent.data.cancelled) {
             console.log(`  🚫${player.name} 判定区的 ${cardEmoji(card.type)} 被无懈可击抵消`);
