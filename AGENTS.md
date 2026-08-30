@@ -17,6 +17,7 @@
 
 - **代码**：`src/`（TypeScript ESM，相对导入带 `.js` 后缀）；测试与源码同目录（`src/xxx.test.ts`）
 - **需求与计划**：`docs/TODO.md`（编号分节，先列需求不做具体设计，完成一项勾选一项）
+- **演进与避坑**：`docs/演进与避坑.md`（借鉴无名杀/FreeKill 经验的决策记录，结论分级：已确认 / 方向）
 - **标包武将/卡牌定义**：`docs/标包武将.json`、`docs/标包卡牌.json`（唯一事实来源）
 - **牌堆数据**：`src/standardDeck.json`（108 张、32 种，与卡牌定义分离）
 - **测试辅助**：`src/test-utils.ts`（`freshGame` / `giveHand` / `makeUniqueCard`）
