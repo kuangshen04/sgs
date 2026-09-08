@@ -6,22 +6,26 @@ import { takeFromProcessing } from '../cardActions.js';
 import { cardEmoji, displayNumber } from '../cardRegistry.js';
 import { responseRuleRegistry } from '../responses.js';
 import { resolvePlayResponse } from '../respond.js';
-import { skillRegistry, subjectIsOwner } from '../skills.js';
-import { EventType } from '../events/index.js';
+import { skillRegistry } from '../skills.js';
+import type { DamageEventData } from '../events/index.js';
 import type { GameEvent } from '../events/index.js';
 import { heroRegistry } from '../heroRegistry.js';
 import type { Game } from '../game.js';
 import { CardType } from '../types.js';
 import type { Player } from '../types.js';
 
-/** 奸雄：受到伤害后，若伤害由使用牌造成，获得该牌 */
+/**
+ * 奸雄：受到伤害后，若伤害由使用牌造成，获得该牌。
+ * 因果判定走 DamageEventData.card（规则层在"牌直接造成伤害"处显式赋值，演进 2.3）——
+ * 不再经 getParent('useCard') 推断：刚烈等在 damage.after 内发起的反击伤害
+ * 嵌套于原伤害之下，栈查询会把反击伤害误归给原杀/决斗（已知问题，本修复针对它）。
+ */
 const jianxiongContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
-  const useCardEvent = event.getParent(EventType.UseCard);
-  if (!useCardEvent) return; // 非使用牌造成的伤害（如技能伤害）
-  const { physicalCards } = useCardEvent.data.card;
+  const { card } = event.data as DamageEventData;
+  if (!card) return; // 技能伤害（刚烈反击/反间等）或无来源伤害（闪电）→ 无可获得之牌
 
-  // 使用的虚拟牌对应的全部实体牌，结算期间都位于处理区
-  for (const physical of physicalCards) {
+  // 造成伤害的牌对应的全部实体牌，结算期间都位于处理区
+  for (const physical of card.physicalCards) {
     const found = await takeFromProcessing(game, owner, physical);
     if (!found) continue;
     console.log(
@@ -34,7 +38,9 @@ const jianxiongContent = async (game: Game, event: GameEvent<any>, owner: Player
 skillRegistry.register({
   name: '奸雄',
   trigger: 'damage.after',
-  canTrigger: subjectIsOwner,
+  // 仅"牌直接造成的伤害"才询问/发动——技能伤害（刚烈反击/反间）、无来源伤害无 card
+  canTrigger: (_game, event, owner, subject) =>
+    subject === owner && !!event.data.card,
   content: jianxiongContent,
 });
 

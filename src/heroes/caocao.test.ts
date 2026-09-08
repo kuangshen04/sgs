@@ -59,6 +59,27 @@ describe('奸雄（曹操技能）', () => {
     expect(caocao.hand.length).toBe(0);
   });
 
+  it('刚烈反击伤害不误归原杀（曹操用杀被反击，不得获得杀）', async () => {
+    const g = freshGame({}, ['曹操', '夏侯惇', '孙权']);
+    registerSkills(g);
+    const caocao = g.state.players[0];
+    const xiahoudun = g.state.players[1];
+    // 曹操只 1 张手牌：被刚烈反击时手牌 <2 → 走"受 1 点伤害"分支
+    giveHand(caocao, CardType.Sha);
+    const shaCard = caocao.hand[0];
+    // 控制判定：牌堆顶放一张非红桃（刚烈判定非红桃 → 结算反击）
+    g.state.deck = [makeUniqueCard(CardType.Sha, '♠', 5)];
+    const hpBefore = caocao.hp;
+
+    await useCard(g, { player: caocao, card: shaCard, targets: [xiahoudun] });
+
+    expect(xiahoudun.hp).toBe(3);                    // 曹操的杀命中
+    expect(caocao.hp).toBe(hpBefore - 1);            // 曹操被刚烈反击 1 点
+    // 反击是技能伤害（damage 无 card）：奸雄不得把杀拿回手里
+    expect(caocao.hand.length).toBe(0);
+    expect(g.state.discardPile.some((c) => c.id === shaCard.id)).toBe(true); // 杀结算后进弃牌堆
+  });
+
   it('非曹操受伤 → 不触发', async () => {
     const g = freshGame({}, caocaoHeroes);
     registerSkills(g);

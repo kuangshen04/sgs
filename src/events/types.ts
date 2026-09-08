@@ -38,6 +38,13 @@ export interface DamageEventData {
   /** 伤害来源；无来源伤害（如闪电）为 undefined */
   source?: Player;
   amount: number;
+  /**
+   * 造成本次伤害的牌（演进 2.3 显式因果字段）。
+   * 仅当伤害是某张【使用/打出】的牌直接造成时，由规则层（卡牌 content）显式赋值；
+   * 技能伤害（刚烈反击、反间）、无来源伤害（闪电）不设——奸雄等"获得造成伤害的牌"
+   * 类技能据此判断，不再经 getParent('useCard') 推断（避免嵌套伤害误归）。
+   */
+  card?: UsedCard;
   /** 伤害被防止（如寒冰剑）时置真，content 与 after 均被跳过 */
   cancelled?: boolean;
 }

@@ -3,13 +3,14 @@
 // ============================================================
 
 import { CardTag, CardType } from '../types.js';
+import type { Player } from '../types.js';
 import type { CardContentFn } from '../cardRegistry.js';
 import { cardRegistry, cardEmoji, displayNumber } from '../cardRegistry.js';
 import { drawCards, moveCards, useCard, takeTop } from '../cardActions.js';
 import { damage, recover } from '../life.js';
 import { distanceTo, attackRange } from '../distance.js';
 import { hasCardsInAreas } from '../areas.js';
-import { askForCard, askFromAreas, askFromCards } from '../choose.js';
+import { askForCard, askFromAreas, askFromCards, askForTargets, askOption } from '../choose.js';
 import type { TargetingEventData } from '../events/index.js';
 import { EventType } from '../events/index.js';
 import { effectRegistry } from '../persistentEffects.js';
@@ -44,8 +45,8 @@ const juedouContent: CardContentFn = async (game, data, _event) => {
     const required = opponent.hero.skills?.includes('无双') ? 2 : 1;
     const ok = await resolveJueDouResponse(game, current, required);
     if (!ok) {
-      // 打不出杀 → 受伤（失败时点暂无监听者，直接结算）
-      await damage(game, { target: current, source: opponent, amount: 1 });
+      // 打不出杀 → 受伤（失败时点暂无监听者，直接结算）；card = 决斗（造成伤害的牌）
+      await damage(game, { target: current, source: opponent, amount: 1, card: data.card });
       return;
     }
     [current, opponent] = [opponent, current];
@@ -63,7 +64,7 @@ const nanmanContent: CardContentFn = async (game, data, _event) => {
     if (await resolvePlayResponse(game, target, CardType.Sha)) {
       console.log(`  ${target.name} 打出了 🗡️杀`);
     } else {
-      await damage(game, { target, source: user, amount: 1 });
+      await damage(game, { target, source: user, amount: 1, card: data.card });
     }
   }
 };
@@ -79,7 +80,7 @@ const wanjianContent: CardContentFn = async (game, data, _event) => {
     if (await resolvePlayResponse(game, target, CardType.Shan)) {
       console.log(`  ${target.name} 打出了 🛡️闪`);
     } else {
-      await damage(game, { target, source: user, amount: 1 });
+      await damage(game, { target, source: user, amount: 1, card: data.card });
     }
   }
 };
@@ -175,28 +176,51 @@ const jiedaoContent: CardContentFn = async (game, data, _event) => {
     `  ${user.name} 对 ${target.name} 使用了 🗡️借刀杀人，令其对他人使用杀或交出武器`,
   );
 
-  // askForCard：目标是否出杀（默认 AI：有就出第一张）
-  const sha = await askForCard(game, target, '是否用杀响应【借刀杀人】', [CardType.Sha]);
-  const shaTarget = game.state.players.find(
-    (p) => p.alive && p !== target && p !== user
-      && distanceTo(game.state.players, target, p) <= attackRange(target),
-  );
+  // ── 决策①（借刀使用者）：指定被杀的目标 ────────────────────────
+  // 规则：目标（被借刀者）攻击范围内、杀对其合法（复用杀 targetFilter），
+  // 且不含借刀使用者本人（维持现状的简化，规则文本待核）。
+  // AI 决策点（真人/前端接入时在此注入）：默认取座次第一个合法角色。
+  const shaDef = cardRegistry.get(CardType.Sha)!;
+  const candidates = shaDef.targetFilter(target, game.state.players)
+    .filter((p) => p !== user);
+  const picked = candidates.length > 0
+    ? await askForTargets(game, user, '借刀杀人：指定目标要杀的角色', candidates, 1)
+    : null;
+  const victim = picked?.[0] ?? null;
 
-  // AI 决策：有杀且有合法目标 → 出杀（目标取第一个）；否则交武器。
-  // 真人/前端接入时此处改为询问。
-  if (sha && shaTarget) {
-    await useCard(game, { player: target, card: sha, targets: [shaTarget] });
-    console.log(
-      `  🗡️ ${target.name} 响应【借刀杀人】，对 ${shaTarget.name} 使用了杀`,
-    );
-  } else {
-    await moveCards(game, {
-      to: { player: user, zone: 'hand' }, cards: [weapon], reason: 'give',
-    });
-    console.log(
-      `  🗡️ ${target.name} 选择交出武器，${cardEmoji(weapon.type)} 到了 ${user.name} 手上`,
-    );
+  // ── 决策②（被借刀者）：对 victim 出杀，还是交出武器 ──────────────
+  // 规则：无杀或无法对 victim 使用杀 → 只能交出武器（不出选择）；
+  // 有杀且有 victim → 两者皆可选。
+  // AI 决策点（真人/前端接入时在此注入）：默认"出杀"以保住武器（与旧行为一致）。
+  const hasSha = target.hand.some((c) => c.type === CardType.Sha);
+  let wantToSlay = false;
+  if (victim && hasSha) {
+    const choice = await askOption(game, target, '借刀杀人：如何响应', [
+      { value: 'sha', label: `对 ${victim.name} 使用一张杀` },
+      { value: 'give', label: '交出武器' },
+    ], (ctx) => [ctx.step.options.find((o) => o.id === 'sha')!]);
+    wantToSlay = choice === 'sha';
   }
+
+  if (wantToSlay && victim) {
+    // 决策③（被借刀者）：出哪张杀（默认 AI：第一张）；选牌本身不再额外询问
+    const sha = await askForCard(game, target, '借刀杀人：使用哪张杀', [CardType.Sha]);
+    if (sha) {
+      await useCard(game, { player: target, card: sha, targets: [victim] });
+      console.log(
+        `  🗡️ ${target.name} 响应【借刀杀人】，对 ${victim.name} 使用了杀`,
+      );
+      return;
+    }
+  }
+
+  // 交出武器
+  await moveCards(game, {
+    to: { player: user, zone: 'hand' }, cards: [weapon], reason: 'give',
+  });
+  console.log(
+    `  🗡️ ${target.name} 选择交出武器，${cardEmoji(weapon.type)} 到了 ${user.name} 手上`,
+  );
 };
 
 /**
@@ -213,11 +237,29 @@ const wuxieContent: CardContentFn = async (_game, _data, event) => {
 };
 
 /**
+ * 默认无懈 AI 决策（写死，行为保持）：某玩家是否对本次锦囊 targeting 出无懈。
+ * 策略：只保护自己——仅当自己是锦囊目标时响应；不反无懈——普通窗口下
+ * 不对别人（含自己刚出的）无懈出反无懈。
+ * （judging = 判定阶段的延时锦囊窗口：允许被判定者抵消自己的延时锦囊。）
+ * AI 决策点（真人/前端接入时在此注入）：换更强策略（保护他人 / 反无懈 / 按锦囊利害取舍）时改此处。
+ */
+function wuxieGuardPolicy(
+  player: Player,
+  target: Player,
+  user: Player,
+  judging: boolean | undefined,
+): boolean {
+  if (target !== player) return false;            // 只保护自己
+  if (!judging && user === player) return false;  // 不反自己的无懈
+  return true;
+}
+
+/**
  * 注册无懈可击 trigger handler（挂到指定对局的触发器注册表）。
  * 响应链无需显式实现：每个无懈使用都会生成自身 targeting 事件 → 递归触发本 handler，
  * 后出的无懈在 content 中给前一个的 targeting 置位 cancelled（last-wins），
  * 前一个的 content 便不会执行。
- * 本循环只剩 AI 策略：从当前回合角色起按座次、只对目标为自己且使用者不是自己的锦囊出无懈。
+ * 本循环只剩 AI 策略：从当前回合角色起按座次询问（谁响应由 wuxieGuardPolicy 决定）。
  */
 export function installWuxieTrigger(game: Game): void {
   game.triggerSystem.on(`${EventType.Targeting}.before`, async (targetingEvent) => {
@@ -233,10 +275,7 @@ export function installWuxieTrigger(game: Game): void {
       const idx = (startIndex + offset) % state.players.length;
       const player = state.players[idx];
       if (!player.alive) continue;
-
-      // AI：只保护自己（判定阶段的无懈窗口允许被判定者抵消自己的延时锦囊）
-      if (target !== player) continue;
-      if (!judging && user === player) continue;
+      if (!wuxieGuardPolicy(player, target, user, judging)) continue;
 
       // 使用型响应窗口：真无懈 + 放弃
       const ok = await resolveUseResponse(game, player, {

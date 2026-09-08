@@ -103,6 +103,29 @@ describe('借刀杀人', () => {
 
     expect(def.canUse(user, g.state.players, false)).toBe(false);
   });
+
+  it('杀目标由使用者在范围内指定，空城者不会被选中', async () => {
+    const g = freshGame({}, ['刘备', '曹操', '诸葛亮', '关羽']);
+    const user = g.state.players[0];      // 借刀使用者
+    const target = g.state.players[1];    // 被借刀者：持青龙偃月刀（攻击范围 3）+ 杀
+    const kongcheng = g.state.players[2]; // 诸葛亮空手 → 空城（免疫杀）
+    const shaVictim = g.state.players[3]; // 关羽：攻击范围内唯一合法杀目标
+    target.equipment.weapon = makeUniqueCard(CardType.QingLongYanYueDao);
+    giveHand(user, CardType.JieDao);
+    giveHand(target, CardType.Sha);
+    giveHand(shaVictim); // 无闪
+    const kongchengHp = kongcheng.hp;
+    const victimHpBefore = shaVictim.hp;
+
+    await useCard(g, { player: user, card: user.hand[0], targets: [target] });
+
+    // 使用者（AI 默认取第一个合法角色）指定关羽；被借刀者出杀 → 关羽受伤、武器保留
+    expect(shaVictim.hp).toBe(victimHpBefore - 1);
+    expect(target.hand.length).toBe(0);
+    expect(target.equipment.weapon?.type).toBe(CardType.QingLongYanYueDao);
+    // 空城角色被杀 targetFilter 排除，不会成为借刀的杀目标
+    expect(kongcheng.hp).toBe(kongchengHp);
+  });
 });
 
 describe('useCard — 桃', () => {

@@ -21,7 +21,8 @@ const shaContent: CardContentFn = async (game, data, event) => {
   for (const defender of data.targets) {
     const cancelled = await resolveShaResponse(game, attacker, defender, data.card, marks);
     if (!cancelled) {
-      await damage(game, { target: defender, source: attacker, amount: 1 });
+      // card：造成伤害的牌 = 本张杀（奸雄等技能据此获得，见 events/types.ts）
+      await damage(game, { target: defender, source: attacker, amount: 1, card: data.card });
     }
   }
 };

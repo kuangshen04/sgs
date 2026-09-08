@@ -376,7 +376,7 @@ cardRegistry.register({
       return attacker === owner && cardsInAreas(owner).length >= 2; // 需弃两张牌
     },
     content: async (game, event, owner) => {
-      const { defender } = event.data as ShaCancelledEventData;
+      const { defender, card: shaCard } = event.data as ShaCancelledEventData;
       // askFromAreas：弃哪两张牌（默认 AI：随机）
       const discarded: Card[] = [];
       for (let i = 0; i < 2; i++) {
@@ -387,7 +387,8 @@ cardRegistry.register({
         });
         discarded.push(card);
       }
-      await damage(game, { target: defender, source: owner, amount: 1 });
+      // card：造成伤害的牌仍是被抵消的那张杀（贯石斧只是令其依然造成伤害）
+      await damage(game, { target: defender, source: owner, amount: 1, card: shaCard });
       console.log(
         `  🪓${owner.name} 的贯石斧发动！弃 ${discarded.length} 张牌，杀依然造成伤害`,
       );
