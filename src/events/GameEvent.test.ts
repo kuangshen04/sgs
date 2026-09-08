@@ -9,12 +9,14 @@ import {
   GameEvent,
   createEventStack,
   TriggerSystem,
+  findEventSince,
 } from './index.js';
 import type { Game } from '../game.js';
 
-/** 最小可用的 Game 假对象：GameEvent 依赖 eventStack 与 triggerSystem */
+/** 最小可用的 Game 假对象：GameEvent 依赖 eventStack / triggerSystem / history */
 function makeGame(): Game {
   return {
+    history: [],
     eventStack: createEventStack(),
     triggerSystem: new TriggerSystem(),
   } as unknown as Game;
@@ -274,6 +276,170 @@ describe('异常处理', () => {
     })).rejects.toThrow('boom');
 
     expect(executed).toEqual([]);
+  });
+});
+
+// ============================================================
+// 事件历史 — id / endId / history 数组
+// ============================================================
+
+describe('事件历史（id / endId / history）', () => {
+  it('execute 入史并赋全局递增 id（id == history 下标）', async () => {
+    const game = makeGame();
+    const a = new GameEvent('a', {}, game);
+    const b = new GameEvent('b', {}, game);
+    expect(a.id).toBe(-1); // 未执行无 id
+
+    await a.execute(async () => {
+      expect(a.id).toBe(0);
+      expect(game.history).toEqual([a]);
+    });
+    await b.execute(async () => {
+      expect(b.id).toBe(1);
+    });
+
+    expect(game.history).toEqual([a, b]);
+  });
+
+  it('嵌套事件：叶子 endId == id，父事件 endId 覆盖整棵子树', async () => {
+    const game = makeGame();
+    const parent = new GameEvent('parent', {}, game);
+    let child: GameEvent | null = null;
+
+    await parent.execute(async () => {
+      child = new GameEvent('child', {}, game);
+      await child.execute(async () => {
+        expect(child!.endId).toBeUndefined(); // 进行中未定稿
+        const leaf = new GameEvent('leaf', {}, game);
+        await leaf.execute(async () => {});
+        expect(leaf.endId).toBe(leaf.id);     // 叶子事件 == 自己
+      });
+      expect(child!.endId).toBe(2);           // 覆盖 leaf（id 2）
+    });
+
+    expect(parent.endId).toBe(2);             // 覆盖整棵子树
+  });
+
+  it('finally 顺序：clear → 定稿 endId → 弹栈', async () => {
+    const game = makeGame();
+    const order: string[] = [];
+    const event = new GameEvent('test', {}, game);
+
+    await event.execute(async () => { order.push('content'); }, {
+      clear: async () => {
+        order.push('clear');
+        expect(event.endId).toBeUndefined();      // clear 时尚未定稿
+        expect(game.eventStack.top).toBe(event);  // clear 时还在栈顶
+      },
+    });
+
+    expect(order).toEqual(['content', 'clear']);
+    expect(event.endId).toBe(event.id);
+    expect(event.phase).toBe('completed');
+    expect(game.eventStack.top).toBeNull();
+  });
+
+  it('content 抛错 → clear 仍执行、endId 定稿、异常传播', async () => {
+    const game = makeGame();
+    const cleared: string[] = [];
+    const event = new GameEvent('test', {}, game);
+
+    await expect(event.execute(async () => {
+      throw new Error('boom');
+    }, { clear: () => { cleared.push('cleared'); } })).rejects.toThrow('boom');
+
+    expect(cleared).toEqual(['cleared']);
+    expect(event.endId).toBe(event.id);
+    expect(event.phase).toBe('completed');
+    expect(game.eventStack.top).toBeNull();
+  });
+
+  it('clear 自身抛错 → 栈/endId/完成态仍正确，clear 异常向上传播', async () => {
+    const game = makeGame();
+    const event = new GameEvent('test', {}, game);
+
+    await expect(event.execute(async () => {}, {
+      clear: async () => { throw new Error('clear boom'); },
+    })).rejects.toThrow('clear boom');
+
+    expect(event.endId).toBe(event.id);
+    expect(event.phase).toBe('completed');
+    expect(game.eventStack.top).toBeNull();
+  });
+
+  it('子事件异常向上传播时，从内到外每层 clear 都执行（GameOver 解卷同机制）', async () => {
+    const game = makeGame();
+    const cleared: string[] = [];
+    const parent = new GameEvent('parent', {}, game);
+    let child: GameEvent | null = null;
+
+    await expect(parent.execute(async () => {
+      child = new GameEvent('child', {}, game);
+      await child.execute(async () => {
+        throw new Error('boom');
+      }, { clear: () => { cleared.push('child'); } });
+    }, { clear: () => { cleared.push('parent'); } })).rejects.toThrow('boom');
+
+    expect(cleared).toEqual(['child', 'parent']); // 内层先 clear
+    expect(child!.endId).toBe(child!.id);         // 叶子
+    expect(parent.endId).toBe(child!.id);         // 子树终点 = child
+    expect(game.eventStack.top).toBeNull();
+  });
+});
+
+// ============================================================
+// 历史范围查询 — findEventSince
+// ============================================================
+
+describe('findEventSince 范围查询', () => {
+  it('boundary 之后的事件按谓词命中（返回第一个）', async () => {
+    const game = makeGame();
+    const turn = new GameEvent('turn', {}, game);
+
+    await turn.execute(async () => {
+      await new GameEvent('draw', {}, game).execute(async () => {});
+      const useCard = new GameEvent('useCard', { name: '杀' }, game);
+      await useCard.execute(async () => {});
+
+      await new GameEvent('query', {}, game).execute(async () => {
+        const found = findEventSince(game, turn, (e) => e.type === 'useCard');
+        expect(found).toBe(useCard);
+      });
+    });
+  });
+
+  it('boundary 之前的匹配不计入（回合作用域）', async () => {
+    const game = makeGame();
+    const t1 = new GameEvent('turn', {}, game);
+    await t1.execute(async () => {
+      await new GameEvent('useCard', {}, game).execute(async () => {});
+    });
+
+    const t2 = new GameEvent('turn', {}, game);
+    await t2.execute(async () => {
+      const found = findEventSince(game, t2, (e) => e.type === 'useCard');
+      expect(found).toBeNull(); // t1 内的 useCard 不在 t2 之后
+    });
+  });
+
+  it('boundary 为 null → 从局首扫', async () => {
+    const game = makeGame();
+    const a = new GameEvent('a', {}, game);
+    await a.execute(async () => {});
+    const b = new GameEvent('b', {}, game);
+    await b.execute(async () => {});
+
+    expect(findEventSince(game, null, (e) => e.type === 'b')).toBe(b);
+    expect(findEventSince(game, null, (e) => e.type === '不存在')).toBeNull();
+  });
+
+  it('可命中数组尾端尚未完成的事件（endId 未定稿）', async () => {
+    const game = makeGame();
+    const query = new GameEvent('query', {}, game);
+    await query.execute(async () => {
+      expect(query.endId).toBeUndefined();
+      expect(findEventSince(game, null, (e) => e === query)).toBe(query);
+    });
   });
 });
 

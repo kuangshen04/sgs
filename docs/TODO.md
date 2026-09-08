@@ -63,15 +63,23 @@
 
 ### 7. 事件历史查询
 
-- [ ] 事件时间线：事件带全局 id，记录 end_id（子树跨度），可回溯查询
-- [ ] 范围查询：按当前阶段/回合/轮次/整局回溯（无双、裸衣、克己等"本回合用了几次杀"类技能需要）
-- 注：FreeKill（全局时间线 + end_id）与无名杀（按角色历史）模型不同，实现时再讨论
+- [x] 事件时间线：`Game.history` append-only 数组，事件在 `execute` 入史，id == 下标；
+  `finally` 定稿 `endId`（子树跨度，叶子事件 == id）——FreeKill DFS 时间戳模型（演进 2.2）
+- [x] 范围查询：`findEventSince(game, boundary, predicate)`（`src/events/history.ts`）——
+  边界（回合/轮次/阶段/整局）本身是事件，由调用方 `getParent` 定位后传入；boundary=null 从局首扫
+- 注：FreeKill（全局时间线 + end_id）与无名杀（按角色历史）模型不同 → 已定 DFS 时间戳；
+  克己已迁移为第一个真实消费者；无双/裸衣等仍用特判/栈查询，未迁移（无行为需求，避免空转）
+- 注：触发不产生子事件（演进 5.2）→ 历史只记真实事件；全量历史不做活窗口裁剪
 
 ### 8. 事件清理钩子
 
-- [ ] 无论事件结局如何（正常 / 被取消 / 被杀）都执行的事件级收尾函数（FreeKill 的 clear / extra_clear）
-- [ ] 用途：临时状态/标记清理、临时区域牌归位、关闭请求窗口、移除临时 handler
-- 注：我们已有 finally 弹栈（等价于出栈部分）；缺的是自定义收尾钩子；与事件历史（end_id 定稿）绑定
+- [x] 事件级 clear 收尾钩子：`execute(content, { clear })`，挂 `finally`，执行序
+  clear → 定稿 endId → 弹栈（FreeKill 同款）；正常/被取消/抛错/GameOver 解卷全路径覆盖
+  （`src/events/GameEvent.ts`，引擎级测试在 `GameEvent.test.ts`）
+- [x] clear 自身抛错也保证 endId/弹栈/完成态落地（嵌套 try/finally），异常向上传播
+- 注：现有归位 try/finally（useCard 处理区结算 / judge 判定牌归位）本阶段未迁移——
+  迁移会改变 settle 与 after-trigger 的相对时序，风险大于收益；真实消费等事件定义方有需要时再挂
+  （临时状态/临时 handler 清理与裸衣可逆注册话题联动）
 
 ### 9. 牌堆顶操作原语
 
@@ -208,7 +216,8 @@
 - 救援：`useCard.after` 判定“吴势力桃对孙权（主公）”→ 回复 +1（单例）
 - 护驾 / 激将（响应）：`ResponseRule.resolve` 轮询同势力盟友 `resolvePlayResponse`（借牌，单例）
 - 激将（出牌阶段）：`playChoices.lordShaActions` 走 `group:'lord'` 特判，仅蜀盟友真杀（单例）
-- 克己：`usedShaThisTurn` 和 `skipDiscardPhase` 标记
+- 克己：`skipDiscardPhase` 标记（触发判定已迁移为历史查询 `findEventSince`：本回合是否 useCard 过杀；
+  语义 = 旧 `usedShaThisTurn`，只计"使用"不计"打出"——响应打出不产生 useCard 事件，修正需先补"打出"记录）
 
 ### 系统级“单例特判”结构（刻意保留）
 
@@ -224,8 +233,8 @@
 ## 下一步（建议）
 
 > 实施顺序已整理进 [演进与避坑.md](演进与避坑.md) 第十节"实施路线"（七阶段），此处不再重复维护。
-> 简要版：标包真收尾（奸雄修复/info）→ 事件历史 + clear 钩子（#7/#8）→ CardArea 容器 →
-> 技能与效果建模（锁定技/失效/青釭剑/国色/离间/排序显式化）→ 军争/神话再临内容包 →
+> 简要版：标包真收尾（奸雄修复 ✓）→ 事件历史 + clear 钩子（#7/#8 ✓，克己已迁移历史查询）→
+> CardArea 容器 → 技能与效果建模（锁定技/失效/青釭剑/国色/离间/排序显式化）→ 军争/神话再临内容包 →
 > DI 插件机制 → 前端/回放/编辑器。
 
 ## 已知问题

@@ -33,7 +33,6 @@ export async function turn(
   return new GameEvent<TurnEventData>(EventType.Turn, data, game)
     .execute(async () => {
       data.player.skipPlayPhase = false; // 回合开始重置瞬时标记
-      data.player.usedShaThisTurn = false;
       data.player.skipDiscardPhase = false;
       await preparePhase(game, { player: data.player });
       if (!data.player.alive) return; // 死亡后跳过剩余阶段
@@ -150,8 +149,7 @@ export async function playPhase(
 
         if (action?.kind === 'card') {
           if (action.card.type === CardType.Sha) {
-            shaUsed = true;
-            player.usedShaThisTurn = true;
+            shaUsed = true; // 本阶段杀次数（限次查询用）；"本回合是否用杀"走 game.history（克己）
           }
           await useCard(game, {
             player, card: action.card, targets: action.targets,

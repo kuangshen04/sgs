@@ -5,6 +5,7 @@
 export { GameEvent, createEventStack } from './GameEvent.js';
 export type { EventStack } from './GameEvent.js';
 export { TriggerSystem } from './TriggerSystem.js';
+export { findEventSince } from './history.js';
 export { EventType } from './types.js';
 export type {
   DamageEventData,

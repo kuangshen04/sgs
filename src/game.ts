@@ -4,7 +4,7 @@
 
 import { Card, GameState, Player, VictoryCondition } from './types.js';
 import { TriggerSystem, createEventStack } from './events/index.js';
-import type { EventStack } from './events/index.js';
+import type { EventStack, GameEvent } from './events/index.js';
 import { shuffle } from './cardRegistry.js';
 import { heroRegistry } from './heroRegistry.js';
 import './heroes/index.js'; // 副作用：触发全部武将注册
@@ -20,6 +20,12 @@ export interface Game {
   eventStack: EventStack;
   /** 本局的触发器注册表（随局隔离） */
   triggerSystem: TriggerSystem;
+  /**
+   * 全量事件历史（演进 2.2 DFS 时间戳法）。
+   * append-only；append 顺序 == id 顺序（事件 id == 本数组下标）。
+   * 事件在 execute 入史，finally 定稿 endId（子树跨度终点）。回放不做历史序列化（演进 7.2）。
+   */
+  history: GameEvent<any>[];
 }
 
 // ============================================================
@@ -75,5 +81,6 @@ export function createGame(
     },
     eventStack: createEventStack(),
     triggerSystem: new TriggerSystem(),
+    history: [],
   };
 }

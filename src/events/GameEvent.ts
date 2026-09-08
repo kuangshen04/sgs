@@ -25,6 +25,10 @@ export class GameEvent<T = Record<string, unknown>> {
   readonly game: Game;
   private _phase: EventPhase = 'created';
   private _parent: GameEvent<any> | null;
+  /** 全局递增 id（== game.history 下标）；execute 入史时赋值，未执行前为 -1 */
+  private _id = -1;
+  /** 子树跨度终点（FreeKill end_id 等价物）；finally 定稿，叶子事件 == id */
+  private _endId?: number;
 
   constructor(type: string, data: T, game: Game) {
     this.type = type;
@@ -41,6 +45,16 @@ export class GameEvent<T = Record<string, unknown>> {
   /** 父事件（构造时的事件栈顶） */
   get parent(): GameEvent | null {
     return this._parent;
+  }
+
+  /** 全局递增 id（== game.history 下标；execute 入史时赋值，未执行前为 -1） */
+  get id(): number {
+    return this._id;
+  }
+
+  /** 子树跨度终点（end_id；finally 定稿，叶子事件 == id）；事件完成前为 undefined */
+  get endId(): number | undefined {
+    return this._endId;
   }
 
   /**
@@ -67,15 +81,18 @@ export class GameEvent<T = Record<string, unknown>> {
   }
 
   /**
-   * 执行事件：before triggers → content → after triggers。
+   * 执行事件：入史赋 id → before triggers → content → after triggers，
+   * finally 中 clear → 定稿 endId → 弹栈（演进 2.2/2.4）。
    *
    * 只能在 created 阶段调用一次。重复调用抛出异常。
-   * content 抛出异常时仍保证事件栈正确弹出，异常向上传播。
+   * content/clear 抛出异常时仍保证 endId 定稿、事件栈正确弹出，异常向上传播。
    * @param opts.triggers 默认 true：自动触发 before/after；设 false 后由 content 自己触发。
+   * @param opts.clear 事件级收尾钩子：无论正常/被取消/content 抛错/GameOver 解卷都执行；
+   *   执行时机 = finally 内、定稿 endId 与弹栈之前（FreeKill clear 同款顺序）。
    */
   async execute(
     content: (event: this) => Promise<void>,
-    opts?: { triggers?: boolean },
+    opts?: { triggers?: boolean; clear?: (event: GameEvent<T>) => void | Promise<void> },
   ): Promise<this> {
     if (this._phase !== 'created') {
       throw new Error(
@@ -97,6 +114,10 @@ export class GameEvent<T = Record<string, unknown>> {
 
     this._phase = 'executing';
     this.game.eventStack.push(this);
+    // 入史：append 顺序 == id 顺序（id 赋为入史前的 history 长度；严格栈纪律保证
+    // 子树在数组中连续，是时间戳法 end_id 正确性的前提——见 演进与避坑 2.2 红线）。
+    this._id = this.game.history.length;
+    this.game.history.push(this);
     const runTriggers = opts?.triggers !== false;
 
     try {
@@ -104,8 +125,14 @@ export class GameEvent<T = Record<string, unknown>> {
       await content(this);
       if (runTriggers) await this.game.triggerSystem.trigger(`${this.type}.after`, this);
     } finally {
-      this.game.eventStack.pop();
-      this._phase = 'completed';
+      try {
+        await opts?.clear?.(this);
+      } finally {
+        // 定稿 end_id：此时 history 尾 = 本事件子树的最后一个后代（栈纪律保证），叶子 = 自己
+        this._endId = this.game.history.length - 1;
+        this.game.eventStack.pop();
+        this._phase = 'completed';
+      }
     }
 
     return this;
