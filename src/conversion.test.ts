@@ -29,7 +29,7 @@ describe('useCard — 转化牌建模（mock 武圣）', () => {
     const attacker = g.state.players[0];
     const defender = g.state.players[2]; // 孙权，无奸雄
     const red = { id: 9001, type: CardType.Shan, name: '闪', suit: '♥', number: 3 };
-    attacker.hand = [red];
+    attacker.hand.replaceAll([red]);
 
     const hpBefore = defender.hp;
     await useCard(g, {
@@ -39,9 +39,9 @@ describe('useCard — 转化牌建模（mock 武圣）', () => {
     });
 
     expect(defender.hp).toBe(hpBefore - 1);
-    expect(attacker.hand).not.toContain(red);
+    expect(attacker.hand.cards).not.toContain(red);
     expect(g.state.processing).toHaveLength(0);
-    expect(g.state.discardPile).toContain(red); // 实体牌正常回弃牌堆
+    expect(g.state.discardPile.cards).toContain(red); // 实体牌正常回弃牌堆
   });
 
   it('奸雄获得虚拟牌对应的全部实体牌', async () => {
@@ -50,7 +50,7 @@ describe('useCard — 转化牌建模（mock 武圣）', () => {
     const attacker = g.state.players[0];
     const caocao = g.state.players[1];
     const red = { id: 9002, type: CardType.Shan, name: '闪', suit: '♦', number: 7 };
-    attacker.hand = [red];
+    attacker.hand.replaceAll([red]);
 
     const hpBefore = caocao.hp;
     await useCard(g, {
@@ -61,7 +61,7 @@ describe('useCard — 转化牌建模（mock 武圣）', () => {
 
     expect(caocao.hp).toBe(hpBefore - 1);
     expect(caocao.hand.map((c) => c.id)).toContain(red.id); // 奸雄拿走实体源牌
-    expect(g.state.discardPile).not.toContain(red);
+    expect(g.state.discardPile.cards).not.toContain(red);
     expect(g.state.processing).toHaveLength(0);
   });
 });

@@ -58,12 +58,12 @@ describe('激将（刘备主公技）', () => {
     const liubei = g.state.players[0];
     const guanyu = g.state.players[1];
     const caocao = g.state.players[2];
-    liubei.hand = [];
-    guanyu.hand = [makeUniqueCard(CardType.Sha)];
-    caocao.hand = [makeUniqueCard(CardType.JueDou)];
+    liubei.hand.clear();
+    guanyu.hand.replaceAll([makeUniqueCard(CardType.Sha)]);
+    caocao.hand.replaceAll([makeUniqueCard(CardType.JueDou)]);
     const hpBefore = caocao.hp;
 
-    await useCard(g, { player: caocao, card: caocao.hand[0], targets: [liubei] });
+    await useCard(g, { player: caocao, card: caocao.hand.cards[0], targets: [liubei] });
 
     expect(caocao.hp).toBe(hpBefore - 1); // 刘备代打成功，曹操无杀受伤
     expect(liubei.hp).toBe(4);
@@ -76,8 +76,8 @@ describe('激将（刘备主公技）', () => {
     const liubei = g.state.players[0];
     const sunquan = g.state.players[1];
     const guanyu = g.state.players[2];
-    liubei.hand = [];
-    guanyu.hand = [makeUniqueCard(CardType.Sha)];
+    liubei.hand.clear();
+    guanyu.hand.replaceAll([makeUniqueCard(CardType.Sha)]);
     const hpBefore = sunquan.hp;
 
     await playPhase(g, { player: liubei });

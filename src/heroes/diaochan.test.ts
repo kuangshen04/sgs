@@ -33,7 +33,7 @@ describe('闭月（貂蝉技能）', () => {
     const g = freshGame({}, diaochanHeroes);
     registerSkills(g);
     // 牌堆放桃：满血不可出，保证出牌阶段不出牌（结果确定）
-    g.state.deck = [makeUniqueCard(CardType.Tao), makeUniqueCard(CardType.Tao), makeUniqueCard(CardType.Tao)];
+    g.state.deck.replaceAll([makeUniqueCard(CardType.Tao), makeUniqueCard(CardType.Tao), makeUniqueCard(CardType.Tao)]);
     const diaochan = g.state.players[1];
     const before = diaochan.hand.length;
 
@@ -47,7 +47,7 @@ describe('闭月（貂蝉技能）', () => {
     const g = freshGame({}, diaochanHeroes);
     registerSkills(g);
     // 牌堆放桃：满血不可出，保证出牌阶段不出牌（结果确定）
-    g.state.deck = [makeUniqueCard(CardType.Tao), makeUniqueCard(CardType.Tao)];
+    g.state.deck.replaceAll([makeUniqueCard(CardType.Tao), makeUniqueCard(CardType.Tao)]);
     const liubei = g.state.players[0];
     const before = liubei.hand.length;
 

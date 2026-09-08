@@ -6,7 +6,7 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { freshGame, giveHand, makeUniqueCard } from './test-utils.js';
+import { freshGame, giveHand, makeUniqueCard, equipAt } from './test-utils.js';
 
 import { cardRegistry, asUsedCard } from './cardRegistry.js';
 
@@ -112,7 +112,7 @@ describe('computeTargetOptions', () => {
     const g = freshGame();
     const player = g.state.players[0];
     giveHand(player, CardType.Sha);
-    const card = player.hand[0];
+    const card = player.hand.cards[0];
 
     const targets = computeTargetOptions(g, asUsedCard(card), player);
     expect(targets.length).toBe(2);
@@ -123,7 +123,7 @@ describe('computeTargetOptions', () => {
     const g = freshGame();
     const player = g.state.players[0];
     giveHand(player, CardType.Tao);
-    const card = player.hand[0];
+    const card = player.hand.cards[0];
 
     const targets = computeTargetOptions(g, asUsedCard(card), player);
     expect(targets.length).toBe(1);
@@ -134,7 +134,7 @@ describe('computeTargetOptions', () => {
     const g = freshGame();
     const player = g.state.players[0];
     giveHand(player, CardType.NanMan);
-    const card = player.hand[0];
+    const card = player.hand.cards[0];
 
     const targets = computeTargetOptions(g, asUsedCard(card), player);
     expect(targets.length).toBe(2);
@@ -144,7 +144,7 @@ describe('computeTargetOptions', () => {
     const g = freshGame();
     const player = g.state.players[0];
     giveHand(player, CardType.WanJian);
-    const card = player.hand[0];
+    const card = player.hand.cards[0];
 
     const targets = computeTargetOptions(g, asUsedCard(card), player);
     expect(targets.length).toBe(2);
@@ -154,7 +154,7 @@ describe('computeTargetOptions', () => {
     const g = freshGame();
     const player = g.state.players[0];
     giveHand(player, CardType.TaoYuan);
-    const card = player.hand[0];
+    const card = player.hand.cards[0];
 
     const targets = computeTargetOptions(g, asUsedCard(card), player);
     expect(targets.length).toBe(3);
@@ -165,7 +165,7 @@ describe('computeTargetOptions', () => {
     const g = freshGame();
     const player = g.state.players[0];
     giveHand(player, CardType.WuGu);
-    const card = player.hand[0];
+    const card = player.hand.cards[0];
 
     const targets = computeTargetOptions(g, asUsedCard(card), player);
     expect(targets.length).toBe(3);
@@ -176,7 +176,7 @@ describe('computeTargetOptions', () => {
     const g = freshGame();
     const player = g.state.players[0];
     giveHand(player, CardType.ZhugeLianNu);
-    const card = player.hand[0];
+    const card = player.hand.cards[0];
 
     const targets = computeTargetOptions(g, asUsedCard(card), player);
     expect(targets.length).toBe(1);
@@ -188,7 +188,7 @@ describe('computeTargetOptions', () => {
     const player = g.state.players[0];
     giveHand(player, CardType.Sha);
 
-    const targets = computeTargetOptions(g, asUsedCard(player.hand[0]), player);
+    const targets = computeTargetOptions(g, asUsedCard(player.hand.cards[0]), player);
     expect(targets.map((t) => t.index)).toEqual([1, 3]); // 对位（索引 2）距离 2 排除
   });
 
@@ -197,17 +197,17 @@ describe('computeTargetOptions', () => {
     const player = g.state.players[0];
     giveHand(player, CardType.Sha);
 
-    const targets = computeTargetOptions(g, asUsedCard(player.hand[0]), player);
+    const targets = computeTargetOptions(g, asUsedCard(player.hand.cards[0]), player);
     expect(targets.map((t) => t.index)).toEqual([1, 2, 3]);
   });
 
   it('4人局：进攻马扩展杀的目标', () => {
     const g = freshGame({}, ['刘备', '曹操', '孙权', '郭嘉']);
     const players = g.state.players;
-    players[0].equipment.offensiveHorse = makeUniqueCard(CardType.ChiTu); // 刘备进攻马
+    equipAt(g, players[0], makeUniqueCard(CardType.ChiTu)); // 刘备进攻马
     giveHand(players[0], CardType.Sha);
 
-    const targets = computeTargetOptions(g, asUsedCard(players[0].hand[0]), players[0]);
+    const targets = computeTargetOptions(g, asUsedCard(players[0].hand.cards[0]), players[0]);
     // 曹操 1，孙权 2-1=1，郭嘉 1-1=1 → 全部可打
     expect(targets.map((t) => t.index)).toEqual([1, 2, 3]);
   });
@@ -215,10 +215,10 @@ describe('computeTargetOptions', () => {
   it('4人局：防御马使杀无法攻击该角色', () => {
     const g = freshGame({}, ['刘备', '曹操', '孙权', '郭嘉']);
     const players = g.state.players;
-    players[3].equipment.defensiveHorse = makeUniqueCard(CardType.JueYing); // 郭嘉防御马
+    equipAt(g, players[3], makeUniqueCard(CardType.JueYing)); // 郭嘉防御马
     giveHand(players[0], CardType.Sha);
 
-    const targets = computeTargetOptions(g, asUsedCard(players[0].hand[0]), players[0]);
+    const targets = computeTargetOptions(g, asUsedCard(players[0].hand.cards[0]), players[0]);
     // 曹操 1 ✓，孙权 2 排除，郭嘉 1+1=2 排除
     expect(targets.map((t) => t.index)).toEqual([1]);
   });
@@ -231,7 +231,7 @@ describe('computeTargetOptions', () => {
     giveHand(g.state.players[2], CardType.Tao);  // 距离 2 但有牌 → 排除
     giveHand(g.state.players[3], CardType.Shan);
 
-    const targets = computeTargetOptions(g, asUsedCard(player.hand[0]), player);
+    const targets = computeTargetOptions(g, asUsedCard(player.hand.cards[0]), player);
     expect(targets.map((t) => t.index)).toEqual([1, 3]);
   });
 
@@ -242,7 +242,7 @@ describe('computeTargetOptions', () => {
     giveHand(g.state.players[1], CardType.Sha);
     // players[2] 空手 → 不可选
 
-    const targets = computeTargetOptions(g, asUsedCard(player.hand[0]), player);
+    const targets = computeTargetOptions(g, asUsedCard(player.hand.cards[0]), player);
     expect(targets.length).toBe(1);
     expect(targets[0].player).toBe(g.state.players[1]);
   });

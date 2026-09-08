@@ -220,7 +220,7 @@ cardRegistry.register({
         game, target, `是否弃置一张手牌（否则 ${owner.name} 摸一张牌）`, target.hand.length > 0,
       );
       if (discardHand && target.hand.length > 0) {
-        await discardCards(game, target, [target.hand[0]]);
+        await discardCards(game, target, [target.hand.cards[0]]);
         console.log(
           `  ⚔️${owner.name} 的雌雄双股剑发动！${target.name} 弃置了一张手牌`,
         );

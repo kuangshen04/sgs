@@ -1,10 +1,15 @@
 // ============================================================
 // 三国杀最小原型 — 牌的操作（摸牌/出牌/弃置/交给）
+//
+// 阶段 2 位置模型收口：所有区域为受控容器 CardArea，引擎级集中索引 game.cardIndex
+// 由容器方法/装备槽位写点维护；getCardArea 改为索引查询。toPosition 已从 moveCards
+// 签名剥离——牌堆顶/底是取放策略，收敛进 putTop/putBottom（内部移动方向参数）。
 // ============================================================
 
 import { Card, CardTag, Player } from './types.js';
 import type { CardLocation, CardMoveReason, UsedCard } from './types.js';
 import type { PlayerEquipment } from './types.js';
+import { CardArea } from './cardArea.js';
 import { EventType, GameEvent } from './events/index.js';
 import type { CardMoveEventData, DrawEventData, JudgeEventData, TargetingEventData, UseCardEventData } from './events/index.js';
 import { cardRegistry, cardEmoji, displayNumber, shuffle, asUsedCard } from './cardRegistry.js';
@@ -14,9 +19,9 @@ import type { Game } from './game.js';
 // 牌堆操作（查询层 + 洗牌；摸牌/判定走统一 moveCards）
 // ============================================================
 
-/** 查看牌堆顶 n 张（不移动）；不足 n 张返回全部 */
+/** 查看牌堆顶 n 张（不移动）；不足 n 张返回全部（顶 = 数组尾） */
 export function peekTop(game: Game, n: number): Card[] {
-  const deck = game.state.deck;
+  const deck = game.state.deck.cards;
   return deck.slice(Math.max(0, deck.length - n));
 }
 
@@ -42,42 +47,46 @@ export async function takeBottom(
   mover?: Player,
 ): Promise<Card[]> {
   if (game.state.deck.length === 0) await reshuffle(game);
-  const cards = game.state.deck.slice(0, count);
+  const cards = game.state.deck.cards.slice(0, count);
   return moveCards(game, { to, cards, reason, mover });
 }
 
-/** 把一组牌放到牌堆顶 */
+/**
+ * 把一组牌放到牌堆顶（cards[0] 为最顶一张）。
+ * 顶/底 = 牌堆取放策略，不走 moveCards 公共签名（toPosition 已剥离）。
+ */
 export async function putTop(
   game: Game,
   cards: Card[],
   reason: CardMoveReason = 'reshuffle',
 ): Promise<Card[]> {
-  return moveCards(game, {
-    to: { zone: 'deck' }, cards: [...cards].reverse(), reason, toPosition: 'top',
-  });
+  return moveCardsImpl(game, [...cards].reverse(), reason, false, undefined, { zone: 'deck' });
 }
 
-/** 把一组牌放到牌堆底（cards[0] 为底块中最靠上的一张，cards[last] 为最底） */
+/**
+ * 把一组牌放到牌堆底（cards[0] 为底块中最靠上的一张，cards[last] 为最底）。
+ */
 export async function putBottom(
   game: Game,
   cards: Card[],
   reason: CardMoveReason = 'reshuffle',
 ): Promise<Card[]> {
-  return moveCards(game, { to: { zone: 'deck' }, cards, reason, toPosition: 'bottom' });
+  return moveCardsImpl(game, cards, reason, true, undefined, { zone: 'deck' });
 }
 
 /** 从牌堆顶往下找第一张符合条件；没有返回 null */
 export function findInDeck(game: Game, predicate: (card: Card) => boolean): Card | null {
-  for (let i = game.state.deck.length - 1; i >= 0; i--) {
-    if (predicate(game.state.deck[i])) return game.state.deck[i];
+  const deck = game.state.deck.cards;
+  for (let i = deck.length - 1; i >= 0; i--) {
+    if (predicate(deck[i])) return deck[i];
   }
   return null;
 }
 
 /** 牌堆 + 弃牌堆中所有符合条件的牌（牌堆先，弃牌堆后） */
 export function findInDeckAndDiscard(game: Game, predicate: (card: Card) => boolean): Card[] {
-  const deck = [...game.state.deck].reverse();
-  return [...deck.filter(predicate), ...game.state.discardPile.filter(predicate)];
+  const deck = [...game.state.deck.cards].reverse();
+  return [...deck.filter(predicate), ...game.state.discardPile.cards.filter(predicate)];
 }
 
 /**
@@ -85,11 +94,9 @@ export function findInDeckAndDiscard(game: Game, predicate: (card: Card) => bool
  * 牌堆为空时由摸牌/判定自动调用，也可主动触发。
  */
 export async function reshuffle(game: Game): Promise<void> {
-  const cards = shuffle([...game.state.discardPile]);
+  const cards = shuffle([...game.state.discardPile.cards]);
   if (cards.length === 0) return;
-  await moveCards(game, {
-    to: { zone: 'deck' }, cards, reason: 'reshuffle',
-  });
+  await moveCardsImpl(game, cards, 'reshuffle', false, undefined, { zone: 'deck' });
   console.log(`  🔄 弃牌堆 ${cards.length} 张重新洗入牌堆`);
 }
 
@@ -135,108 +142,100 @@ export async function drawCards(
 // 统一移动模型（位置查询 + moveCards）
 // ============================================================
 
-/**
- * 查询一张牌当前所在位置；不在任何位置返回 null。
- * 当前实现为实时扫描（规模小、永远与状态一致）；
- * 将来 TODO #10 位置追踪需要性能时可换成缓存索引，API 不变。
- */
+/** 查询一张牌当前所在位置；不在任何位置返回 null。集中索引查询（阶段 2）。 */
 export function getCardArea(game: Game, card: Card): CardLocation | null {
-  for (const player of game.state.players) {
-    if (player.hand.some((c) => c.id === card.id)) return { player, zone: 'hand' };
-    const eq = player.equipment;
-    for (const slot of ['weapon', 'armor', 'defensiveHorse', 'offensiveHorse'] as const) {
-      if (eq[slot]?.id === card.id) return { player, zone: 'equipment' };
-    }
-    if (player.judgment.some((c) => c.id === card.id)) return { player, zone: 'judgment' };
-  }
-  if (game.state.processing.some((c) => c.id === card.id)) return { zone: 'processing' };
-  if (game.state.deck.some((c) => c.id === card.id)) return { zone: 'deck' };
-  if (game.state.discardPile.some((c) => c.id === card.id)) return { zone: 'discardPile' };
-  return null;
+  return game.cardIndex.get(card.id) ?? null;
 }
 
-/** 从位置移除一张牌（按 id）；不在该位置返回 null */
+/** 定位某个 CardLocation 对应的列表式容器（装备区非列表，返回 null） */
+function listAreaAt(game: Game, loc: CardLocation): CardArea | null {
+  if ('player' in loc) {
+    if (loc.zone === 'hand') return loc.player.hand;
+    if (loc.zone === 'judgment') return loc.player.judgment;
+    return null; // equipment
+  }
+  return game.state[loc.zone] as CardArea;
+}
+
+/** 从位置移除一张牌（按 id；同步索引）。不在该位置返回 null。 */
 function takeCardFromLocation(game: Game, loc: CardLocation, cardId: number): Card | null {
-  if ('player' in loc) {
-    const p = loc.player;
-    if (loc.zone === 'hand') {
-      const i = p.hand.findIndex((c) => c.id === cardId);
-      if (i < 0) return null;
-      return p.hand.splice(i, 1)[0];
-    }
-    if (loc.zone === 'equipment') {
-      const eq = p.equipment;
-      for (const slot of ['weapon', 'armor', 'defensiveHorse', 'offensiveHorse'] as const) {
-        if (eq[slot]?.id === cardId) {
-          const card = eq[slot]!;
-          eq[slot] = undefined;
-          return card;
-        }
+  if ('player' in loc && loc.zone === 'equipment') {
+    const eq = loc.player.equipment;
+    for (const slot of ['weapon', 'armor', 'defensiveHorse', 'offensiveHorse'] as const) {
+      if (eq[slot]?.id === cardId) {
+        const card = eq[slot]!;
+        eq[slot] = undefined;
+        game.cardIndex.delete(cardId);
+        return card;
       }
-      return null;
     }
-    const i = p.judgment.findIndex((c) => c.id === cardId);
-    if (i < 0) return null;
-    return p.judgment.splice(i, 1)[0];
+    return null;
   }
-  if (loc.zone === 'processing') {
-    const i = game.state.processing.findIndex((c) => c.id === cardId);
-    if (i < 0) return null;
-    return game.state.processing.splice(i, 1)[0];
-  }
-  const pile = loc.zone === 'deck' ? game.state.deck : game.state.discardPile;
-  const i = pile.findIndex((c) => c.id === cardId);
-  if (i < 0) return null;
-  return pile.splice(i, 1)[0];
+  const area = listAreaAt(game, loc);
+  if (!area) return null;
+  // removeById 内部同步索引
+  return area.removeById(cardId);
 }
 
-/** 把一张牌放入位置（牌堆按 toPosition 决定顶/底，默认顶） */
+/** 把一张牌放入位置（牌堆按 atBottom 决定放底/放顶，默认顶；同步索引） */
 function putCardToLocation(
-  game: Game, loc: CardLocation, card: Card, toPosition?: 'top' | 'bottom',
+  game: Game,
+  loc: CardLocation,
+  card: Card,
+  atBottom: boolean,
 ): void {
-  if ('player' in loc) {
-    const p = loc.player;
-    if (loc.zone === 'hand') p.hand.push(card);
-    else if (loc.zone === 'equipment') p.equipment[equipSlotOf(card)] = card;
-    else p.judgment.push(card);
+  if ('player' in loc && loc.zone === 'equipment') {
+    const slot = equipSlotOf(card);
+    const eq = loc.player.equipment;
+    const occupied = eq[slot];
+    if (occupied && occupied.id !== card.id) {
+      throw new Error(
+        `CardArea: ${loc.player.name} 的装备槽 ${slot} 已被 #${occupied.id} 占用，无法放入 #${card.id}`,
+      );
+    }
+    eq[slot] = card;
+    game.cardIndex.set(card.id, loc);
     return;
   }
-  if (loc.zone === 'processing') {
-    game.state.processing.push(card);
-    return;
-  }
-  if (loc.zone === 'deck') {
-    if (toPosition === 'bottom') game.state.deck.unshift(card);
-    else game.state.deck.push(card);
-    return;
-  }
-  game.state.discardPile.push(card);
+  const area = listAreaAt(game, loc);
+  if (!area) throw new Error(`CardArea: 未知放置位置 ${JSON.stringify(loc)}`);
+  if (atBottom && loc.zone === 'deck') area.insertAt(0, card);
+  else area.add(card); // add 内部做唯一性校验 + 索引写入
 }
 
-/** 一次移动的规格：调用方只给终点 + 已知牌 + reason，来源由引擎派生 */
+/** 一次移动的规格：调用方只给终点 + 已知牌 + reason，来源由引擎派生（索引）。 */
 export interface CardMoveSpec {
   to: CardLocation;
   cards: Card[];
   reason: CardMoveReason;
   mover?: Player;
-  /** 仅终点为牌堆时使用（临时，见 移动模型重构TODO） */
-  toPosition?: 'top' | 'bottom';
 }
 
 /**
  * 统一移动原语：把一组已知牌移到终点位置，产生一次 CardMove 事件。
- * - 来源区域由引擎对每张牌实时查询（from 派生）
+ * - 来源区域由引擎对每张牌经集中索引派生（from 派生）
  * - 不在任何位置的牌自动跳过（部分成功语义）
- * - 空移动不发事件
- * - 物理移动在事件 content 中完成
- * - 返回实际移动的牌
+ * - 空移动不发事件；物理移动在事件 content 中完成；返回实际移动的牌
+ * - 牌堆顶/底不是位置：放底由 putTop/putBottom 表达，不进本签名
  */
 export async function moveCards(game: Game, spec: CardMoveSpec): Promise<Card[]> {
-  if (spec.cards.length === 0) return [];
+  return moveCardsImpl(game, spec.cards, spec.reason, false, spec.mover, spec.to);
+}
 
-  // from 派生：实时查询每张牌的位置
+/** 内部实现：atBottom 仅对 deck 终点有意义（putBottom/观星放回使用） */
+async function moveCardsImpl(
+  game: Game,
+  cards: Card[],
+  reason: CardMoveReason,
+  atBottom: boolean,
+  mover: Player | undefined,
+  to: CardLocation,
+): Promise<Card[]> {
+  if (cards.length === 0) return [];
+
+  // from 派生：集中索引查询每张牌的位置
   const entries: { card: Card; from: CardLocation }[] = [];
-  for (const card of spec.cards) {
+  for (const card of cards) {
     const from = getCardArea(game, card);
     if (from) entries.push({ card, from });
   }
@@ -245,10 +244,9 @@ export async function moveCards(game: Game, spec: CardMoveSpec): Promise<Card[]>
   const data: CardMoveEventData = {
     cards: entries.map((e) => e.card),
     fromAreas: entries.map((e) => e.from),
-    to: spec.to,
-    reason: spec.reason,
-    mover: spec.mover,
-    toPosition: spec.toPosition,
+    to,
+    reason,
+    mover,
   };
 
   let moved: Card[] = [];
@@ -257,9 +255,10 @@ export async function moveCards(game: Game, spec: CardMoveSpec): Promise<Card[]>
       moved = [];
       for (let i = 0; i < event.data.cards.length; i++) {
         const card = event.data.cards[i];
-        takeCardFromLocation(game, event.data.fromAreas[i], card.id);
-        putCardToLocation(game, event.data.to, card, event.data.toPosition);
-        moved.push(card);
+        const removed = takeCardFromLocation(game, event.data.fromAreas[i], card.id);
+        if (!removed) continue;
+        putCardToLocation(game, event.data.to, removed, atBottom);
+        moved.push(removed);
       }
     });
   return moved;

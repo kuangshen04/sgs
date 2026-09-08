@@ -25,7 +25,7 @@ describe('集智（黄月英技能）', () => {
     registerSkills(g);
     const yueying = g.state.players[1];
     giveHand(yueying, CardType.WuZhong);
-    const card = yueying.hand[0];
+    const card = yueying.hand.cards[0];
 
     await useCard(g, { player: yueying, card, targets: [yueying] });
 
@@ -38,7 +38,7 @@ describe('集智（黄月英技能）', () => {
     registerSkills(g);
     const yueying = g.state.players[1];
     giveHand(yueying, CardType.Sha);
-    const card = yueying.hand[0];
+    const card = yueying.hand.cards[0];
 
     await useCard(g, { player: yueying, card, targets: [g.state.players[0]] });
 
@@ -50,7 +50,7 @@ describe('集智（黄月英技能）', () => {
     registerSkills(g);
     const yueying = g.state.players[1];
     giveHand(yueying, CardType.LeBu);
-    const card = yueying.hand[0];
+    const card = yueying.hand.cards[0];
 
     await useCard(g, { player: yueying, card, targets: [g.state.players[2]] });
 
@@ -75,12 +75,12 @@ describe('奇才（黄月英锁定技）', () => {
 
     // 黄月英（索引 1）：无距离限制，可牵所有有牌角色
     giveHand(yueying, CardType.ShunShou);
-    const yueyingTargets = computeTargetOptions(g, asUsedCard(yueying.hand[0]), yueying);
+    const yueyingTargets = computeTargetOptions(g, asUsedCard(yueying.hand.cards[0]), yueying);
     expect(yueyingTargets.map((t) => t.index)).toEqual([0, 2, 3]);
 
     // 刘备（索引 0，无奇才）：只能牵距离 1 的角色
     giveHand(player, CardType.ShunShou);
-    const liubeiTargets = computeTargetOptions(g, asUsedCard(player.hand[0]), player);
+    const liubeiTargets = computeTargetOptions(g, asUsedCard(player.hand.cards[0]), player);
     expect(liubeiTargets.map((t) => t.index)).toEqual([1, 3]);
   });
 
@@ -89,7 +89,7 @@ describe('奇才（黄月英锁定技）', () => {
     const yueying = g.state.players[1];
     giveHand(yueying, CardType.Sha);
 
-    const targets = computeTargetOptions(g, asUsedCard(yueying.hand[0]), yueying);
+    const targets = computeTargetOptions(g, asUsedCard(yueying.hand.cards[0]), yueying);
     // 黄月英[1]：刘备[0]/孙权[2] 距离 1，郭嘉[3] 距离 2 超出范围 → 奇才不豁免杀
     expect(targets.map((t) => t.index)).toEqual([0, 2]);
   });

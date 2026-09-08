@@ -25,8 +25,8 @@ describe('奇袭（甘宁转化牌）', () => {
     const ganning = g.state.players[0];
     const liubei = g.state.players[1];
     const black = { id: 9010, type: CardType.Shan, name: '闪', suit: '♠', number: 5 };
-    ganning.hand = [black];
-    liubei.hand = [{ id: 9011, type: CardType.Tao, name: '桃', suit: '♥', number: 2 }];
+    ganning.hand.replaceAll([black]);
+    liubei.hand.replaceAll([{ id: 9011, type: CardType.Tao, name: '桃', suit: '♥', number: 2 }]);
 
     const result = await choosePlayAction(g, ganning, false, new Set());
 
@@ -45,14 +45,14 @@ describe('奇袭（甘宁转化牌）', () => {
     const liubei = g.state.players[1];
     const black = { id: 9012, type: CardType.Shan, name: '闪', suit: '♣', number: 6 };
     const tao = { id: 9013, type: CardType.Tao, name: '桃', suit: '♥', number: 3 };
-    ganning.hand = [black];
-    liubei.hand = [tao];
+    ganning.hand.replaceAll([black]);
+    liubei.hand.replaceAll([tao]);
 
     await playPhase(g, { player: ganning });
 
     expect(liubei.hand.length).toBe(0);
-    expect(g.state.discardPile).toContain(black);
-    expect(g.state.discardPile).toContain(tao);
+    expect(g.state.discardPile.cards).toContain(black);
+    expect(g.state.discardPile.cards).toContain(tao);
     expect(ganning.hand.length).toBe(0);
   });
 });

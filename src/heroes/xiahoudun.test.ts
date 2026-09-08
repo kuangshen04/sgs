@@ -24,7 +24,7 @@ describe('刚烈（夏侯惇技能）', () => {
     registerSkills(g);
     const xiahoudun = g.state.players[1];
     const source = g.state.players[0];
-    g.state.deck = [makeUniqueCard(CardType.Tao, '♥', 2)]; // 判定牌：红桃
+    g.state.deck.replaceAll([makeUniqueCard(CardType.Tao, '♥', 2)]); // 判定牌：红桃
     giveHand(source, CardType.Sha, CardType.Sha);
     const hpBefore = source.hp;
 
@@ -40,7 +40,7 @@ describe('刚烈（夏侯惇技能）', () => {
     registerSkills(g);
     const xiahoudun = g.state.players[1];
     const source = g.state.players[0];
-    g.state.deck = [makeUniqueCard(CardType.JueDou, '♠', 5)]; // 判定牌：黑桃
+    g.state.deck.replaceAll([makeUniqueCard(CardType.JueDou, '♠', 5)]); // 判定牌：黑桃
     giveHand(source, CardType.Sha, CardType.Sha);
     const hpBefore = source.hp;
 
@@ -56,7 +56,7 @@ describe('刚烈（夏侯惇技能）', () => {
     registerSkills(g);
     const xiahoudun = g.state.players[1];
     const source = g.state.players[0];
-    g.state.deck = [makeUniqueCard(CardType.Shan, '♠', 5)]; // 判定牌：黑桃
+    g.state.deck.replaceAll([makeUniqueCard(CardType.Shan, '♠', 5)]); // 判定牌：黑桃
     giveHand(source, CardType.Sha); // 只有 1 张
     const hpBefore = source.hp;
 
@@ -70,7 +70,7 @@ describe('刚烈（夏侯惇技能）', () => {
     registerSkills(g);
     const liubei = g.state.players[0];
     const source = g.state.players[1];
-    g.state.deck = [makeUniqueCard(CardType.JueDou, '♠', 5)];
+    g.state.deck.replaceAll([makeUniqueCard(CardType.JueDou, '♠', 5)]);
     giveHand(source, CardType.Sha, CardType.Sha);
     const hpBefore = source.hp;
 

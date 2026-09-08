@@ -133,8 +133,8 @@ describe('dying', () => {
     const huatuo = g.state.players[1];
     const sunquan = g.state.players[2];
     sunquan.hp = 0;
-    liubei.hand = []; // 刘备无桃，先跳过
-    huatuo.hand = [makeUniqueCard(CardType.Shan, '♥', 2)]; // 红色牌当桃
+    liubei.hand.replaceAll([]); // 刘备无桃，先跳过
+    huatuo.hand.replaceAll([makeUniqueCard(CardType.Shan, '♥', 2)]); // 红色牌当桃
 
     await dying(g, { player: sunquan });
 

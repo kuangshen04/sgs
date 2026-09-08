@@ -4,7 +4,7 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { freshGame, makeUniqueCard } from './test-utils.js';
+import { freshGame, makeUniqueCard, equipAt } from './test-utils.js';
 
 import { cardRegistry } from './cardRegistry.js';
 import { seatDistance, distanceTo, attackRange } from './distance.js';
@@ -46,21 +46,21 @@ describe('distanceTo', () => {
   it('进攻马：来源距离-1', () => {
     const g = freshGame({}, fourPlayers);
     const [a, , c] = g.state.players;
-    a.equipment.offensiveHorse = makeUniqueCard(CardType.ChiTu);
+    equipAt(g, a, makeUniqueCard(CardType.ChiTu));
     expect(distanceTo(g.state.players, a, c)).toBe(1);
   });
 
   it('防御马：目标被接近距离+1', () => {
     const g = freshGame({}, fourPlayers);
     const [a, , c] = g.state.players;
-    c.equipment.defensiveHorse = makeUniqueCard(CardType.JueYing);
+    equipAt(g, c, makeUniqueCard(CardType.JueYing));
     expect(distanceTo(g.state.players, a, c)).toBe(3);
   });
 
   it('多来源叠加且最低为 1（马术 + 进攻马 = -2）', () => {
     const g = freshGame({}, ['马超', '曹操', '孙权', '郭嘉']);
     const [machao, , c] = g.state.players;
-    machao.equipment.offensiveHorse = makeUniqueCard(CardType.ChiTu);
+    equipAt(g, machao, makeUniqueCard(CardType.ChiTu));
     // 座位 2 - 马术 1 - 进攻马 1 = 0 → clamp 1
     expect(distanceTo(g.state.players, machao, c)).toBe(1);
   });
@@ -75,7 +75,7 @@ describe('attackRange', () => {
   it('装备武器取卡牌攻击范围（诸葛连弩 1）', () => {
     const g = freshGame({}, fourPlayers);
     const p = g.state.players[0];
-    p.equipment.weapon = makeUniqueCard(CardType.ZhugeLianNu);
+    equipAt(g, p, makeUniqueCard(CardType.ZhugeLianNu));
     expect(attackRange(p)).toBe(1);
   });
 
@@ -88,7 +88,7 @@ describe('attackRange', () => {
   ] as const)('白板武器 %s 攻击范围 %i', (type, range) => {
     const g = freshGame({}, fourPlayers);
     const p = g.state.players[0];
-    p.equipment.weapon = makeUniqueCard(type);
+    equipAt(g, p, makeUniqueCard(type));
     expect(attackRange(p)).toBe(range);
   });
 });
@@ -111,7 +111,7 @@ describe('杀的 targetFilter 与攻击范围', () => {
   it('装备麒麟弓（攻击范围 5）：可以杀到对位目标', () => {
     const g = freshGame({}, fourPlayers);
     const [a, , c] = g.state.players;
-    a.equipment.weapon = makeUniqueCard(CardType.QiLinGong);
+    equipAt(g, a, makeUniqueCard(CardType.QiLinGong));
 
     const targets = shaDef().targetFilter(a, g.state.players);
 
@@ -121,7 +121,7 @@ describe('杀的 targetFilter 与攻击范围', () => {
   it('装备寒冰剑（攻击范围 2）：距离 2 的目标恰好可达', () => {
     const g = freshGame({}, fourPlayers);
     const [a, , c] = g.state.players;
-    a.equipment.weapon = makeUniqueCard(CardType.HanBingJian);
+    equipAt(g, a, makeUniqueCard(CardType.HanBingJian));
 
     const targets = shaDef().targetFilter(a, g.state.players);
 
@@ -131,8 +131,8 @@ describe('杀的 targetFilter 与攻击范围', () => {
   it('攻击范围不影响顺手牵羊（固定距离 1）', () => {
     const g = freshGame({}, fourPlayers);
     const [a, , c] = g.state.players;
-    c.hand = [makeUniqueCard(CardType.Sha)]; // 区域内有牌
-    a.equipment.weapon = makeUniqueCard(CardType.QiLinGong);
+    c.hand.replaceAll([makeUniqueCard(CardType.Sha)]); // 区域内有牌
+    equipAt(g, a, makeUniqueCard(CardType.QiLinGong));
 
     const targets = cardRegistry.get(CardType.ShunShou)!.targetFilter(a, g.state.players);
 

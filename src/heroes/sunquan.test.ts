@@ -62,7 +62,7 @@ describe('制衡（孙权主动技能）', () => {
     // 控制牌堆：摸到的都是闪（依然不可出，且能验证来源）
     const deckShan1 = makeUniqueCard(CardType.Shan, '♥', 5);
     const deckShan2 = makeUniqueCard(CardType.Shan, '♦', 6);
-    g.state.deck = [deckShan1, deckShan2]; // pop 顺序：deckShan2 先出
+    g.state.deck.replaceAll([deckShan1, deckShan2]); // pop 顺序：deckShan2 先出
 
     await playPhase(g, { player: sunquan });
 
@@ -94,7 +94,7 @@ describe('制衡（孙权主动技能）', () => {
     const sunquan = g.state.players[1];
     const target = g.state.players[0];
     giveHand(sunquan, CardType.WuXie); // 不可出 → 制衡换牌
-    g.state.deck = [makeUniqueCard(CardType.Sha, '♠', 2)]; // 摸到杀
+    g.state.deck.replaceAll([makeUniqueCard(CardType.Sha, '♠', 2)]); // 摸到杀
     const hpBefore = target.hp;
 
     await playPhase(g, { player: sunquan });
@@ -109,14 +109,14 @@ describe('制衡（孙权主动技能）', () => {
     registerSkills(g);
     const sunquan = g.state.players[1];
     giveHand(sunquan, CardType.Shan);
-    g.state.deck = [makeUniqueCard(CardType.Shan, '♥', 7)]; // 摸到的还是闪
+    g.state.deck.replaceAll([makeUniqueCard(CardType.Shan, '♥', 7)]); // 摸到的还是闪
 
     await playPhase(g, { player: sunquan });
 
     // 制衡一次：手牌换成牌堆那张 ♥7 闪
     expect(sunquan.hand.length).toBe(1);
-    expect(sunquan.hand[0].suit).toBe('♥');
-    expect(sunquan.hand[0].number).toBe(7);
+    expect(sunquan.hand.cards[0].suit).toBe('♥');
+    expect(sunquan.hand.cards[0].number).toBe(7);
     // 若二次制衡会再弃 1 摸 1，弃牌堆会有 2 张闪
     expect(g.state.discardPile.filter((c) => c.type === CardType.Shan).length).toBe(1);
   });
@@ -126,12 +126,12 @@ describe('制衡（孙权主动技能）', () => {
     registerSkills(g);
     const liubei = g.state.players[0];
     giveHand(liubei, CardType.Shan);
-    g.state.deck = [makeUniqueCard(CardType.Shan, '♥', 7)];
+    g.state.deck.replaceAll([makeUniqueCard(CardType.Shan, '♥', 7)]);
 
     await playPhase(g, { player: liubei });
 
     expect(liubei.hand.length).toBe(1);
-    expect(liubei.hand[0].suit).toBe('♠'); // 还是原来的闪，没摸牌
+    expect(liubei.hand.cards[0].suit).toBe('♠'); // 还是原来的闪，没摸牌
     expect(g.state.discardPile.length).toBe(0);
   });
 });
@@ -143,9 +143,9 @@ describe('救援（孙权主公技）', () => {
     const sunquan = g.state.players[0];
     const zhouyu = g.state.players[1];
     sunquan.hp = 2;
-    zhouyu.hand = [makeUniqueCard(CardType.Tao)]; // 周瑜：吴
+    zhouyu.hand.replaceAll([makeUniqueCard(CardType.Tao)]); // 周瑜：吴
 
-    await useCard(g, { player: zhouyu, card: zhouyu.hand[0], targets: [sunquan] });
+    await useCard(g, { player: zhouyu, card: zhouyu.hand.cards[0], targets: [sunquan] });
 
     expect(sunquan.hp).toBe(4); // 2 + 1(桃) + 1(救援)
   });
@@ -156,9 +156,9 @@ describe('救援（孙权主公技）', () => {
     const sunquan = g.state.players[0];
     const liubei = g.state.players[1];
     sunquan.hp = 2;
-    liubei.hand = [makeUniqueCard(CardType.Tao)];
+    liubei.hand.replaceAll([makeUniqueCard(CardType.Tao)]);
 
-    await useCard(g, { player: liubei, card: liubei.hand[0], targets: [sunquan] });
+    await useCard(g, { player: liubei, card: liubei.hand.cards[0], targets: [sunquan] });
 
     expect(sunquan.hp).toBe(3); // 2 + 1(桃)
   });
@@ -170,9 +170,9 @@ describe('救援（孙权主公技）', () => {
     const sunquan = g.state.players[0];
     const zhouyu = g.state.players[1];
     sunquan.hp = 2;
-    zhouyu.hand = [makeUniqueCard(CardType.Tao)];
+    zhouyu.hand.replaceAll([makeUniqueCard(CardType.Tao)]);
 
-    await useCard(g, { player: zhouyu, card: zhouyu.hand[0], targets: [sunquan] });
+    await useCard(g, { player: zhouyu, card: zhouyu.hand.cards[0], targets: [sunquan] });
 
     expect(sunquan.hp).toBe(3); // 救援不触发
   });

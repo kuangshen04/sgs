@@ -135,7 +135,7 @@ describe('杀→闪响应窗口的转化', () => {
     const attacker = g.state.players[1];
     const defender = g.state.players[0];
     const sha = makeUniqueCard(CardType.Sha);
-    defender.hand = [makeUniqueCard(CardType.Sha)];
+    defender.hand.replaceAll([makeUniqueCard(CardType.Sha)]);
 
     const cancelled = await resolveShaResponse(g, attacker, defender, sha, {});
 
@@ -149,7 +149,7 @@ describe('杀→闪响应窗口的转化', () => {
     const attacker = g.state.players[1];
     const defender = g.state.players[0];
     const sha = makeUniqueCard(CardType.Sha);
-    defender.hand = [makeUniqueCard(CardType.Tao, '♠', 5)];
+    defender.hand.replaceAll([makeUniqueCard(CardType.Tao, '♠', 5)]);
 
     const cancelled = await resolveShaResponse(g, attacker, defender, sha, {});
 
@@ -164,12 +164,12 @@ describe('杀→闪响应窗口的转化', () => {
     const defender = g.state.players[0];
     const realShan = makeUniqueCard(CardType.Shan);
     const shaSource = makeUniqueCard(CardType.Sha);
-    defender.hand = [realShan, shaSource];
+    defender.hand.replaceAll([realShan, shaSource]);
 
     const cancelled = await resolveShaResponse(g, attacker, defender, makeUniqueCard(CardType.Sha), {});
 
     expect(cancelled).toBe(true);
     expect(defender.hand.map((c) => c.id)).toContain(shaSource.id); // 杀未被打出
-    expect(g.state.discardPile).toContain(realShan);
+    expect(g.state.discardPile.cards).toContain(realShan);
   });
 });

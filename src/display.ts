@@ -6,7 +6,7 @@ import { Card, GameState } from './types.js';
 import type { PlayerEquipment } from './types.js';
 import { cardRegistry, cardEmoji, displayNumber } from './cardRegistry.js';
 
-function handDisplay(hand: Card[]): string {
+function handDisplay(hand: readonly Card[]): string {
   if (hand.length === 0) return '（空）';
   const sorted = [...hand].sort((a, b) => {
     const pa = cardRegistry.get(a.type)?.ai.discardPriority ?? 0;
@@ -44,7 +44,7 @@ export function printState(state: GameState): void {
     const nameCol = padEnd(`${marker}${p.name}`, 5);
     const hpCol = hpBar(p.hp, p.maxHp);
     body += `║ ${nameCol} ${padEnd(hpCol, W - 7 - 5)}║\n`;
-    body += `║   手牌: ${padEnd(handDisplay(p.hand), W - 10)}║\n`;
+    body += `║   手牌: ${padEnd(handDisplay(p.hand.cards), W - 10)}║\n`;
     body += `║   装备: ${padEnd(equipDisplay(p.equipment), W - 10)}║\n`;
     body += `║${' '.repeat(W)}║\n`;
   }

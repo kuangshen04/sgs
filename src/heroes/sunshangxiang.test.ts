@@ -4,7 +4,7 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { freshGame, giveHand, makeUniqueCard } from '../test-utils.js';
+import { freshGame, giveHand, makeUniqueCard, equipAt } from '../test-utils.js';
 
 import { playPhase } from '../gameFlow.js';
 
@@ -87,7 +87,7 @@ describe('枭姬（孙尚香触发技能）', () => {
     registerSkills(g);
     const sun = g.state.players[0];
     const weapon = makeUniqueCard(CardType.ZhugeLianNu);
-    sun.equipment.weapon = weapon;
+    equipAt(g, sun, weapon);
     const before = sun.hand.length;
 
     await moveCards(g, {
@@ -104,8 +104,8 @@ describe('枭姬（孙尚香触发技能）', () => {
     const sun = g.state.players[0];
     const oldWeapon = makeUniqueCard(CardType.QiLinGong);
     const newWeapon = makeUniqueCard(CardType.HanBingJian);
-    sun.equipment.weapon = oldWeapon;
-    sun.hand = [newWeapon];
+    equipAt(g, sun, oldWeapon);
+    sun.hand.replaceAll([newWeapon]);
 
     await equipCard(g, sun, newWeapon);
 
@@ -121,7 +121,7 @@ describe('枭姬（孙尚香触发技能）', () => {
     giveHand(sun, CardType.Sha);
     const before = sun.hand.length;
 
-    await discardCards(g, sun, [sun.hand[0]]);
+    await discardCards(g, sun, [sun.hand.cards[0]]);
 
     expect(sun.hand.length).toBe(before - 1); // 只弃不摸
   });
@@ -131,7 +131,7 @@ describe('枭姬（孙尚香触发技能）', () => {
     registerSkills(g);
     const liubei = g.state.players[1];
     const weapon = makeUniqueCard(CardType.ZhugeLianNu);
-    liubei.equipment.weapon = weapon;
+    equipAt(g, liubei, weapon);
     const before = liubei.hand.length;
 
     await moveCards(g, {

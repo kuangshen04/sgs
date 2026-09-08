@@ -53,7 +53,7 @@ describe('反间（周瑜主动技能）', () => {
     const zhouyu = g.state.players[1];
     const target = g.state.players[0];
     giveHand(zhouyu, CardType.Shan); // 不可出 → 触发主动技能
-    const givenId = zhouyu.hand[0].id;
+    const givenId = zhouyu.hand.cards[0].id;
     const hpBefore = target.hp;
 
     await playPhase(g, { player: zhouyu });

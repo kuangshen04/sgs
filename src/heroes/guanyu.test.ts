@@ -23,7 +23,7 @@ describe('武圣（关羽转化牌）', () => {
   it('choosePlayAction：红牌当杀，返回 UsedCard 与合法目标', async () => {
     const g = freshGame({}, ['关羽', '刘备', '孙权']);
     const guanyu = g.state.players[0];
-    guanyu.hand = [{ id: 9001, type: CardType.Shan, name: '闪', suit: '♥', number: 3 }];
+    guanyu.hand.replaceAll([{ id: 9001, type: CardType.Shan, name: '闪', suit: '♥', number: 3 }]);
 
     const result = await choosePlayAction(g, guanyu, false, new Set());
 
@@ -41,7 +41,7 @@ describe('武圣（关羽转化牌）', () => {
     const guanyu = g.state.players[0];
     const target = g.state.players[1]; // 默认 AI：第一个其他存活角色（刘备）
     const red = { id: 9002, type: CardType.Shan, name: '闪', suit: '♦', number: 7 };
-    guanyu.hand = [red];
+    guanyu.hand.replaceAll([red]);
     const hpBefore = target.hp;
 
     await playPhase(g, { player: guanyu });
@@ -49,7 +49,7 @@ describe('武圣（关羽转化牌）', () => {
     expect(target.hp).toBe(hpBefore - 1);
     expect(guanyu.hand.length).toBe(0);
     expect(g.state.processing.length).toBe(0);
-    expect(g.state.discardPile).toContain(red);
+    expect(g.state.discardPile.cards).toContain(red);
   });
 
   it('奸雄获得武圣对应的实体源牌', async () => {
@@ -58,21 +58,21 @@ describe('武圣（关羽转化牌）', () => {
     const guanyu = g.state.players[0];
     const caocao = g.state.players[1];
     const red = { id: 9003, type: CardType.Shan, name: '闪', suit: '♥', number: 9 };
-    guanyu.hand = [red];
+    guanyu.hand.replaceAll([red]);
     const hpBefore = caocao.hp;
 
     await playPhase(g, { player: guanyu });
 
     expect(caocao.hp).toBe(hpBefore - 1);
     expect(caocao.hand.map((c) => c.id)).toContain(red.id);
-    expect(g.state.discardPile).not.toContain(red);
+    expect(g.state.discardPile.cards).not.toContain(red);
     expect(g.state.processing.length).toBe(0);
   });
 
   it('没有红色牌时武圣不作为动作候选', async () => {
     const g = freshGame({}, ['关羽', '刘备', '孙权']);
     const guanyu = g.state.players[0];
-    guanyu.hand = [{ id: 9004, type: CardType.Shan, name: '闪', suit: '♠', number: 1 }];
+    guanyu.hand.replaceAll([{ id: 9004, type: CardType.Shan, name: '闪', suit: '♠', number: 1 }]);
 
     expect(await choosePlayAction(g, guanyu, false, new Set())).toBeNull();
   });

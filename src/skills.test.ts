@@ -52,7 +52,7 @@ describe('技能分发 — 死亡规则', () => {
     const xiahou = g.state.players[1];
     sunquan.hp = 1;
     giveHand(sunquan, CardType.Sha, CardType.Sha); // 杀夏侯惇 → 刚烈反杀
-    g.state.deck = [makeUniqueCard(CardType.JueDou, '♠', 5)]; // 刚烈判定：黑桃
+    g.state.deck.replaceAll([makeUniqueCard(CardType.JueDou, '♠', 5)]); // 刚烈判定：黑桃
     const hpBefore = xiahou.hp;
 
     await playPhase(g, { player: sunquan });

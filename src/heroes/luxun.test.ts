@@ -4,7 +4,7 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { freshGame, giveHand, makeUniqueCard } from '../test-utils.js';
+import { freshGame, giveHand, makeUniqueCard, equipAt } from '../test-utils.js';
 
 import { computeTargetOptions } from '../choose.js';
 import { asUsedCard } from '../cardRegistry.js';
@@ -36,11 +36,11 @@ describe('谦逊（陆逊锁定技）', () => {
     giveHand(sunquan, CardType.Tao);
     giveHand(attacker, CardType.ShunShou);
 
-    const ssTargets = computeTargetOptions(g, asUsedCard(attacker.hand[0]), attacker);
+    const ssTargets = computeTargetOptions(g, asUsedCard(attacker.hand.cards[0]), attacker);
     expect(ssTargets.map((t) => t.index)).toEqual([2]); // 陆逊被排除
 
     giveHand(attacker, CardType.LeBu);
-    const lbTargets = computeTargetOptions(g, asUsedCard(attacker.hand[0]), attacker);
+    const lbTargets = computeTargetOptions(g, asUsedCard(attacker.hand.cards[0]), attacker);
     expect(lbTargets.map((t) => t.index)).toEqual([2]);
   });
 
@@ -49,7 +49,7 @@ describe('谦逊（陆逊锁定技）', () => {
     const attacker = g.state.players[0];
     giveHand(attacker, CardType.Sha);
 
-    const targets = computeTargetOptions(g, asUsedCard(attacker.hand[0]), attacker);
+    const targets = computeTargetOptions(g, asUsedCard(attacker.hand.cards[0]), attacker);
     expect(targets.map((t) => t.index)).toEqual([1, 2]);
   });
 });
@@ -61,7 +61,7 @@ describe('连营（陆逊触发技能）', () => {
     const luxun = g.state.players[1];
     giveHand(luxun, CardType.Sha);
 
-    await discardCards(g, luxun, [luxun.hand[0]]);
+    await discardCards(g, luxun, [luxun.hand.cards[0]]);
 
     expect(luxun.hand.length).toBe(1); // 弃 1 摸 1
   });
@@ -72,7 +72,7 @@ describe('连营（陆逊触发技能）', () => {
     const luxun = g.state.players[1];
     giveHand(luxun, CardType.Sha, CardType.Tao);
 
-    await discardCards(g, luxun, [luxun.hand[0]]);
+    await discardCards(g, luxun, [luxun.hand.cards[0]]);
 
     expect(luxun.hand.length).toBe(1); // 只剩桃，未摸牌
   });
@@ -82,7 +82,7 @@ describe('连营（陆逊触发技能）', () => {
     registerSkills(g);
     const luxun = g.state.players[1];
     const weapon = makeUniqueCard(CardType.ZhugeLianNu);
-    luxun.equipment.weapon = weapon;
+    equipAt(g, luxun, weapon);
     const before = luxun.hand.length;
 
     await moveCards(g, {
@@ -98,7 +98,7 @@ describe('连营（陆逊触发技能）', () => {
     const liubei = g.state.players[0];
     giveHand(liubei, CardType.Sha);
 
-    await discardCards(g, liubei, [liubei.hand[0]]);
+    await discardCards(g, liubei, [liubei.hand.cards[0]]);
 
     expect(liubei.hand.length).toBe(0); // 无连营
   });

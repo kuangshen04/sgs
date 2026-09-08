@@ -24,7 +24,7 @@ describe('洛神（甄宓技能）', () => {
     const black1 = makeUniqueCard(CardType.JueDou, '♣', 7);
     const black2 = makeUniqueCard(CardType.Sha, '♠', 5);
     const red = makeUniqueCard(CardType.Shan, '♥', 1);
-    g.state.deck = [red, black2, black1]; // pop 顺序：black1 → black2 → red
+    g.state.deck.replaceAll([red, black2, black1]); // pop 顺序：black1 → black2 → red
 
     await preparePhase(g, { player: zhenji });
 
@@ -39,7 +39,7 @@ describe('洛神（甄宓技能）', () => {
     registerSkills(g);
     const zhenji = g.state.players[1];
     const red = makeUniqueCard(CardType.Shan, '♥', 1);
-    g.state.deck = [red];
+    g.state.deck.replaceAll([red]);
 
     await preparePhase(g, { player: zhenji });
 

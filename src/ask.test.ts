@@ -4,7 +4,7 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { freshGame, giveHand, makeUniqueCard } from './test-utils.js';
+import { freshGame, giveHand, makeUniqueCard, equipAt } from './test-utils.js';
 
 import { askForCard, askFromAreas, askForTargets, askYesNo } from './choose.js';
 
@@ -18,7 +18,7 @@ describe('askForCard', () => {
 
     const card = await askForCard(g, player, '请打出闪', [CardType.Shan]);
 
-    expect(card).toBe(player.hand[0]);
+    expect(card).toBe(player.hand.cards[0]);
     expect(player.hand.length).toBe(3); // 只读，不消耗
   });
 
@@ -29,7 +29,7 @@ describe('askForCard', () => {
 
     const card = await askForCard(g, player, '请打出杀或闪', [CardType.Sha, CardType.Shan]);
 
-    expect(card).toBe(player.hand[1]);
+    expect(card).toBe(player.hand.cards[1]);
   });
 
   it('没有指定类型 → 返回 null', async () => {
@@ -46,7 +46,7 @@ describe('askFromAreas', () => {
     const g = freshGame();
     const player = g.state.players[0];
     giveHand(player, CardType.Sha, CardType.Tao);
-    player.equipment.weapon = makeUniqueCard(CardType.ZhugeLianNu);
+    equipAt(g, player, makeUniqueCard(CardType.ZhugeLianNu));
 
     const card = await askFromAreas(g, player, '弃置目标一张牌');
 
@@ -58,7 +58,7 @@ describe('askFromAreas', () => {
     const g = freshGame();
     const player = g.state.players[0];
     giveHand(player, CardType.Sha);
-    player.equipment.weapon = makeUniqueCard(CardType.ZhugeLianNu);
+    equipAt(g, player, makeUniqueCard(CardType.ZhugeLianNu));
 
     const card = await askFromAreas(g, player, '', ['equipment']);
 
@@ -69,8 +69,8 @@ describe('askFromAreas', () => {
     const g = freshGame();
     const player = g.state.players[0];
     giveHand(player, CardType.Sha);
-    player.equipment.weapon = makeUniqueCard(CardType.QiLinGong);
-    player.equipment.offensiveHorse = makeUniqueCard(CardType.ChiTu);
+    equipAt(g, player, makeUniqueCard(CardType.QiLinGong));
+    equipAt(g, player, makeUniqueCard(CardType.ChiTu));
 
     const card = await askFromAreas(
       g, player, '弃置一张坐骑', ['equipment'],

@@ -24,7 +24,7 @@ describe('龙胆①（赵云转化牌）', () => {
     const g = freshGame({}, ['赵云', '刘备', '孙权']);
     const zhaoyun = g.state.players[0];
     const shan = { id: 9020, type: CardType.Shan, name: '闪', suit: '♦', number: 4 };
-    zhaoyun.hand = [shan];
+    zhaoyun.hand.replaceAll([shan]);
 
     const result = await choosePlayAction(g, zhaoyun, false, new Set());
 
@@ -42,14 +42,14 @@ describe('龙胆①（赵云转化牌）', () => {
     const zhaoyun = g.state.players[0];
     const target = g.state.players[1];
     const shan = { id: 9021, type: CardType.Shan, name: '闪', suit: '♥', number: 8 };
-    zhaoyun.hand = [shan];
+    zhaoyun.hand.replaceAll([shan]);
     const hpBefore = target.hp;
 
     await playPhase(g, { player: zhaoyun });
 
     expect(target.hp).toBe(hpBefore - 1);
     expect(zhaoyun.hand.length).toBe(0);
-    expect(g.state.discardPile).toContain(shan);
+    expect(g.state.discardPile.cards).toContain(shan);
     expect(g.state.processing.length).toBe(0);
   });
 });

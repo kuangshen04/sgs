@@ -29,7 +29,7 @@ describe('流离（大乔技能）', () => {
     const daqiaoHpBefore = daqiao.hp;
     const redirectedHpBefore = redirected.hp;
 
-    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [daqiao] });
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [daqiao] });
 
     expect(daqiao.hp).toBe(daqiaoHpBefore);          // 原目标不受伤害
     expect(redirected.hp).toBe(redirectedHpBefore - 1); // 新目标受伤害
@@ -45,7 +45,7 @@ describe('流离（大乔技能）', () => {
     giveHand(daqiao, CardType.Tao);
     const hpBefore = daqiao.hp;
 
-    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [daqiao] });
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [daqiao] });
 
     expect(daqiao.hp).toBe(hpBefore - 1); // 杀命中
     expect(daqiao.hand.length).toBe(1);   // 未弃牌
@@ -59,7 +59,7 @@ describe('流离（大乔技能）', () => {
     giveHand(attacker, CardType.Sha);
     const hpBefore = daqiao.hp;
 
-    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [daqiao] });
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [daqiao] });
 
     expect(daqiao.hp).toBe(hpBefore - 1); // 无牌可弃，杀命中
   });
@@ -73,7 +73,7 @@ describe('流离（大乔技能）', () => {
     giveHand(daqiao, CardType.Tao);
     const hpBefore = daqiao.hp;
 
-    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [daqiao] });
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [daqiao] });
 
     // 决斗：大乔无杀 → 大乔受伤，流离不触发
     expect(daqiao.hp).toBe(hpBefore - 1);

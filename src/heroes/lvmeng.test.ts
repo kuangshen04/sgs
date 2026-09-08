@@ -43,7 +43,7 @@ describe('克己（吕蒙）', () => {
     const liubei = g.state.players[1];
     lv.hp = 4;
     giveHand(lv, CardType.Sha, CardType.Shan, CardType.Shan, CardType.Shan, CardType.Shan, CardType.Shan);
-    const shaCard = lv.hand[0];
+    const shaCard = lv.hand.cards[0];
 
     // 同一回合内：用杀 → 弃牌阶段不得克己
     await new GameEvent('turn', { player: lv }, g).execute(async () => {
@@ -62,7 +62,7 @@ describe('克己（吕蒙）', () => {
     const sunquan = g.state.players[2];
     lv.hp = 4;
     giveHand(lv, CardType.Sha, CardType.Shan, CardType.Shan, CardType.Shan, CardType.Shan, CardType.Shan);
-    const shaCard = lv.hand[0];
+    const shaCard = lv.hand.cards[0];
     const sqHpBefore = sunquan.hp;
 
     // 借刀式场景：吕蒙在刘备的回合里被迫使用杀

@@ -65,8 +65,8 @@ describe('judgePhase', () => {
     const g = freshGame();
     const player = g.state.players[0];
     const lebu = makeUniqueCard(CardType.LeBu);
-    player.judgment.push(lebu);
-    g.state.deck = [makeUniqueCard(CardType.Tao, '♥', 2)]; // 判定：红桃
+    player.judgment.add(lebu);
+    g.state.deck.replaceAll([makeUniqueCard(CardType.Tao, '♥', 2)]); // 判定：红桃
 
     await judgePhase(g, { player });
 
@@ -79,8 +79,8 @@ describe('judgePhase', () => {
     const g = freshGame();
     const player = g.state.players[0];
     const lebu = makeUniqueCard(CardType.LeBu);
-    player.judgment.push(lebu);
-    g.state.deck = [makeUniqueCard(CardType.JueDou, '♠', 5)]; // 判定：非红桃
+    player.judgment.add(lebu);
+    g.state.deck.replaceAll([makeUniqueCard(CardType.JueDou, '♠', 5)]); // 判定：非红桃
 
     await judgePhase(g, { player });
 
@@ -93,17 +93,17 @@ describe('judgePhase', () => {
     registerSkills(g);
     const player = g.state.players[0];
     const lebu = makeUniqueCard(CardType.LeBu);
-    player.judgment.push(lebu);
+    player.judgment.add(lebu);
     giveHand(player, CardType.WuXie); // 被判定者出无懈保护自己
     const deckCard = makeUniqueCard(CardType.Sha, '♠', 5);
-    g.state.deck = [deckCard];
+    g.state.deck.replaceAll([deckCard]);
 
     await judgePhase(g, { player });
 
     expect(player.skipPlayPhase).toBeFalsy();   // 未生效
     expect(player.judgment.length).toBe(0);     // 乐不思蜀被弃置
     expect(g.state.discardPile.find((c) => c.id === lebu.id)).toBeDefined();
-    expect(g.state.deck).toContain(deckCard);   // 未判定，牌堆未动
+    expect(g.state.deck.cards).toContain(deckCard);   // 未判定，牌堆未动
     expect(player.hand.length).toBe(0);         // 无懈已打出
   });
 
@@ -122,8 +122,8 @@ describe('judgePhase', () => {
     const g = freshGame();
     const player = g.state.players[0];
     const shandian = makeUniqueCard(CardType.ShanDian);
-    player.judgment.push(shandian);
-    g.state.deck = [makeUniqueCard(CardType.JueDou, '♠', 5)]; // 黑桃5
+    player.judgment.add(shandian);
+    g.state.deck.replaceAll([makeUniqueCard(CardType.JueDou, '♠', 5)]); // 黑桃5
     const hpBefore = player.hp;
 
     await judgePhase(g, { player });
@@ -138,8 +138,8 @@ describe('judgePhase', () => {
     const player = g.state.players[0];
     const next = g.state.players[1];
     const shandian = makeUniqueCard(CardType.ShanDian);
-    player.judgment.push(shandian);
-    g.state.deck = [makeUniqueCard(CardType.Tao, '♥', 5)]; // 红桃 → 不爆
+    player.judgment.add(shandian);
+    g.state.deck.replaceAll([makeUniqueCard(CardType.Tao, '♥', 5)]); // 红桃 → 不爆
 
     await judgePhase(g, { player });
 

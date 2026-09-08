@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { freshGame, giveHand, makeUniqueCard } from './test-utils.js';
+import { freshGame, giveHand, makeUniqueCard, equipAt } from './test-utils.js';
 
 import { useCard } from './cardActions.js';
 import { playPhase } from './gameFlow.js';
@@ -23,12 +23,12 @@ describe('麒麟弓（装备触发）', () => {
     registerSkills(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1];
-    attacker.equipment.weapon = makeUniqueCard(CardType.QiLinGong);
-    target.equipment.offensiveHorse = makeUniqueCard(CardType.ChiTu);
+    equipAt(g, attacker, makeUniqueCard(CardType.QiLinGong));
+    equipAt(g, target, makeUniqueCard(CardType.ChiTu));
     giveHand(attacker, CardType.Sha);
     const hpBefore = target.hp;
 
-    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [target] });
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [target] });
 
     expect(target.hp).toBe(hpBefore - 1);                     // 伤害照常
     expect(target.equipment.offensiveHorse).toBeUndefined();  // 坐骑被弃
@@ -40,11 +40,11 @@ describe('麒麟弓（装备触发）', () => {
     registerSkills(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1];
-    attacker.equipment.weapon = makeUniqueCard(CardType.QiLinGong);
+    equipAt(g, attacker, makeUniqueCard(CardType.QiLinGong));
     giveHand(attacker, CardType.Sha);
     const hpBefore = target.hp;
 
-    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [target] });
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [target] });
 
     expect(target.hp).toBe(hpBefore - 1);
     expect(g.state.discardPile.filter((c) => c.type === CardType.ChiTu).length).toBe(0);
@@ -57,12 +57,12 @@ describe('寒冰剑（装备触发）', () => {
     registerSkills(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1];
-    attacker.equipment.weapon = makeUniqueCard(CardType.HanBingJian);
+    equipAt(g, attacker, makeUniqueCard(CardType.HanBingJian));
     giveHand(target, CardType.Sha, CardType.Tao); // 无闪
     giveHand(attacker, CardType.Sha);
     const hpBefore = target.hp;
 
-    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [target] });
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [target] });
 
     expect(target.hp).toBe(hpBefore);   // 伤害被防止
     expect(target.hand.length).toBe(0); // 两张都被弃
@@ -73,13 +73,13 @@ describe('寒冰剑（装备触发）', () => {
     registerSkills(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1];
-    attacker.equipment.weapon = makeUniqueCard(CardType.HanBingJian);
-    target.equipment.armor = makeUniqueCard(CardType.RenWangDun); // 不挡红杀
-    target.equipment.offensiveHorse = makeUniqueCard(CardType.ChiTu);
-    attacker.hand = [makeUniqueCard(CardType.Sha, '♥', 9)];
+    equipAt(g, attacker, makeUniqueCard(CardType.HanBingJian));
+    equipAt(g, target, makeUniqueCard(CardType.RenWangDun)); // 不挡红杀
+    equipAt(g, target, makeUniqueCard(CardType.ChiTu));
+    attacker.hand.replaceAll([makeUniqueCard(CardType.Sha, '♥', 9)]);
     const hpBefore = target.hp;
 
-    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [target] });
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [target] });
 
     expect(target.hp).toBe(hpBefore); // 伤害被防止
     expect(target.equipment.armor).toBeUndefined();
@@ -91,12 +91,12 @@ describe('寒冰剑（装备触发）', () => {
     registerSkills(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1];
-    attacker.equipment.weapon = makeUniqueCard(CardType.HanBingJian);
+    equipAt(g, attacker, makeUniqueCard(CardType.HanBingJian));
     giveHand(attacker, CardType.JueDou);
     giveHand(target, CardType.Sha, CardType.Tao);
     const hpBefore = attacker.hp;
 
-    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [target] });
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [target] });
 
     // 决斗：目标有杀 → 打出 → 攻击方无杀 → 攻击方受伤，寒冰剑不发动
     expect(attacker.hp).toBe(hpBefore - 1);
@@ -109,9 +109,9 @@ describe('仁王盾（装备触发）', () => {
     registerSkills(g);
     const attacker = g.state.players[0];
     const defender = g.state.players[1];
-    defender.equipment.armor = makeUniqueCard(CardType.RenWangDun);
+    equipAt(g, defender, makeUniqueCard(CardType.RenWangDun));
     const sha = makeUniqueCard(CardType.Sha, '♠', 3); // 黑色杀
-    attacker.hand = [sha];
+    attacker.hand.replaceAll([sha]);
     const hpBefore = defender.hp;
 
     await useCard(g, { player: attacker, card: sha, targets: [defender] });
@@ -124,7 +124,7 @@ describe('仁王盾（装备触发）', () => {
     registerSkills(g);
     const attacker = g.state.players[0];
     const defender = g.state.players[1];
-    defender.equipment.armor = makeUniqueCard(CardType.RenWangDun);
+    equipAt(g, defender, makeUniqueCard(CardType.RenWangDun));
     const sha = makeUniqueCard(CardType.Sha, '♥', 3); // 红色杀
     const hpBefore = defender.hp;
 
@@ -142,12 +142,12 @@ describe('雌雄双股剑（装备触发）', () => {
     registerSkills(g);
     const attacker = g.state.players[0]; // 刘备（男）
     const target = g.state.players[1];   // 甄宓（女）
-    attacker.equipment.weapon = makeUniqueCard(CardType.CiXiongShuangGuJian);
+    equipAt(g, attacker, makeUniqueCard(CardType.CiXiongShuangGuJian));
     giveHand(attacker, CardType.Sha);
     giveHand(target, CardType.Tao, CardType.Tao); // 无闪 → 杀命中，桃不会被自动使用
     const hpBefore = target.hp;
 
-    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [target] });
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [target] });
 
     expect(target.hand.length).toBe(1); // 弃了一张手牌
     expect(target.hp).toBe(hpBefore - 1); // 杀照常命中
@@ -158,10 +158,10 @@ describe('雌雄双股剑（装备触发）', () => {
     registerSkills(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1];
-    attacker.equipment.weapon = makeUniqueCard(CardType.CiXiongShuangGuJian);
+    equipAt(g, attacker, makeUniqueCard(CardType.CiXiongShuangGuJian));
     giveHand(attacker, CardType.Sha);
 
-    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [target] });
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [target] });
 
     expect(attacker.hand.length).toBe(1); // 杀出掉后摸回一张
   });
@@ -171,12 +171,12 @@ describe('雌雄双股剑（装备触发）', () => {
     registerSkills(g);
     const attacker = g.state.players[0]; // 刘备（男）
     const target = g.state.players[2];   // 孙权（男）
-    attacker.equipment.weapon = makeUniqueCard(CardType.CiXiongShuangGuJian);
+    equipAt(g, attacker, makeUniqueCard(CardType.CiXiongShuangGuJian));
     giveHand(attacker, CardType.Sha);
     giveHand(target, CardType.Tao);
     const hpBefore = target.hp;
 
-    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [target] });
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [target] });
 
     expect(target.hand.length).toBe(1); // 手牌未被要求弃置
     expect(target.hp).toBe(hpBefore - 1);
@@ -187,12 +187,12 @@ describe('雌雄双股剑（装备触发）', () => {
     registerSkills(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1]; // 异性
-    attacker.equipment.weapon = makeUniqueCard(CardType.CiXiongShuangGuJian);
+    equipAt(g, attacker, makeUniqueCard(CardType.CiXiongShuangGuJian));
     giveHand(attacker, CardType.JueDou);
     giveHand(target, CardType.Tao);
     const hpBefore = target.hp;
 
-    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [target] });
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [target] });
 
     expect(target.hand.length).toBe(1); // 决斗造成的伤害不触发剑效果
     expect(target.hp).toBe(hpBefore - 1);
@@ -218,12 +218,12 @@ describe('青龙偃月刀（杀被抵消后）', () => {
     registerSkills(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1];
-    attacker.equipment.weapon = makeUniqueCard(CardType.QingLongYanYueDao);
+    equipAt(g, attacker, makeUniqueCard(CardType.QingLongYanYueDao));
     giveHand(attacker, CardType.Sha, CardType.Sha); // 第一张 + 追加一张
     giveHand(target, CardType.Shan, CardType.Shan); // 两张闪
     const hpBefore = target.hp;
 
-    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [target] });
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [target] });
 
     // 第一杀被抵消 → 青龙再出第二杀 → 又被抵消
     expect(target.hp).toBe(hpBefore);
@@ -236,12 +236,12 @@ describe('青龙偃月刀（杀被抵消后）', () => {
     registerSkills(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1];
-    attacker.equipment.weapon = makeUniqueCard(CardType.QingLongYanYueDao);
+    equipAt(g, attacker, makeUniqueCard(CardType.QingLongYanYueDao));
     giveHand(attacker, CardType.Sha, CardType.Sha);
     giveHand(target); // 无闪
     const hpBefore = target.hp;
 
-    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [target] });
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [target] });
 
     expect(target.hp).toBe(hpBefore - 1); // 命中，不再追加
     expect(attacker.hand.length).toBe(1); // 第二张杀未用
@@ -254,12 +254,12 @@ describe('贯石斧（杀被抵消后弃牌命中）', () => {
     registerSkills(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1];
-    attacker.equipment.weapon = makeUniqueCard(CardType.GuanShiFu);
+    equipAt(g, attacker, makeUniqueCard(CardType.GuanShiFu));
     giveHand(attacker, CardType.Sha, CardType.Tao, CardType.Shan); // 杀 + 弃牌素材
     giveHand(target, CardType.Shan); // 一张闪
     const hpBefore = target.hp;
 
-    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [target] });
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [target] });
 
     expect(target.hp).toBe(hpBefore - 1); // 依然命中
     // 弃了两张牌（随机，可能含武器本身）：区域牌从 3（2 手牌 + 武器）减到 1
@@ -271,12 +271,12 @@ describe('贯石斧（杀被抵消后弃牌命中）', () => {
     registerSkills(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1];
-    attacker.equipment.weapon = makeUniqueCard(CardType.GuanShiFu);
+    equipAt(g, attacker, makeUniqueCard(CardType.GuanShiFu));
     giveHand(attacker, CardType.Sha); // 只有杀，弃牌素材不足
     giveHand(target, CardType.Shan);
     const hpBefore = target.hp;
 
-    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [target] });
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [target] });
 
     expect(target.hp).toBe(hpBefore); // 被抵消，贯石斧不发动
     expect(attacker.hand.length).toBe(0); // 杀已打出
@@ -289,18 +289,18 @@ describe('丈八蛇矛（转化牌）', () => {
     registerSkills(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1];
-    attacker.equipment.weapon = makeUniqueCard(CardType.ZhangBaSheMao);
+    equipAt(g, attacker, makeUniqueCard(CardType.ZhangBaSheMao));
     const tao = makeUniqueCard(CardType.Tao, '♥', 2);
     const shan = makeUniqueCard(CardType.Shan, '♦', 3);
-    attacker.hand = [tao, shan];
+    attacker.hand.replaceAll([tao, shan]);
     const hpBefore = target.hp;
 
     await playPhase(g, { player: attacker });
 
     expect(target.hp).toBe(hpBefore - 1);
     expect(attacker.hand.length).toBe(0);
-    expect(g.state.discardPile).toContain(tao);
-    expect(g.state.discardPile).toContain(shan);
+    expect(g.state.discardPile.cards).toContain(tao);
+    expect(g.state.discardPile.cards).toContain(shan);
     expect(g.state.processing.length).toBe(0);
   });
 
@@ -309,17 +309,17 @@ describe('丈八蛇矛（转化牌）', () => {
     registerSkills(g);
     const attacker = g.state.players[0];
     const caocao = g.state.players[1];
-    attacker.equipment.weapon = makeUniqueCard(CardType.ZhangBaSheMao);
+    equipAt(g, attacker, makeUniqueCard(CardType.ZhangBaSheMao));
     const tao = makeUniqueCard(CardType.Tao, '♥', 4);
     const shan = makeUniqueCard(CardType.Shan, '♦', 5);
-    attacker.hand = [tao, shan];
+    attacker.hand.replaceAll([tao, shan]);
 
     await playPhase(g, { player: attacker });
 
     expect(caocao.hand.map((c) => c.id)).toContain(tao.id);
     expect(caocao.hand.map((c) => c.id)).toContain(shan.id);
-    expect(g.state.discardPile).not.toContain(tao);
-    expect(g.state.discardPile).not.toContain(shan);
+    expect(g.state.discardPile.cards).not.toContain(tao);
+    expect(g.state.discardPile.cards).not.toContain(shan);
   });
 });
 
@@ -328,8 +328,8 @@ describe('方天画戟（多目标杀）', () => {
     const g = freshGame({}, ['刘备', '孙权', '张辽', '黄盖']);
     registerSkills(g);
     const attacker = g.state.players[0];
-    attacker.equipment.weapon = makeUniqueCard(CardType.FangTianHuaJi);
-    attacker.hand = [makeUniqueCard(CardType.Sha)];
+    equipAt(g, attacker, makeUniqueCard(CardType.FangTianHuaJi));
+    attacker.hand.replaceAll([makeUniqueCard(CardType.Sha)]);
     const targets = g.state.players.slice(1);
     const hpBefore = targets.map((p) => p.hp);
 
@@ -343,8 +343,8 @@ describe('方天画戟（多目标杀）', () => {
     const g = freshGame({}, ['刘备', '孙权', '张辽', '黄盖']);
     registerSkills(g);
     const attacker = g.state.players[0];
-    attacker.equipment.weapon = makeUniqueCard(CardType.FangTianHuaJi);
-    attacker.hand = [makeUniqueCard(CardType.Sha), makeUniqueCard(CardType.Shan)];
+    equipAt(g, attacker, makeUniqueCard(CardType.FangTianHuaJi));
+    attacker.hand.replaceAll([makeUniqueCard(CardType.Sha), makeUniqueCard(CardType.Shan)]);
 
     const result = await choosePlayAction(g, attacker, false, new Set());
 
@@ -361,17 +361,17 @@ describe('八卦阵（响应规则）', () => {
     registerSkills(g);
     const attacker = g.state.players[0];
     const defender = g.state.players[1];
-    attacker.hand = [makeUniqueCard(CardType.Sha)];
-    defender.equipment.armor = makeUniqueCard(CardType.BaGuaZhen);
+    attacker.hand.replaceAll([makeUniqueCard(CardType.Sha)]);
+    equipAt(g, defender, makeUniqueCard(CardType.BaGuaZhen));
     const red = makeUniqueCard(CardType.Tao, '♥', 5);
-    g.state.deck = [red];
+    g.state.deck.replaceAll([red]);
     const hpBefore = defender.hp;
 
-    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [defender] });
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [defender] });
 
     expect(defender.hp).toBe(hpBefore);
     expect(defender.hand.length).toBe(0);
-    expect(g.state.discardPile).toContain(red); // 判定牌进弃牌堆
+    expect(g.state.discardPile.cards).toContain(red); // 判定牌进弃牌堆
   });
 
   it('判定黑 → 失败后可再出真闪', async () => {
@@ -379,17 +379,17 @@ describe('八卦阵（响应规则）', () => {
     registerSkills(g);
     const attacker = g.state.players[0];
     const defender = g.state.players[1];
-    attacker.hand = [makeUniqueCard(CardType.Sha)];
-    defender.equipment.armor = makeUniqueCard(CardType.BaGuaZhen);
+    attacker.hand.replaceAll([makeUniqueCard(CardType.Sha)]);
+    equipAt(g, defender, makeUniqueCard(CardType.BaGuaZhen));
     const realShan = makeUniqueCard(CardType.Shan);
-    defender.hand = [realShan];
-    g.state.deck = [makeUniqueCard(CardType.Tao, '♠', 5)];
+    defender.hand.replaceAll([realShan]);
+    g.state.deck.replaceAll([makeUniqueCard(CardType.Tao, '♠', 5)]);
     const hpBefore = defender.hp;
 
-    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [defender] });
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [defender] });
 
     expect(defender.hp).toBe(hpBefore);
     expect(defender.hand.length).toBe(0); // 八卦阵黑失败后出了真闪
-    expect(g.state.discardPile).toContain(realShan);
+    expect(g.state.discardPile.cards).toContain(realShan);
   });
 });

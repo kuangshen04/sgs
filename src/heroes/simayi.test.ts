@@ -4,7 +4,7 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { freshGame, giveHand, makeUniqueCard } from '../test-utils.js';
+import { freshGame, giveHand, makeUniqueCard, equipAt } from '../test-utils.js';
 
 import { damage } from '../life.js';
 
@@ -46,7 +46,7 @@ describe('反馈（司马懿技能）', () => {
     registerSkills(g);
     const simayi = g.state.players[1];
     const source = g.state.players[0];
-    source.equipment.weapon = makeUniqueCard(CardType.ZhugeLianNu);
+    equipAt(g, source, makeUniqueCard(CardType.ZhugeLianNu));
 
     await damage(g, { target: simayi, source, amount: 1 });
 
@@ -66,8 +66,8 @@ describe('鬼才（司马懿技能）', () => {
     const liubei = g.state.players[0];
     const xiahou = g.state.players[1];
     const simayi = g.state.players[2];
-    g.state.deck = [makeUniqueCard(CardType.Sha, '♠', 5)]; // 原判定：黑桃
-    simayi.hand = [makeUniqueCard(CardType.Tao, '♥', 2)];  // 替换牌：红桃
+    g.state.deck.replaceAll([makeUniqueCard(CardType.Sha, '♠', 5)]); // 原判定：黑桃
+    simayi.hand.replaceAll([makeUniqueCard(CardType.Tao, '♥', 2)]);  // 替换牌：红桃
     const hpBefore = liubei.hp;
 
     await damage(g, { target: xiahou, source: liubei, amount: 1 });
@@ -83,7 +83,7 @@ describe('鬼才（司马懿技能）', () => {
     const liubei = g.state.players[0];
     const xiahou = g.state.players[1];
     const simayi = g.state.players[2];
-    g.state.deck = [makeUniqueCard(CardType.JueDou, '♠', 5)]; // 判定：黑桃
+    g.state.deck.replaceAll([makeUniqueCard(CardType.JueDou, '♠', 5)]); // 判定：黑桃
     giveHand(liubei, CardType.Sha, CardType.Sha); // 来源有 2 张
     const hpBefore = liubei.hp;
 

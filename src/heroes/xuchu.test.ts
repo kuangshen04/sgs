@@ -37,7 +37,7 @@ describe('裸衣（许褚技能）', () => {
     const target = g.state.players[0];
     const hpBefore = target.hp;
 
-    await useCard(g, { player: xuchu, card: xuchu.hand[0], targets: [target] });
+    await useCard(g, { player: xuchu, card: xuchu.hand.cards[0], targets: [target] });
 
     expect(target.hp).toBe(hpBefore - 2); // 杀 1 + 裸衣 1
   });
@@ -52,7 +52,7 @@ describe('裸衣（许褚技能）', () => {
     giveHand(target); // 无杀 → 许褚胜
     const hpBefore = target.hp;
 
-    await useCard(g, { player: xuchu, card: xuchu.hand[0], targets: [target] });
+    await useCard(g, { player: xuchu, card: xuchu.hand.cards[0], targets: [target] });
 
     expect(target.hp).toBe(hpBefore - 2);
   });
@@ -67,7 +67,7 @@ describe('裸衣（许褚技能）', () => {
     giveHand(target, CardType.Sha);   // 目标有杀 → 决斗中许褚失败
     const hpBefore = xuchu.hp;
 
-    await useCard(g, { player: xuchu, card: xuchu.hand[0], targets: [target] });
+    await useCard(g, { player: xuchu, card: xuchu.hand.cards[0], targets: [target] });
 
     expect(xuchu.hp).toBe(hpBefore - 2); // 决斗失败受 1+1=2 伤害
   });
@@ -81,7 +81,7 @@ describe('裸衣（许褚技能）', () => {
     const target = g.state.players[0];
     const hpBefore = target.hp;
 
-    await useCard(g, { player: xuchu, card: xuchu.hand[0], targets: [target] });
+    await useCard(g, { player: xuchu, card: xuchu.hand.cards[0], targets: [target] });
 
     expect(target.hp).toBe(hpBefore - 1); // 无加成
   });
@@ -95,7 +95,7 @@ describe('裸衣（许褚技能）', () => {
     const target = g.state.players[0];
     const hpBefore = target.hp;
 
-    await useCard(g, { player: xuchu, card: xuchu.hand[0], targets: [target] });
+    await useCard(g, { player: xuchu, card: xuchu.hand.cards[0], targets: [target] });
 
     expect(target.hp).toBe(hpBefore - 1); // 无加成
   });

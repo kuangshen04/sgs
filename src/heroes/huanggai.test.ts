@@ -23,7 +23,7 @@ describe('苦肉（黄盖主动技能）', () => {
     const huanggai = g.state.players[0];
     huanggai.hp = 3;
     giveHand(huanggai, CardType.Shan); // 不可出 → 触发主动技能
-    g.state.deck = Array.from({ length: 4 }, () => makeUniqueCard(CardType.Shan));
+    g.state.deck.replaceAll(Array.from({ length: 4 }, () => makeUniqueCard(CardType.Shan)));
 
     await playPhase(g, { player: huanggai });
 

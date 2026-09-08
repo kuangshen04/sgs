@@ -114,8 +114,7 @@ export interface CardMoveEventData {
   reason: CardMoveReason;
   /** 移动发起者（技能判断"谁移动的"用） */
   mover?: Player;
-  /** 仅终点为牌堆时使用：放顶（默认）还是放底 */
-  toPosition?: 'top' | 'bottom';
+  // 注：牌堆顶/底不是位置，是取放策略（阶段 2 起由 putTop/putBottom 内部表达，不再入事件）
 }
 
 export interface TurnEventData {

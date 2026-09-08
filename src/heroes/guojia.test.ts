@@ -74,7 +74,7 @@ describe('天妒（郭嘉技能）', () => {
     registerSkills(g);
     const guojia = g.state.players[1];
     const judgeCard = makeUniqueCard(CardType.Sha, '♠', 5);
-    g.state.deck = [judgeCard];
+    g.state.deck.replaceAll([judgeCard]);
 
     const card = await judge(g, guojia);
 
@@ -88,7 +88,7 @@ describe('天妒（郭嘉技能）', () => {
     registerSkills(g);
     const liubei = g.state.players[0];
     const judgeCard = makeUniqueCard(CardType.Sha, '♠', 5);
-    g.state.deck = [judgeCard];
+    g.state.deck.replaceAll([judgeCard]);
 
     await judge(g, liubei);
 

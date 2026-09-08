@@ -26,7 +26,7 @@ describe('奸雄（曹操技能）', () => {
     const attacker = g.state.players[0];
     const caocao = g.state.players[1];
     giveHand(attacker, CardType.Sha);
-    const shaCard = attacker.hand[0];
+    const shaCard = attacker.hand.cards[0];
     const hpBefore = caocao.hp;
 
     await useCard(g, { player: attacker, card: shaCard, targets: [caocao] });
@@ -42,7 +42,7 @@ describe('奸雄（曹操技能）', () => {
     const caocao = g.state.players[1];
     giveHand(attacker, CardType.JueDou);
     giveHand(caocao); // 无杀 → 决斗直接输
-    const jdCard = attacker.hand[0];
+    const jdCard = attacker.hand.cards[0];
 
     await useCard(g, { player: attacker, card: jdCard, targets: [caocao] });
 
@@ -66,9 +66,9 @@ describe('奸雄（曹操技能）', () => {
     const xiahoudun = g.state.players[1];
     // 曹操只 1 张手牌：被刚烈反击时手牌 <2 → 走"受 1 点伤害"分支
     giveHand(caocao, CardType.Sha);
-    const shaCard = caocao.hand[0];
+    const shaCard = caocao.hand.cards[0];
     // 控制判定：牌堆顶放一张非红桃（刚烈判定非红桃 → 结算反击）
-    g.state.deck = [makeUniqueCard(CardType.Sha, '♠', 5)];
+    g.state.deck.replaceAll([makeUniqueCard(CardType.Sha, '♠', 5)]);
     const hpBefore = caocao.hp;
 
     await useCard(g, { player: caocao, card: shaCard, targets: [xiahoudun] });
@@ -86,7 +86,7 @@ describe('奸雄（曹操技能）', () => {
     const liubei = g.state.players[0];
     const attacker = g.state.players[1];
     giveHand(attacker, CardType.Sha);
-    const shaCard = attacker.hand[0];
+    const shaCard = attacker.hand.cards[0];
 
     await useCard(g, { player: attacker, card: shaCard, targets: [liubei] });
 
@@ -101,12 +101,12 @@ describe('护驾（曹操主公技）', () => {
     const caocao = g.state.players[0];
     const guojia = g.state.players[1];
     const attacker = g.state.players[2];
-    caocao.hand = [];
-    guojia.hand = [makeUniqueCard(CardType.Shan)];
-    attacker.hand = [makeUniqueCard(CardType.Sha)];
+    caocao.hand.clear();
+    guojia.hand.replaceAll([makeUniqueCard(CardType.Shan)]);
+    attacker.hand.replaceAll([makeUniqueCard(CardType.Sha)]);
     const hpBefore = caocao.hp;
 
-    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [caocao] });
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [caocao] });
 
     expect(caocao.hp).toBe(hpBefore);
     expect(guojia.hand.length).toBe(0);

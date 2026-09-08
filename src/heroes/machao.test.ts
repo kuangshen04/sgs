@@ -30,10 +30,10 @@ describe('铁骑（马超触发技能）', () => {
     const target = g.state.players[1];
     giveHand(machao, CardType.Sha);
     giveHand(target, CardType.Shan);
-    g.state.deck.push(makeUniqueCard(CardType.Sha, '♥', 1)); // 判定牌：红桃
+    g.state.deck.add(makeUniqueCard(CardType.Sha, '♥', 1)); // 判定牌：红桃
     const hpBefore = target.hp;
 
-    await useCard(g, { player: machao, card: machao.hand[0], targets: [target] });
+    await useCard(g, { player: machao, card: machao.hand.cards[0], targets: [target] });
 
     expect(target.hp).toBe(hpBefore - 1); // 不可闪避，命中
     expect(target.hand.length).toBe(1);   // 闪未打出
@@ -46,10 +46,10 @@ describe('铁骑（马超触发技能）', () => {
     const target = g.state.players[1];
     giveHand(machao, CardType.Sha);
     giveHand(target, CardType.Shan);
-    g.state.deck.push(makeUniqueCard(CardType.Sha, '♠', 1)); // 判定牌：黑桃
+    g.state.deck.add(makeUniqueCard(CardType.Sha, '♠', 1)); // 判定牌：黑桃
     const hpBefore = target.hp;
 
-    await useCard(g, { player: machao, card: machao.hand[0], targets: [target] });
+    await useCard(g, { player: machao, card: machao.hand.cards[0], targets: [target] });
 
     expect(target.hp).toBe(hpBefore);     // 闪抵消
     expect(target.hand.length).toBe(0);

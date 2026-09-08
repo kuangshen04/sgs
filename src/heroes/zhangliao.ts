@@ -23,7 +23,8 @@ const tuxiContent = async (game: Game, event: GameEvent<any>, owner: Player): Pr
   const picks = await askForTargets(game, owner, '突袭：抢谁的手牌', shuffle(candidates), 2);
   if (!picks) return;
   for (const target of picks) {
-    const card = target.hand[Math.floor(Math.random() * target.hand.length)];
+    // 随机取一张手牌（阶段 2：容器读走 .cards 视图）
+    const card = target.hand.cards[Math.floor(Math.random() * target.hand.length)];
     await giveCards(game, target, owner, [card]);
     console.log(`  ✨${owner.name} 发动【突袭】！获得 ${target.name} 的一张手牌`);
   }

@@ -32,11 +32,11 @@ describe('空城（诸葛亮锁定技）', () => {
     const attacker = g.state.players[0];
     giveHand(attacker, CardType.Sha);
 
-    const shaTargets = computeTargetOptions(g, asUsedCard(attacker.hand[0]), attacker);
+    const shaTargets = computeTargetOptions(g, asUsedCard(attacker.hand.cards[0]), attacker);
     expect(shaTargets.map((t) => t.index)).toEqual([2]); // 诸葛亮被排除
 
     giveHand(attacker, CardType.JueDou);
-    const jdTargets = computeTargetOptions(g, asUsedCard(attacker.hand[0]), attacker);
+    const jdTargets = computeTargetOptions(g, asUsedCard(attacker.hand.cards[0]), attacker);
     expect(jdTargets.map((t) => t.index)).toEqual([2]);
   });
 
@@ -47,7 +47,7 @@ describe('空城（诸葛亮锁定技）', () => {
     giveHand(zhuge, CardType.Sha); // 诸葛亮有手牌
     giveHand(attacker, CardType.Sha);
 
-    const targets = computeTargetOptions(g, asUsedCard(attacker.hand[0]), attacker);
+    const targets = computeTargetOptions(g, asUsedCard(attacker.hand.cards[0]), attacker);
     expect(targets.map((t) => t.index)).toEqual([1, 2]);
   });
 });
@@ -58,11 +58,11 @@ describe('观星（诸葛亮技能）', () => {
     registerSkills(g);
     const zhuge = g.state.players[0];
     const deck = [makeUniqueCard(CardType.Sha), makeUniqueCard(CardType.Tao), makeUniqueCard(CardType.Shan)];
-    g.state.deck = [...deck];
+    g.state.deck.replaceAll([...deck]);
 
     await preparePhase(g, { player: zhuge });
 
-    expect(g.state.deck).toEqual(deck); // 顶到下顺序不变
-    expect(g.state.processing).toHaveLength(0);
+    expect(g.state.deck.cards).toEqual(deck); // 顶到下顺序不变
+    expect(g.state.processing.cards).toHaveLength(0);
   });
 });

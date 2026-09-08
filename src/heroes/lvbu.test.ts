@@ -28,7 +28,7 @@ describe('无双（吕布锁定技）', () => {
     giveHand(target, CardType.Shan, CardType.Tao); // 只有一张闪
     const hpBefore = target.hp;
 
-    await useCard(g, { player: lvbu, card: lvbu.hand[0], targets: [target] });
+    await useCard(g, { player: lvbu, card: lvbu.hand.cards[0], targets: [target] });
 
     expect(target.hp).toBe(hpBefore - 1); // 无双命中
     expect(target.hand.length).toBe(1);   // 闪已打出，剩桃
@@ -43,7 +43,7 @@ describe('无双（吕布锁定技）', () => {
     giveHand(target, CardType.Shan, CardType.Shan);
     const hpBefore = target.hp;
 
-    await useCard(g, { player: lvbu, card: lvbu.hand[0], targets: [target] });
+    await useCard(g, { player: lvbu, card: lvbu.hand.cards[0], targets: [target] });
 
     expect(target.hp).toBe(hpBefore);       // 两张闪抵消
     expect(target.hand.length).toBe(0);
@@ -58,7 +58,7 @@ describe('无双（吕布锁定技）', () => {
     giveHand(target, CardType.Shan);
     const hpBefore = target.hp;
 
-    await useCard(g, { player: liubei, card: liubei.hand[0], targets: [target] });
+    await useCard(g, { player: liubei, card: liubei.hand.cards[0], targets: [target] });
 
     expect(target.hp).toBe(hpBefore); // 一张闪抵消
     expect(target.hand.length).toBe(0);
@@ -75,7 +75,7 @@ describe('无双②（决斗）', () => {
     giveHand(target, CardType.Sha, CardType.Tao); // 只有一张杀
     const hpBefore = target.hp;
 
-    await useCard(g, { player: lvbu, card: lvbu.hand[0], targets: [target] });
+    await useCard(g, { player: lvbu, card: lvbu.hand.cards[0], targets: [target] });
 
     // 目标需出两张杀，只有一张 → 目标先响应失败 → 目标受伤
     expect(target.hp).toBe(hpBefore - 1);
@@ -92,7 +92,7 @@ describe('无双②（决斗）', () => {
     const lvbuHpBefore = lvbu.hp;
     const liubeiHpBefore = liubei.hp;
 
-    await useCard(g, { player: liubei, card: liubei.hand[0], targets: [lvbu] });
+    await useCard(g, { player: liubei, card: liubei.hand.cards[0], targets: [lvbu] });
 
     // 吕布作为目标只需一张杀（对手刘备没有无双）→ 成功响应；
     // 轮到刘备响应时需两张（对手吕布有无双）→ 无杀失败受伤
@@ -110,7 +110,7 @@ describe('无双②（决斗）', () => {
     giveHand(target, CardType.Sha, CardType.Sha, CardType.Tao);
     const hpBefore = target.hp;
 
-    await useCard(g, { player: lvbu, card: lvbu.hand[0], targets: [target] });
+    await useCard(g, { player: lvbu, card: lvbu.hand.cards[0], targets: [target] });
 
     // 第1轮 target 需两张（对手吕布）；第2轮 lvbu 只需一张（对手刘备无无双）；
     // 第3轮 target 需两张 → 无杀失败受伤
@@ -128,7 +128,7 @@ describe('无双②（决斗）', () => {
     giveHand(lvbuB, CardType.Sha, CardType.Sha, CardType.Tao);
     const hpBefore = lvbuB.hp;
 
-    await useCard(g, { player: lvbuA, card: lvbuA.hand[0], targets: [lvbuB] });
+    await useCard(g, { player: lvbuA, card: lvbuA.hand.cards[0], targets: [lvbuB] });
 
     // 第1轮 B 需两张（对手 A 是吕布）；第2轮 A 也需两张（对手 B 是吕布）；
     // 第3轮 B 需两张 → 无杀失败受伤；双方各剩一张桃

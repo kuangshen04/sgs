@@ -6,7 +6,7 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { freshGame, giveHand, makeUniqueCard } from './test-utils.js';
+import { freshGame, giveHand, makeUniqueCard, equipAt } from './test-utils.js';
 
 import { useCard } from './cardActions.js';
 
@@ -30,7 +30,7 @@ describe('useCard — 杀', () => {
     giveHand(attacker, CardType.Sha);
     giveHand(defender);  // 空手牌
 
-    const card = attacker.hand[0];
+    const card = attacker.hand.cards[0];
     const hpBefore = defender.hp;
     await useCard(g, { player: attacker, card, targets: [defender] });
 
@@ -50,8 +50,8 @@ describe('useCard — 杀', () => {
     giveHand(attacker, CardType.Sha);
     giveHand(defender, CardType.Shan);
 
-    const shaCard = attacker.hand[0];
-    const shanCard = defender.hand[0];
+    const shaCard = attacker.hand.cards[0];
+    const shanCard = defender.hand.cards[0];
     const hpBefore = defender.hp;
 
     await useCard(g, { player: attacker, card: shaCard, targets: [defender] });
@@ -69,13 +69,13 @@ describe('借刀杀人', () => {
     const user = g.state.players[0];
     const target = g.state.players[1];
     const shaVictim = g.state.players[2];
-    target.equipment.weapon = makeUniqueCard(CardType.QiLinGong);
+    equipAt(g, target, makeUniqueCard(CardType.QiLinGong));
     giveHand(user, CardType.JieDao);
     giveHand(target, CardType.Sha);
     giveHand(shaVictim); // 无闪
     const hpBefore = shaVictim.hp;
 
-    await useCard(g, { player: user, card: user.hand[0], targets: [target] });
+    await useCard(g, { player: user, card: user.hand.cards[0], targets: [target] });
 
     expect(target.hand.length).toBe(0);         // 杀打出去了
     expect(shaVictim.hp).toBe(hpBefore - 1);    // 杀命中
@@ -87,10 +87,10 @@ describe('借刀杀人', () => {
     const user = g.state.players[0];
     const target = g.state.players[1];
     const weapon = makeUniqueCard(CardType.GuanShiFu);
-    target.equipment.weapon = weapon;
+    equipAt(g, target, weapon);
     giveHand(user, CardType.JieDao);
 
-    await useCard(g, { player: user, card: user.hand[0], targets: [target] });
+    await useCard(g, { player: user, card: user.hand.cards[0], targets: [target] });
 
     expect(target.equipment.weapon).toBeUndefined();      // 武器被交出
     expect(user.hand.map((c) => c.id)).toContain(weapon.id); // 武器到使用者手上
@@ -110,14 +110,14 @@ describe('借刀杀人', () => {
     const target = g.state.players[1];    // 被借刀者：持青龙偃月刀（攻击范围 3）+ 杀
     const kongcheng = g.state.players[2]; // 诸葛亮空手 → 空城（免疫杀）
     const shaVictim = g.state.players[3]; // 关羽：攻击范围内唯一合法杀目标
-    target.equipment.weapon = makeUniqueCard(CardType.QingLongYanYueDao);
+    equipAt(g, target, makeUniqueCard(CardType.QingLongYanYueDao));
     giveHand(user, CardType.JieDao);
     giveHand(target, CardType.Sha);
     giveHand(shaVictim); // 无闪
     const kongchengHp = kongcheng.hp;
     const victimHpBefore = shaVictim.hp;
 
-    await useCard(g, { player: user, card: user.hand[0], targets: [target] });
+    await useCard(g, { player: user, card: user.hand.cards[0], targets: [target] });
 
     // 使用者（AI 默认取第一个合法角色）指定关羽；被借刀者出杀 → 关羽受伤、武器保留
     expect(shaVictim.hp).toBe(victimHpBefore - 1);
@@ -135,7 +135,7 @@ describe('useCard — 桃', () => {
     player.hp = 2;
     giveHand(player, CardType.Tao);
 
-    const card = player.hand[0];
+    const card = player.hand.cards[0];
     await useCard(g, { player, card, targets: [player] });
 
     expect(player.hp).toBe(3);
@@ -149,7 +149,7 @@ describe('useCard — 无中生有', () => {
     const player = g.state.players[0];
     giveHand(player, CardType.WuZhong);
 
-    const card = player.hand[0];
+    const card = player.hand.cards[0];
     const before = player.hand.length;
     await useCard(g, { player, card, targets: [player] });
 
@@ -167,7 +167,7 @@ describe('useCard — 决斗', () => {
     giveHand(attacker, CardType.JueDou, CardType.Sha);
     giveHand(defender); // 空手牌 → 无法出杀
 
-    const card = attacker.hand[0];
+    const card = attacker.hand.cards[0];
     const hpBefore = defender.hp;
     await useCard(g, { player: attacker, card, targets: [defender] });
 
@@ -183,7 +183,7 @@ describe('useCard — 决斗', () => {
     giveHand(attacker, CardType.JueDou, CardType.Sha, CardType.Sha);
     giveHand(defender, CardType.Sha); // 只有一张杀
 
-    const card = attacker.hand[0];
+    const card = attacker.hand.cards[0];
     const hpBefore = defender.hp;
     await useCard(g, { player: attacker, card, targets: [defender] });
 
@@ -205,7 +205,7 @@ describe('useCard — 南蛮入侵', () => {
     giveHand(p2, CardType.Sha);      // p2 有杀可出
     giveHand(p3);                     // p3 空手
 
-    const card = attacker.hand[0];
+    const card = attacker.hand.cards[0];
     const hp2Before = p2.hp;
     const hp3Before = p3.hp;
 
@@ -231,7 +231,7 @@ describe('useCard — 万箭齐发', () => {
     giveHand(p2, CardType.Shan); // p2 有闪可出
     giveHand(p3);                 // p3 空手
 
-    const card = attacker.hand[0];
+    const card = attacker.hand.cards[0];
     const hp2Before = p2.hp;
     const hp3Before = p3.hp;
 
@@ -257,7 +257,7 @@ describe('useCard — 桃园结义', () => {
     p3.hp = p3.maxHp; // 满血 → 封顶不变
     giveHand(player, CardType.TaoYuan);
 
-    const card = player.hand[0];
+    const card = player.hand.cards[0];
     await useCard(g, { player, card, targets: [player, p2, p3] });
 
     expect(player.hp).toBe(4); // 3+1
@@ -274,7 +274,7 @@ describe('useCard — 五谷丰登', () => {
     const p3 = g.state.players[2];
     giveHand(player, CardType.WuGu);
 
-    const card = player.hand[0];
+    const card = player.hand.cards[0];
     const deckBefore = g.state.deck.length;
     await useCard(g, { player, card, targets: [player, p2, p3] });
 
@@ -293,10 +293,10 @@ describe('useCard — 五谷丰登', () => {
     const a = makeUniqueCard(CardType.Sha);
     const b = makeUniqueCard(CardType.Tao);
     const c = makeUniqueCard(CardType.Shan);
-    g.state.deck = [a, b, c]; // 顶 = c
+    g.state.deck.replaceAll([a, b, c]); // 顶 = c
     giveHand(player, CardType.WuGu);
 
-    await useCard(g, { player, card: player.hand[0], targets: [player, p2, p3] });
+    await useCard(g, { player, card: player.hand.cards[0], targets: [player, p2, p3] });
 
     const ids = [...player.hand, ...p2.hand, ...p3.hand].map((card) => card.id).sort();
     expect(ids).toEqual([a.id, b.id, c.id].sort());
@@ -313,7 +313,7 @@ describe('useCard — 乐不思蜀（延时锦囊）', () => {
     const target = g.state.players[1];
     giveHand(attacker, CardType.LeBu);
     giveHand(target, CardType.WuXie); // 目标有无懈也不应响应
-    const card = attacker.hand[0];
+    const card = attacker.hand.cards[0];
 
     await useCard(g, { player: attacker, card, targets: [target] });
 
@@ -329,7 +329,7 @@ describe('useCard — 装备', () => {
     const g = freshGame();
     const player = g.state.players[0];
     giveHand(player, CardType.ZhugeLianNu);
-    const card = player.hand[0];
+    const card = player.hand.cards[0];
 
     await useCard(g, { player, card, targets: [player] });
 
@@ -347,7 +347,7 @@ describe('useCard — 装备', () => {
       makeUniqueCard(CardType.JueYing),
       makeUniqueCard(CardType.ChiTu),
     ];
-    player.hand = [...cards];
+    player.hand.replaceAll(cards);
 
     for (const c of cards) {
       await useCard(g, { player, card: c, targets: [player] });
@@ -365,7 +365,7 @@ describe('useCard — 装备', () => {
     const player = g.state.players[0];
     const w1 = makeUniqueCard(CardType.ZhugeLianNu);
     const w2 = makeUniqueCard(CardType.ZhugeLianNu);
-    player.hand = [w1, w2];
+    player.hand.replaceAll([w1, w2]);
 
     await useCard(g, { player, card: w1, targets: [player] });
     await useCard(g, { player, card: w2, targets: [player] });
@@ -384,7 +384,7 @@ describe('useCard — 过河拆桥', () => {
     giveHand(attacker, CardType.GuoHe);
     giveHand(target, CardType.Sha); // 只有一张 → 必被弃置
 
-    const card = attacker.hand[0];
+    const card = attacker.hand.cards[0];
     await useCard(g, { player: attacker, card, targets: [target] });
 
     expect(target.hand.length).toBe(0);
@@ -398,9 +398,9 @@ describe('useCard — 过河拆桥', () => {
     const attacker = g.state.players[0];
     const target = g.state.players[1];
     giveHand(attacker, CardType.GuoHe);
-    target.equipment.weapon = makeUniqueCard(CardType.ZhugeLianNu);
+    equipAt(g, target, makeUniqueCard(CardType.ZhugeLianNu));
 
-    const card = attacker.hand[0];
+    const card = attacker.hand.cards[0];
     await useCard(g, { player: attacker, card, targets: [target] });
 
     expect(target.equipment.weapon).toBeUndefined();
@@ -416,7 +416,7 @@ describe('useCard — 顺手牵羊', () => {
     giveHand(attacker, CardType.ShunShou);
     giveHand(target, CardType.Tao); // 只有一张 → 必被牵走
 
-    const card = attacker.hand[0];
+    const card = attacker.hand.cards[0];
     await useCard(g, { player: attacker, card, targets: [target] });
 
     expect(target.hand.length).toBe(0);
@@ -430,9 +430,9 @@ describe('useCard — 顺手牵羊', () => {
     const attacker = g.state.players[0];
     const target = g.state.players[1];
     giveHand(attacker, CardType.ShunShou);
-    target.equipment.armor = makeUniqueCard(CardType.BaGuaZhen);
+    equipAt(g, target, makeUniqueCard(CardType.BaGuaZhen));
 
-    const card = attacker.hand[0];
+    const card = attacker.hand.cards[0];
     await useCard(g, { player: attacker, card, targets: [target] });
 
     expect(target.equipment.armor).toBeUndefined();
@@ -447,12 +447,12 @@ describe('useCard — 顺手牵羊', () => {
     giveHand(attacker, CardType.ShunShou);
     giveHand(p2, CardType.WuXie, CardType.Tao);
 
-    const card = attacker.hand[0];
+    const card = attacker.hand.cards[0];
     await useCard(g, { player: attacker, card, targets: [p2] });
 
     // p2 用无懈保护自己 → 桃未被牵走
     expect(p2.hand.length).toBe(1);
-    expect(p2.hand[0].type).toBe(CardType.Tao);
+    expect(p2.hand.cards[0].type).toBe(CardType.Tao);
     expect(attacker.hand.length).toBe(0); // 顺手牵羊已消耗
     expect(g.state.discardPile.some((c) => c.type === CardType.WuXie)).toBe(true);
   });
@@ -480,11 +480,11 @@ describe('无懈可击', () => {
     const hp2Before = p2.hp;
     const hp3Before = p3.hp;
 
-    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [p2, p3] });
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [p2, p3] });
 
     expect(p2.hp).toBe(hp2Before);     // 被无懈保护
     expect(p3.hp).toBe(hp3Before - 1); // 无杀受伤
-    expect(g.state.discardPile.some((c) => c.id === attacker.hand[0]?.id)).toBe(false);
+    expect(g.state.discardPile.some((c) => c.id === attacker.hand.cards[0]?.id)).toBe(false);
     // 南蛮已进弃牌堆（手牌被移除），无懈也已进弃牌堆
     expect(p2.hand.length).toBe(0);     // 无懈已打出
   });
@@ -499,7 +499,7 @@ describe('无懈可击', () => {
     giveHand(defender, CardType.WuXie); // 无懈在手，但杀是基本牌
 
     const hpBefore = defender.hp;
-    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [defender] });
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [defender] });
 
     // 无懈不触发，杀正常结算
     expect(defender.hp).toBe(hpBefore - 1);
@@ -514,7 +514,7 @@ describe('无懈可击', () => {
     giveHand(player, CardType.Tao, CardType.WuXie);
 
     // 自己吃桃 → 自己有无懈但不应该抵消
-    await useCard(g, { player, card: player.hand[0], targets: [player] });
+    await useCard(g, { player, card: player.hand.cards[0], targets: [player] });
 
     expect(player.hp).toBe(3);          // 桃生效
     expect(player.hand.length).toBe(1); // 无懈未打出
@@ -541,7 +541,7 @@ describe('无懈可击', () => {
     g.triggerSystem.on(`${EventType.Targeting}.before`, counterHandler);
 
     const hpBefore = p1.hp;
-    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [p1] });
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [p1] });
 
     // 无懈₁ 被无懈₂ 反制 → 南蛮 targeting 未被 cancel → p1 受伤
     expect(p1.hp).toBe(hpBefore - 1);
@@ -570,7 +570,7 @@ describe('targeting', () => {
       targets.push(e.data.target.name);
     });
 
-    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [p2, p3] });
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [p2, p3] });
 
     expect(targets).toEqual(['曹操', '孙权']);
   });
@@ -591,7 +591,7 @@ describe('targeting', () => {
 
     const hp2Before = p2.hp;
     const hp3Before = p3.hp;
-    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [p2, p3] });
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [p2, p3] });
 
     expect(p2.hp).toBe(hp2Before);    // p2 被抵消，不受伤
     expect(p3.hp).toBe(hp3Before - 1); // p3 未被抵消，受伤
@@ -610,7 +610,7 @@ describe('targeting', () => {
 
     const hp2Before = p2.hp;
     const hp3Before = p3.hp;
-    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [p2, p3] });
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [p2, p3] });
 
     expect(p2.hp).toBe(hp2Before);   // 被抵消
     expect(p3.hp).toBe(hp3Before);   // 被抵消
@@ -626,7 +626,7 @@ describe('targeting', () => {
       triggered.push(e.data.target.name);
     });
 
-    await useCard(g, { player, card: player.hand[0], targets: [] });
+    await useCard(g, { player, card: player.hand.cards[0], targets: [] });
 
     expect(triggered).toEqual([player.name]);
   });
@@ -639,7 +639,7 @@ describe('targeting', () => {
     g.triggerSystem.on(`${EventType.Targeting}.before`, (e) => { e.data.cancelled = true; });
 
     const before = player.hand.length;
-    await useCard(g, { player, card: player.hand[0], targets: [] });
+    await useCard(g, { player, card: player.hand.cards[0], targets: [] });
 
     expect(player.hand.length).toBe(before - 1); // 牌已消耗
     expect(g.state.discardPile.length).toBe(1);   // 牌在弃牌堆
@@ -652,7 +652,7 @@ describe('targeting', () => {
 
     g.triggerSystem.on(`${EventType.Targeting}.before`, (e) => { e.data.cancelled = true; });
 
-    const card = attacker.hand[0];
+    const card = attacker.hand.cards[0];
     await useCard(g, { player: attacker, card, targets: [g.state.players[1], g.state.players[2]] });
 
     // 手牌已移除
@@ -669,15 +669,15 @@ describe('决斗/南蛮 响应窗口转化', () => {
     const guanyu = g.state.players[0];
     const attacker = g.state.players[1]; // 刘备
     const red = { id: 9101, type: CardType.Shan, name: '闪', suit: '♥', number: 3 };
-    guanyu.hand = [red];
+    guanyu.hand.replaceAll([red]);
     giveHand(attacker, CardType.JueDou);
     const hpBefore = attacker.hp;
 
-    await useCard(g, { player: attacker, card: attacker.hand[0], targets: [guanyu] });
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [guanyu] });
 
     expect(guanyu.hand.length).toBe(0); // 红色源牌被武圣消耗
     expect(attacker.hp).toBe(hpBefore - 1); // 我方无杀 → 受伤
-    expect(g.state.discardPile).toContain(red);
+    expect(g.state.discardPile.cards).toContain(red);
   });
 
   it('赵云通过龙胆·当杀 响应南蛮，免伤', async () => {
@@ -686,14 +686,14 @@ describe('决斗/南蛮 响应窗口转化', () => {
     const zhaoyun = g.state.players[0];
     const user = g.state.players[1]; // 刘备
     const shan = { id: 9102, type: CardType.Shan, name: '闪', suit: '♦', number: 5 };
-    zhaoyun.hand = [shan];
+    zhaoyun.hand.replaceAll([shan]);
     giveHand(user, CardType.NanMan);
     const hpBefore = zhaoyun.hp;
 
-    await useCard(g, { player: user, card: user.hand[0], targets: [zhaoyun] });
+    await useCard(g, { player: user, card: user.hand.cards[0], targets: [zhaoyun] });
 
     expect(zhaoyun.hp).toBe(hpBefore); // 免伤
     expect(zhaoyun.hand.length).toBe(0); // 闪被龙胆消耗
-    expect(g.state.discardPile).toContain(shan);
+    expect(g.state.discardPile.cards).toContain(shan);
   });
 });

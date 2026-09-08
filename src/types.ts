@@ -3,6 +3,8 @@
 // 所有类型直接写死，不做抽象
 // ============================================================
 
+import type { CardArea } from './cardArea.js';
+
 /** 卡牌类型 */
 export enum CardType {
   Sha = '杀',
@@ -97,9 +99,10 @@ export interface Player {
   hero: HeroDef;
   hp: number;
   maxHp: number;
-  hand: Card[];
-  /** 判定区（延时锦囊） */
-  judgment: Card[];
+  /** 手牌（受控容器 CardArea，阶段 2） */
+  hand: CardArea;
+  /** 判定区（延时锦囊；受控容器 CardArea，阶段 2） */
+  judgment: CardArea;
   /** 装备区 */
   equipment: PlayerEquipment;
   alive: boolean;
@@ -162,10 +165,10 @@ export type VictoryCondition = (state: GameState) => Player | null;
 export interface GameState {
   players: Player[];         // 参数化玩家数
   currentIndex: number;      // 当前回合玩家索引
-  deck: Card[];
-  discardPile: Card[];
+  deck: CardArea;
+  discardPile: CardArea;
   /** 处理区：正在结算中的牌（使用/打出后、结算完成前） */
-  processing: Card[];
+  processing: CardArea;
   /** 当前主公（身份场）；undefined = 未启用身份场，主公技按普通技能处理 */
   lord?: Player;
   round: number;

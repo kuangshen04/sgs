@@ -96,7 +96,14 @@
 
 - [x] 处理区：使用的牌在结算中的位置（useCard/judge 已接入 processing 区；奸雄已改为从处理区取源牌）
 - [x] 卡牌位置追踪（FreeKill 式 CardLocation / getCardArea）：统一查询任意牌所在位置（含处理区）
-- [ ] 硬约束：牌只能通过 moveCards 移动，禁止直接数组操作（当前生产代码已收口；需运行时/lint 层面约束，测试辅助一并处理）
+- [x] 阶段 2 位置模型收口（演进 3.2/3.4 落地，`src/cardArea.ts`）：
+  - **受控容器 CardArea**：手牌/判定区/牌堆/弃牌/处理区改为容器（读 = `.cards` 视图 + 只读委托；写只走容器方法），
+    唯一性由物理结构保证（一牌一位置，重复入区运行时抛错）；
+  - **引擎级集中索引** `Game.cardIndex`（FreeKill card_place 等价物）：`getCardArea` 改为索引查询，由容器/装备写点同步；
+  - **toPosition 剥离**：`CardMoveSpec`/`CardMoveEventData` 去掉 toPosition，牌堆顶/底收敛进 `putTop`/`putBottom`；
+  - **对账不变量**：`verifyCardState`/`assertCardState`（`src/cardAreaCheck.ts`）+ `cardArea.test.ts`；
+  - 测试/测试辅助机械更新走容器方法（freshGame/giveHand/equipAt），装备槽位写也经索引同步；
+  - 遗留：createGame 初始发牌与测试置场仍绕过移动事件（局首/置场直放，属预期）
 - 注：与规则术语"区域"（玩家三区）是两回事；位置追踪是引擎的位置模型，将来与区域并行
 - 注：统一移动模型重构见 [移动模型重构TODO.md](移动模型重构TODO.md)（CardMove 事件是位置变化的记录，本项是它的下游）
 
@@ -234,7 +241,8 @@
 
 > 实施顺序已整理进 [演进与避坑.md](演进与避坑.md) 第十节"实施路线"（七阶段），此处不再重复维护。
 > 简要版：标包真收尾（奸雄修复 ✓）→ 事件历史 + clear 钩子（#7/#8 ✓，克己已迁移历史查询）→
-> CardArea 容器 → 技能与效果建模（锁定技/失效/青釭剑/国色/离间/排序显式化）→ 军争/神话再临内容包 →
+> CardArea 容器（阶段 2 ✓：受控容器 + 集中索引 + toPosition 剥离 + 对账不变量）→
+> 技能与效果建模（锁定技/失效/青釭剑/国色/离间/排序显式化）→ 军争/神话再临内容包 →
 > DI 插件机制 → 前端/回放/编辑器。
 
 ## 已知问题
