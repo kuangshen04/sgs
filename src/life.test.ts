@@ -38,7 +38,7 @@ describe('damage', () => {
 
     expect(target.alive).toBe(true);
     expect(target.hp).toBe(1); // -1 + 桃(+1) = 0, 仍濒死, 再桃(+1) = 1 → 存活
-    expect(target.hand.length).toBe(0);
+    expect(target.hand.cards.length).toBe(0);
   });
 });
 
@@ -57,7 +57,7 @@ describe('dying', () => {
 
     expect(player.alive).toBe(true);
     expect(player.hp).toBe(1);
-    expect(player.hand.length).toBe(0); // 桃已用掉
+    expect(player.hand.cards.length).toBe(0); // 桃已用掉
   });
 
   it('有多个桃 → 用到体力 > 0 为止', async () => {
@@ -70,7 +70,7 @@ describe('dying', () => {
 
     expect(player.alive).toBe(true);
     expect(player.hp).toBe(1);
-    expect(player.hand.length).toBe(0);
+    expect(player.hand.cards.length).toBe(0);
   });
 
   it('无桃 → 真正死亡', async () => {
@@ -94,7 +94,7 @@ describe('dying', () => {
     await dying(g, { player });
 
     expect(player.alive).toBe(false);
-    expect(player.hand.length).toBe(1); // 桃未使用
+    expect(player.hand.cards.length).toBe(1); // 桃未使用
   });
 
   it('其他角色按座次出桃救援（从当前回合角色开始）', async () => {
@@ -108,7 +108,7 @@ describe('dying', () => {
 
     expect(target.alive).toBe(true);
     expect(target.hp).toBe(1);
-    expect(savior.hand.length).toBe(0); // 曹操的桃被用来救人
+    expect(savior.hand.cards.length).toBe(0); // 曹操的桃被用来救人
   });
 
   it('用桃者被继续询问：同一玩家可连续使用多个桃', async () => {
@@ -123,8 +123,8 @@ describe('dying', () => {
 
     expect(target.alive).toBe(true);
     expect(target.hp).toBe(1);
-    expect(a.hand.length).toBe(0); // 刘备无桃
-    expect(b.hand.length).toBe(0); // 曹操连续用了两张（指针停在用桃者身上）
+    expect(a.hand.cards.length).toBe(0); // 刘备无桃
+    expect(b.hand.cards.length).toBe(0); // 曹操连续用了两张（指针停在用桃者身上）
   });
 
   it('回合外华佗可用急救（红牌当桃）救人', async () => {
@@ -140,8 +140,8 @@ describe('dying', () => {
 
     expect(sunquan.hp).toBe(1);
     expect(sunquan.alive).toBe(true);
-    expect(huatuo.hand.length).toBe(0); // 红色牌被急救消耗
-    expect(g.state.discardPile.some((c) => c.suit === '♥')).toBe(true);
+    expect(huatuo.hand.cards.length).toBe(0); // 红色牌被急救消耗
+    expect(g.state.discardPile.cards.some((c) => c.suit === '♥')).toBe(true);
   });
 });
 

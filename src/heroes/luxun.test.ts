@@ -63,7 +63,7 @@ describe('连营（陆逊触发技能）', () => {
 
     await discardCards(g, luxun, [luxun.hand.cards[0]]);
 
-    expect(luxun.hand.length).toBe(1); // 弃 1 摸 1
+    expect(luxun.hand.cards.length).toBe(1); // 弃 1 摸 1
   });
 
   it('弃置后手牌仍非空 → 不触发', async () => {
@@ -74,7 +74,7 @@ describe('连营（陆逊触发技能）', () => {
 
     await discardCards(g, luxun, [luxun.hand.cards[0]]);
 
-    expect(luxun.hand.length).toBe(1); // 只剩桃，未摸牌
+    expect(luxun.hand.cards.length).toBe(1); // 只剩桃，未摸牌
   });
 
   it('失去装备区内的牌 → 不触发连营', async () => {
@@ -83,13 +83,13 @@ describe('连营（陆逊触发技能）', () => {
     const luxun = g.state.players[1];
     const weapon = makeUniqueCard(CardType.ZhugeLianNu);
     equipAt(g, luxun, weapon);
-    const before = luxun.hand.length;
+    const before = luxun.hand.cards.length;
 
     await moveCards(g, {
       to: { zone: 'discardPile' }, cards: [weapon], reason: 'discard',
     });
 
-    expect(luxun.hand.length).toBe(before); // 不触发
+    expect(luxun.hand.cards.length).toBe(before); // 不触发
   });
 
   it('非陆逊 → 不触发', async () => {
@@ -100,6 +100,6 @@ describe('连营（陆逊触发技能）', () => {
 
     await discardCards(g, liubei, [liubei.hand.cards[0]]);
 
-    expect(liubei.hand.length).toBe(0); // 无连营
+    expect(liubei.hand.cards.length).toBe(0); // 无连营
   });
 });

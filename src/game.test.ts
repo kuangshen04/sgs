@@ -42,7 +42,7 @@ describe('createGame', () => {
   it('每个玩家初始 4 张手牌', () => {
     const g = createGame(STANDARD_DECK, DEFAULT_HEROES);
     for (const p of g.state.players) {
-      expect(p.hand.length).toBe(4);
+      expect(p.hand.cards.length).toBe(4);
     }
   });
 
@@ -53,14 +53,14 @@ describe('createGame', () => {
     expect(g.state.gameOver).toBe(false);
     expect(g.state.winner).toBeNull();
     // 108 - 3人×4 = 96
-    expect(g.state.deck.length).toBe(96);
-    expect(g.state.discardPile.length).toBe(0);
+    expect(g.state.deck.cards.length).toBe(96);
+    expect(g.state.discardPile.cards.length).toBe(0);
   });
 
   it('局内牌 id 唯一', () => {
     const g = createGame(STANDARD_DECK, DEFAULT_HEROES);
-    const ids = new Set(g.state.deck.map((c) => c.id));
-    expect(ids.size).toBe(g.state.deck.length);
+    const ids = new Set(g.state.deck.cards.map((c) => c.id));
+    expect(ids.size).toBe(g.state.deck.cards.length);
   });
 
   it('同名英雄可重复（三个郭嘉）', () => {

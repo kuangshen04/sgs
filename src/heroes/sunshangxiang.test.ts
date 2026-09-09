@@ -34,7 +34,7 @@ describe('结姻（孙尚香主动技能）', () => {
 
     expect(sun.hp).toBe(3);
     expect(target.hp).toBe(3);
-    expect(sun.hand.length).toBe(0); // 两张手牌被弃置
+    expect(sun.hand.cards.length).toBe(0); // 两张手牌被弃置
   });
 
   it('没有受伤的男性角色 → 规则不允许发动', async () => {
@@ -76,7 +76,7 @@ describe('结姻（孙尚香主动技能）', () => {
 
     await playPhase(g, { player: sun });
 
-    expect(sun.hand.length).toBe(2); // 未发动
+    expect(sun.hand.cards.length).toBe(2); // 未发动
     expect(target.hp).toBe(2);
   });
 });
@@ -88,14 +88,14 @@ describe('枭姬（孙尚香触发技能）', () => {
     const sun = g.state.players[0];
     const weapon = makeUniqueCard(CardType.ZhugeLianNu);
     equipAt(g, sun, weapon);
-    const before = sun.hand.length;
+    const before = sun.hand.cards.length;
 
     await moveCards(g, {
       to: { zone: 'discardPile' }, cards: [weapon], reason: 'discard',
     });
 
     expect(sun.equipment.weapon).toBeUndefined();
-    expect(sun.hand.length).toBe(before + 2);
+    expect(sun.hand.cards.length).toBe(before + 2);
   });
 
   it('装备顶掉 → 旧装备失去触发枭姬', async () => {
@@ -111,7 +111,7 @@ describe('枭姬（孙尚香触发技能）', () => {
 
     expect(sun.equipment.weapon).toBe(newWeapon);
     // 初始 1（新武器）→ replace 触发枭姬摸 2（=3）→ equip 消耗新武器（=2）
-    expect(sun.hand.length).toBe(2);
+    expect(sun.hand.cards.length).toBe(2);
   });
 
   it('失去手牌 → 不触发枭姬', async () => {
@@ -119,11 +119,11 @@ describe('枭姬（孙尚香触发技能）', () => {
     registerSkills(g);
     const sun = g.state.players[0];
     giveHand(sun, CardType.Sha);
-    const before = sun.hand.length;
+    const before = sun.hand.cards.length;
 
     await discardCards(g, sun, [sun.hand.cards[0]]);
 
-    expect(sun.hand.length).toBe(before - 1); // 只弃不摸
+    expect(sun.hand.cards.length).toBe(before - 1); // 只弃不摸
   });
 
   it('非孙尚香 → 不触发', async () => {
@@ -132,12 +132,12 @@ describe('枭姬（孙尚香触发技能）', () => {
     const liubei = g.state.players[1];
     const weapon = makeUniqueCard(CardType.ZhugeLianNu);
     equipAt(g, liubei, weapon);
-    const before = liubei.hand.length;
+    const before = liubei.hand.cards.length;
 
     await moveCards(g, {
       to: { zone: 'discardPile' }, cards: [weapon], reason: 'discard',
     });
 
-    expect(liubei.hand.length).toBe(before); // 无枭姬
+    expect(liubei.hand.cards.length).toBe(before); // 无枭姬
   });
 });

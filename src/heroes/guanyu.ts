@@ -31,7 +31,7 @@ conversionRegistry.register({
   toType: CardType.Sha,
   canUse: (game, player, shaUsed) => {
     const def = cardRegistry.get(CardType.Sha)!;
-    return player.hand.some(isRed)
+    return player.hand.cards.some(isRed)
       && def.canUse(player, game.state.players, shaUsed);
   },
   selectionPlan: (game, player) => ({
@@ -75,7 +75,7 @@ responseRuleRegistry.register({
   respondsTo: CardType.Sha,
   ownerSkill: '武圣',
   canUse: (_game, player, request) =>
-    request.type === 'play' && player.hand.some(isRed),
+    request.type === 'play' && player.hand.cards.some(isRed),
   selectionPlan: (_game, player) => ({
     nextStep(answers) {
       if (answers.source) return null;

@@ -17,11 +17,11 @@ activeSkillRegistry.register({
   name: '制衡',
   canUse: (game, player, ctx) =>
     !ctx.usedSkills.has('制衡') && // 规则：每回合限一次
-    (player.hand.length > 0 || equipmentCards(player).length > 0), // 需有可弃的牌
+    (player.hand.cards.length > 0 || equipmentCards(player).length > 0), // 需有可弃的牌
   selectionPlan: (game, player) => ({
     nextStep(answers) {
       if (!answers.cards) {
-        const candidates = [...player.hand, ...equipmentCards(player)];
+        const candidates = [...player.hand.cards, ...equipmentCards(player)];
         return cardsStep('cards', candidates, {
           prompt: '制衡：选择要弃置的手牌',
           min: 0,

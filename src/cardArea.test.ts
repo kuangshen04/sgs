@@ -41,7 +41,7 @@ describe('CardArea 唯一性（一牌一位置）', () => {
 
     expect(p0.hand.removeLast()).toBe(tao);
     expect(getCardArea(g, tao)).toBeNull();
-    expect(p0.hand.isEmpty).toBe(true);
+    expect(p0.hand.cards.length).toBe(0);
   });
 
   it('replaceAll / insertAt 顺序与索引正确', () => {

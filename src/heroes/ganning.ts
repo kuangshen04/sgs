@@ -29,7 +29,7 @@ conversionRegistry.register({
   toType: CardType.GuoHe,
   canUse: (game, player) => {
     const def = cardRegistry.get(CardType.GuoHe)!;
-    return player.hand.some(isBlack)
+    return player.hand.cards.some(isBlack)
       && def.canUse(player, game.state.players, false);
   },
   selectionPlan: (game, player) => ({

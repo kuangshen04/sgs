@@ -16,7 +16,7 @@ activeSkillRegistry.register({
   // 规则：每回合限一次，需弃两张手牌，且存在已受伤的男性角色
   canUse: (game, player, ctx) =>
     !ctx.usedSkills.has('结姻') &&
-    player.hand.length >= 2 &&
+    player.hand.cards.length >= 2 &&
     game.state.players.some(
       (p) => p.alive && p !== player && p.hero.sex === 'male' && p.hp < p.maxHp,
     ),
@@ -56,7 +56,7 @@ activeSkillRegistry.register({
   },
   ai: {
     // AI：自己受伤且有余牌时才发动（保守：至少自己回 1 血）
-    shouldUse: (game, player) => player.hp < player.maxHp && player.hand.length >= 2,
+    shouldUse: (game, player) => player.hp < player.maxHp && player.hand.cards.length >= 2,
     priority: 0,
   },
 });

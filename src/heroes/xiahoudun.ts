@@ -19,8 +19,8 @@ const ganglieContent = async (game: Game, event: GameEvent<any>, owner: Player):
   if (card.suit === '♥') return; // 红桃 → 无事发生
 
   // 伤害来源：手牌足够则弃两张，否则受到来自你的 1 点伤害
-  if (source.hand.length >= 2) {
-    const discarded = await discardCards(game, source, source.hand.slice(0, 2));
+  if (source.hand.cards.length >= 2) {
+    const discarded = await discardCards(game, source, source.hand.cards.slice(0, 2));
     console.log(`  ${source.name} 弃置 ${discarded.length} 张手牌以响应【刚烈】`);
   } else {
     await damage(game, { target: source, source: owner, amount: 1 });

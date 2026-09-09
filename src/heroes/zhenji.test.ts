@@ -28,10 +28,10 @@ describe('洛神（甄宓技能）', () => {
 
     await preparePhase(g, { player: zhenji });
 
-    expect(zhenji.hand.map((c) => c.id).sort((a, b) => a - b))
+    expect(zhenji.hand.cards.map((c) => c.id).sort((a, b) => a - b))
       .toEqual([black1.id, black2.id].sort((a, b) => a - b));
-    expect(g.state.discardPile.find((c) => c.id === red.id)).toBeDefined(); // 红色判定牌留弃牌堆
-    expect(g.state.deck.length).toBe(0); // 三张都被判定
+    expect(g.state.discardPile.cards.find((c) => c.id === red.id)).toBeDefined(); // 红色判定牌留弃牌堆
+    expect(g.state.deck.cards.length).toBe(0); // 三张都被判定
   });
 
   it('判定为红色 → 不获得', async () => {
@@ -43,7 +43,7 @@ describe('洛神（甄宓技能）', () => {
 
     await preparePhase(g, { player: zhenji });
 
-    expect(zhenji.hand.length).toBe(0);
-    expect(g.state.discardPile.find((c) => c.id === red.id)).toBeDefined();
+    expect(zhenji.hand.cards.length).toBe(0);
+    expect(g.state.discardPile.cards.find((c) => c.id === red.id)).toBeDefined();
   });
 });

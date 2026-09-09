@@ -48,8 +48,8 @@ describe('龙胆①（赵云转化牌）', () => {
     await playPhase(g, { player: zhaoyun });
 
     expect(target.hp).toBe(hpBefore - 1);
-    expect(zhaoyun.hand.length).toBe(0);
+    expect(zhaoyun.hand.cards.length).toBe(0);
     expect(g.state.discardPile.cards).toContain(shan);
-    expect(g.state.processing.length).toBe(0);
+    expect(g.state.processing.cards.length).toBe(0);
   });
 });

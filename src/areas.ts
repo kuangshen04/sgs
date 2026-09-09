@@ -21,13 +21,13 @@ export function equipmentCards(player: Player): Card[] {
 
 /** 玩家区域（手牌 + 装备区 + 判定区）内的全部牌 */
 export function cardsInAreas(player: Player): Card[] {
-  return [...player.hand, ...equipmentCards(player), ...player.judgment];
+  return [...player.hand.cards, ...equipmentCards(player), ...player.judgment.cards];
 }
 
 /** 玩家区域内是否有牌 */
 export function hasCardsInAreas(player: Player): boolean {
-  return player.hand.length > 0
+  return player.hand.cards.length > 0
     || !!player.equipment.weapon || !!player.equipment.armor
     || !!player.equipment.defensiveHorse || !!player.equipment.offensiveHorse
-    || player.judgment.length > 0;
+    || player.judgment.cards.length > 0;
 }

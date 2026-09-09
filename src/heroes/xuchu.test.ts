@@ -25,7 +25,7 @@ describe('裸衣（许褚技能）', () => {
 
     await drawPhase(g, { player: xuchu });
 
-    expect(xuchu.hand.length).toBe(1); // 只摸 1 张
+    expect(xuchu.hand.cards.length).toBe(1); // 只摸 1 张
   });
 
   it('使用杀造成伤害+1', async () => {

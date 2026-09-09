@@ -37,7 +37,7 @@ skillRegistry.register({
     const lostHand = fromAreas.some(
       (a) => 'player' in a && a.player === owner && a.zone === 'hand',
     );
-    return lostHand && owner.hand.length === 0; // 移动后手牌为空
+    return lostHand && owner.hand.cards.length === 0; // 移动后手牌为空
   },
   content: lianyingContent,
 });

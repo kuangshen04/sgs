@@ -33,7 +33,7 @@ describe('克己（吕蒙）', () => {
       await discardPhase(g, { player: lv });
     });
 
-    expect(lv.hand.length).toBe(5); // 未弃牌
+    expect(lv.hand.cards.length).toBe(5); // 未弃牌
   });
 
   it('本回合用过杀 → 正常弃牌（历史查询命中）', async () => {
@@ -51,7 +51,7 @@ describe('克己（吕蒙）', () => {
       await discardPhase(g, { player: lv });
     });
 
-    expect(lv.hand.length).toBe(4); // 6 张用 1 → 剩 5 > 体力 4 → 弃 1
+    expect(lv.hand.cards.length).toBe(4); // 6 张用 1 → 剩 5 > 体力 4 → 弃 1
   });
 
   it('回合作用域：别人回合里用杀不计入，自己回合仍可克己', async () => {
@@ -76,6 +76,6 @@ describe('克己（吕蒙）', () => {
       await discardPhase(g, { player: lv });
     });
 
-    expect(lv.hand.length).toBe(5); // 跳过弃牌，未弃
+    expect(lv.hand.cards.length).toBe(5); // 跳过弃牌，未弃
   });
 });

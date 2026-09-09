@@ -19,22 +19,22 @@ describe('drawCards', () => {
   it('摸 2 张牌', async () => {
     const g = freshGame();
     const target = g.state.players[0];
-    const before = target.hand.length;
+    const before = target.hand.cards.length;
     await drawCards(g, { target, count: 2 });
-    expect(target.hand.length).toBe(before + 2);
+    expect(target.hand.cards.length).toBe(before + 2);
   });
 
   it('牌堆空时自动洗入弃牌堆', async () => {
     const g = freshGame();
     // 把牌堆移到弃牌堆（容器收口；测试置场）
-    const all = g.state.deck.toArray();
+    const all = [...g.state.deck.cards];
     g.state.deck.clear();
     g.state.discardPile.addAll(all);
     const target = g.state.players[0];
     await drawCards(g, { target, count: 1 });
-    expect(target.hand.length).toBe(1);
+    expect(target.hand.cards.length).toBe(1);
     // 弃牌堆被洗回牌堆，牌堆数 > 0
-    expect(g.state.deck.length).toBeGreaterThan(0);
+    expect(g.state.deck.cards.length).toBeGreaterThan(0);
   });
 
   it('摸牌中途牌堆空 → 洗入弃牌堆继续摸', async () => {
@@ -46,7 +46,7 @@ describe('drawCards', () => {
 
     await drawCards(g, { target: player, count: 2 });
 
-    expect(player.hand.length).toBe(2); // 第 1 张摸完，洗入弃牌堆再摸第 2 张
+    expect(player.hand.cards.length).toBe(2); // 第 1 张摸完，洗入弃牌堆再摸第 2 张
   });
 });
 
@@ -82,8 +82,8 @@ describe('peekTop / reshuffle', () => {
     await reshuffle(g);
 
     expect(captured.reshuffled).toBe(true);
-    expect(g.state.discardPile).toHaveLength(0);
-    expect(g.state.deck).toHaveLength(2);
+    expect(g.state.discardPile.cards).toHaveLength(0);
+    expect(g.state.deck.cards).toHaveLength(2);
     expect(g.state.deck.cards).toEqual(expect.arrayContaining([a, b]));
   });
 });
@@ -113,7 +113,7 @@ describe('牌堆原语', () => {
     await takeTop(g, 1, { player, zone: 'hand' }, 'draw');
 
     expect(player.hand.cards).toEqual([x]);
-    expect(g.state.deck).toHaveLength(0);
+    expect(g.state.deck.cards).toHaveLength(0);
   });
 
   it('takeBottom：从牌堆底取一张', async () => {
@@ -141,7 +141,7 @@ describe('牌堆原语', () => {
     await putTop(g, [top]);
 
     expect(g.state.deck.cards[0]).toBe(bottom); // 底
-    expect(g.state.deck.cards[g.state.deck.length - 1]).toBe(top); // 顶
+    expect(g.state.deck.cards[g.state.deck.cards.length - 1]).toBe(top); // 顶
   });
 
   it('findInDeck：从顶往下找第一张符合条件', () => {
@@ -182,7 +182,7 @@ describe('playFromHand', () => {
 
     await playFromHand(g, player, card);
 
-    expect(player.hand.map((c) => c.type)).toEqual([CardType.Tao]);
+    expect(player.hand.cards.map((c) => c.type)).toEqual([CardType.Tao]);
     expect(g.state.discardPile.cards).toContain(card);
   });
 
@@ -212,9 +212,9 @@ describe('giveCards', () => {
 
     await giveCards(g, from, to, [card]);
 
-    expect(from.hand.map((c) => c.type)).toEqual([CardType.Tao]);
+    expect(from.hand.cards.map((c) => c.type)).toEqual([CardType.Tao]);
     expect(to.hand.cards).toContain(card);
-    expect(g.state.discardPile.length).toBe(0); // 不经过弃牌堆
+    expect(g.state.discardPile.cards.length).toBe(0); // 不经过弃牌堆
   });
 
   it('牌不在 from 手牌 → 跳过，不入 to 手牌', async () => {
@@ -226,8 +226,8 @@ describe('giveCards', () => {
 
     await giveCards(g, from, to, [phantom]);
 
-    expect(from.hand.length).toBe(1);
-    expect(to.hand.length).toBe(0);
+    expect(from.hand.cards.length).toBe(1);
+    expect(to.hand.cards.length).toBe(0);
   });
 });
 
@@ -244,7 +244,7 @@ describe('discardCards', () => {
 
     await discardCards(g, player, [card]);
 
-    expect(player.hand.map((c) => c.type)).toEqual([CardType.Tao]);
+    expect(player.hand.cards.map((c) => c.type)).toEqual([CardType.Tao]);
     expect(g.state.discardPile.cards).toContain(card);
   });
 
@@ -258,7 +258,7 @@ describe('discardCards', () => {
     const removed = await discardCards(g, player, [card, phantom]);
 
     expect(removed).toEqual([card]);
-    expect(player.hand.length).toBe(1);
+    expect(player.hand.cards.length).toBe(1);
     expect(g.state.discardPile.cards).not.toContain(phantom);
   });
 
@@ -268,8 +268,8 @@ describe('discardCards', () => {
     giveHand(player, CardType.Sha);
 
     expect(await discardCards(g, player, [])).toEqual([]);
-    expect(player.hand.length).toBe(1);
-    expect(g.state.discardPile.length).toBe(0);
+    expect(player.hand.cards.length).toBe(1);
+    expect(g.state.discardPile.cards.length).toBe(0);
   });
 });
 
@@ -290,7 +290,7 @@ describe('moveCards（统一移动）', () => {
     });
 
     expect(moved).toEqual([card]);
-    expect(player.hand.map((c) => c.id)).not.toContain(card.id);
+    expect(player.hand.cards.map((c) => c.id)).not.toContain(card.id);
     expect(g.state.discardPile.cards).toContain(card);
     expect(getCardArea(g, card)).toEqual({ zone: 'discardPile' });
   });
@@ -324,7 +324,7 @@ describe('moveCards（统一移动）', () => {
     });
 
     expect(moved).toEqual([handCard, eqCard]);
-    expect(player.hand.length).toBe(0);
+    expect(player.hand.cards.length).toBe(0);
     expect(player.equipment.weapon).toBeUndefined();
     expect(g.state.discardPile.cards).toEqual([handCard, eqCard]);
   });
@@ -392,7 +392,7 @@ describe('moveCards（统一移动）', () => {
     });
 
     expect(moved).toEqual([]);
-    expect(player.hand.length).toBe(0);
+    expect(player.hand.cards.length).toBe(0);
   });
 
   it('事件数据：reason / fromAreas / to / mover 正确', async () => {

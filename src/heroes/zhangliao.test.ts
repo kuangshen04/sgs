@@ -25,13 +25,13 @@ describe('突袭（张辽技能）', () => {
     const p2 = g.state.players[2];
     giveHand(p1, CardType.Sha);
     giveHand(p2, CardType.Tao);
-    const deckBefore = g.state.deck.length;
+    const deckBefore = g.state.deck.cards.length;
 
     await drawPhase(g, { player: zhangliao });
 
-    expect(zhangliao.hand.length).toBe(2); // 各获得一张
-    expect(p1.hand.length).toBe(0);
-    expect(p2.hand.length).toBe(0);
-    expect(g.state.deck.length).toBe(deckBefore); // 未摸牌
+    expect(zhangliao.hand.cards.length).toBe(2); // 各获得一张
+    expect(p1.hand.cards.length).toBe(0);
+    expect(p2.hand.cards.length).toBe(0);
+    expect(g.state.deck.cards.length).toBe(deckBefore); // 未摸牌
   });
 });

@@ -4,11 +4,13 @@
 // 背景（演进与避坑 3.2）：唯一性要么来自物理结构（无名杀 DOM）、要么来自集中索引
 // （FreeKill card_place）；裸 TS 数组两者皆无。本模块用"受控容器 + 派生态索引"补上。
 //
-// 数据权威：容器内部数组（序列化只存内容，加载时重建索引 —— FreeKill serialize 同款）；
+// 数据权威：容器内部内容（序列化只存内容，加载时重建索引 —— FreeKill serialize 同款）；
 // 索引是派生态，只由容器方法 / 装备槽位写点维护，不参与序列化。
 //
 // 容器语义-free：只负责 进/出/顺序/唯一/归属；不掺技能名、移动原因、可见性、
-// 装备槽位策略（槽位由移动原语的语义封装按牌类型决定）。
+// 装备槽位策略。**对外不伪装成数组**：读取一律走 `cards` 只读视图，
+// 更改只走受控方法；内部具体结构（数组/链表/槽位…）由将来各区域子类/注入自行决定，
+// 本类只保证"受控 + 唯一 + 索引同步"的最小面。
 // ============================================================
 
 import type { Card, CardLocation } from './types.js';
@@ -22,9 +24,9 @@ export function createCardIndex(): CardIndex {
 
 /**
  * 一个"能放牌的位置"的受控容器。
- * - 内容只读视图 = `cards`；写只能通过容器方法（add / insertAt / removeById / clear 等）。
+ * - 对外只有两块面：只读内容视图 `cards`；受控更改方法（add / insertAt / removeById / clear 等）。
  * - 容器方法内部同步全局索引（构造函数传入），并做唯一性硬校验：
- *   一张牌已在某位置时再次入区即抛错（一牌一位置，测试期 sanity net / 运行时红线）。
+ *   一张牌已在某位置时再次入区即抛错（一牌一位置，运行时红线）。
  */
 export class CardArea {
   private _cards: Card[] = [];
@@ -37,22 +39,9 @@ export class CardArea {
     this.location = location;
   }
 
-  /** 对外只读视图（读引用统一走这里或下方只读委托方法） */
+  /** 对外只读内容视图（读取统一走这里；禁止当作可写数组操作） */
   get cards(): readonly Card[] {
     return this._cards;
-  }
-
-  get length(): number {
-    return this._cards.length;
-  }
-
-  get isEmpty(): boolean {
-    return this._cards.length === 0;
-  }
-
-  /** 含头检查（按 id） */
-  has(card: Card): boolean {
-    return this._index.has(card.id);
   }
 
   // ============================================================
@@ -120,48 +109,6 @@ export class CardArea {
   replaceAll(cards: Card[]): void {
     this.clear();
     this.addAll(cards);
-  }
-
-  // ============================================================
-  // 只读委托（便于既有读代码保持形态；内容仍来自 _cards 权威数组）
-  // ============================================================
-
-  *[Symbol.iterator](): Iterator<Card> {
-    yield* this._cards;
-  }
-
-  map<T>(fn: (card: Card, index: number) => T): T[] {
-    return this._cards.map(fn);
-  }
-  filter(fn: (card: Card, index: number) => boolean): Card[] {
-    return this._cards.filter(fn);
-  }
-  find(fn: (card: Card, index: number) => boolean): Card | undefined {
-    return this._cards.find(fn);
-  }
-  findIndex(fn: (card: Card, index: number) => boolean): number {
-    return this._cards.findIndex(fn);
-  }
-  some(fn: (card: Card, index: number) => boolean): boolean {
-    return this._cards.some(fn);
-  }
-  every(fn: (card: Card, index: number) => boolean): boolean {
-    return this._cards.every(fn);
-  }
-  includes(card: Card): boolean {
-    return this._cards.includes(card);
-  }
-  indexOf(card: Card): number {
-    return this._cards.indexOf(card);
-  }
-  slice(start?: number, end?: number): Card[] {
-    return this._cards.slice(start, end);
-  }
-  forEach(fn: (card: Card, index: number) => void): void {
-    this._cards.forEach(fn);
-  }
-  toArray(): Card[] {
-    return [...this._cards];
   }
 }
 

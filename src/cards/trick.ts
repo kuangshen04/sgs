@@ -20,11 +20,11 @@ import { resolveJueDouResponse, resolvePlayResponse, resolveUseResponse } from '
 
 const wuzhongContent: CardContentFn = async (game, data, _event) => {
   const player = data.player;
-  const before = player.hand.length;
+  const before = player.hand.cards.length;
   await drawCards(game, { target: player, count: 2 });
   console.log(
     `  ${player.name} 使用了 📜无中生有 (${data.card.suit}${displayNumber(data.card.number)})，` +
-    `摸了 ${player.hand.length - before} 张牌`,
+    `摸了 ${player.hand.cards.length - before} 张牌`,
   );
 };
 
@@ -192,7 +192,7 @@ const jiedaoContent: CardContentFn = async (game, data, _event) => {
   // 规则：无杀或无法对 victim 使用杀 → 只能交出武器（不出选择）；
   // 有杀且有 victim → 两者皆可选。
   // AI 决策点（真人/前端接入时在此注入）：默认"出杀"以保住武器（与旧行为一致）。
-  const hasSha = target.hand.some((c) => c.type === CardType.Sha);
+  const hasSha = target.hand.cards.some((c) => c.type === CardType.Sha);
   let wantToSlay = false;
   if (victim && hasSha) {
     const choice = await askOption(game, target, '借刀杀人：如何响应', [
@@ -323,7 +323,7 @@ cardRegistry.register({
     allPlayers.filter((p) => p !== user && p.alive && !effectRegistry.has(p, 'immuneJueDou')),
   targetCount: 1,
   ai: {
-    shouldUse: (player) => player.hand.some((c) => c.type === CardType.Sha), // AI：有杀垫底才决斗
+    shouldUse: (player) => player.hand.cards.some((c) => c.type === CardType.Sha), // AI：有杀垫底才决斗
     usePriority: 70,
     discardPriority: 0,
   },

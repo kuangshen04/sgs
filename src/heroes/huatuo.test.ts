@@ -27,7 +27,7 @@ describe('青囊（华佗主动技能）', () => {
     await playPhase(g, { player: huatuo });
 
     expect(huatuo.hp).toBe(3);
-    expect(huatuo.hand.length).toBe(0); // 弃了 1 张
+    expect(huatuo.hand.cards.length).toBe(0); // 弃了 1 张
   });
 
   it('AI 只给自己回血：自己满血时即使他人受伤也不发动', async () => {
@@ -40,7 +40,7 @@ describe('青囊（华佗主动技能）', () => {
 
     await playPhase(g, { player: huatuo });
 
-    expect(huatuo.hand.length).toBe(1); // 未发动
+    expect(huatuo.hand.cards.length).toBe(1); // 未发动
     expect(liubei.hp).toBe(1);
   });
 });

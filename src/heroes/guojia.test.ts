@@ -24,43 +24,43 @@ describe('遗计（郭嘉技能）', () => {
     const g = freshGame({}, guojiaHeroes);
     registerSkills(g);
     const guojia = g.state.players[1];
-    const before = guojia.hand.length;
+    const before = guojia.hand.cards.length;
 
     await damage(g, { target: guojia, source: g.state.players[0], amount: 1 });
 
-    expect(guojia.hand.length).toBe(before + 2);
+    expect(guojia.hand.cards.length).toBe(before + 2);
   });
 
   it('郭嘉受到 2 点伤害 → 摸 4 张牌', async () => {
     const g = freshGame({}, guojiaHeroes);
     registerSkills(g);
     const guojia = g.state.players[1];
-    const before = guojia.hand.length;
+    const before = guojia.hand.cards.length;
 
     await damage(g, { target: guojia, source: g.state.players[0], amount: 2 });
 
-    expect(guojia.hand.length).toBe(before + 4);
+    expect(guojia.hand.cards.length).toBe(before + 4);
   });
 
   it('非郭嘉受伤 → 不触发', async () => {
     const g = freshGame({}, guojiaHeroes);
     registerSkills(g);
     const liubei = g.state.players[0];
-    const before = liubei.hand.length;
+    const before = liubei.hand.cards.length;
 
     await damage(g, { target: liubei, source: g.state.players[1], amount: 1 });
 
-    expect(liubei.hand.length).toBe(before);
+    expect(liubei.hand.cards.length).toBe(before);
   });
 
   it('未调用 registerSkills → 不触发', async () => {
     const g = freshGame({}, guojiaHeroes);
     const guojia = g.state.players[1];
-    const before = guojia.hand.length;
+    const before = guojia.hand.cards.length;
 
     await damage(g, { target: guojia, source: g.state.players[0], amount: 1 });
 
-    expect(guojia.hand.length).toBe(before);
+    expect(guojia.hand.cards.length).toBe(before);
   });
 });
 
@@ -79,8 +79,8 @@ describe('天妒（郭嘉技能）', () => {
     const card = await judge(g, guojia);
 
     expect(card.id).toBe(judgeCard.id);
-    expect(guojia.hand.map((c) => c.id)).toContain(judgeCard.id); // 天妒拿回判定牌
-    expect(g.state.discardPile.find((c) => c.id === judgeCard.id)).toBeUndefined();
+    expect(guojia.hand.cards.map((c) => c.id)).toContain(judgeCard.id); // 天妒拿回判定牌
+    expect(g.state.discardPile.cards.find((c) => c.id === judgeCard.id)).toBeUndefined();
   });
 
   it('非郭嘉判定 → 不获得判定牌', async () => {
@@ -92,7 +92,7 @@ describe('天妒（郭嘉技能）', () => {
 
     await judge(g, liubei);
 
-    expect(liubei.hand.length).toBe(0);
-    expect(g.state.discardPile.find((c) => c.id === judgeCard.id)).toBeDefined(); // 判定牌留在弃牌堆
+    expect(liubei.hand.cards.length).toBe(0);
+    expect(g.state.discardPile.cards.find((c) => c.id === judgeCard.id)).toBeDefined(); // 判定牌留在弃牌堆
   });
 });

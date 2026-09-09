@@ -53,7 +53,7 @@ export function printState(state: GameState): void {
 ╔${'═'.repeat(W)}╗
 ║${padEnd('🏯 三国杀 · 最小原型', W)}║
 ╠${'═'.repeat(W)}╣
-${body}║ 牌堆: ${String(state.deck.length).padStart(3)}张 | 弃牌堆: ${String(state.discardPile.length).padStart(3)}张 | 存活: ${alive}人 | 第${state.round}轮 ║
+${body}║ 牌堆: ${String(state.deck.cards.length).padStart(3)}张 | 弃牌堆: ${String(state.discardPile.cards.length).padStart(3)}张 | 存活: ${alive}人 | 第${state.round}轮 ║
 ╚${'═'.repeat(W)}╝`);
 }
 

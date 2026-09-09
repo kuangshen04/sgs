@@ -45,7 +45,7 @@ export function computeCardOptions(
   shaUsed: boolean,
 ): CardOption[] {
   const allPlayers = game.state.players;
-  return player.hand
+  return player.hand.cards
     .map((card) => ({ card, def: cardRegistry.get(card.type) }))
     .filter(({ def }) => def && def.canUse(player, allPlayers, shaUsed))
     .map(({ card, def }) => ({ card, def: def! }));
@@ -111,7 +111,7 @@ export function handCardsStep(
   player: Player,
   options: HandCardsStepOptions = {},
 ): SelectionStep {
-  const candidates = player.hand.filter(options.filter ?? (() => true));
+  const candidates = player.hand.cards.filter(options.filter ?? (() => true));
   return cardsStep(id, candidates, {
     prompt: options.prompt ?? '选择手牌',
     min: options.min,
@@ -250,7 +250,7 @@ export async function askForCard(
   prompt: string,
   types: CardType[],
 ): Promise<Card | null> {
-  const candidates = player.hand.filter((c) => types.includes(c.type));
+  const candidates = player.hand.cards.filter((c) => types.includes(c.type));
   if (candidates.length === 0) return null;
   const selected = await runAskStep(
     game,
@@ -269,9 +269,9 @@ export async function askFromAreas(
   filter?: (card: Card) => boolean,
 ): Promise<Card | null> {
   let pool: Card[] = [];
-  if (areas.includes('hand')) pool.push(...player.hand);
+  if (areas.includes('hand')) pool.push(...player.hand.cards);
   if (areas.includes('equipment')) pool.push(...equipmentCards(player));
-  if (areas.includes('judgment')) pool.push(...player.judgment);
+  if (areas.includes('judgment')) pool.push(...player.judgment.cards);
   if (filter) pool = pool.filter(filter);
   if (pool.length === 0) return null;
 

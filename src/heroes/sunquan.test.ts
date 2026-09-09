@@ -67,9 +67,9 @@ describe('制衡（孙权主动技能）', () => {
     await playPhase(g, { player: sunquan });
 
     // 原手牌（含无懈）被弃置
-    expect(g.state.discardPile.some((c) => c.type === CardType.WuXie)).toBe(true);
+    expect(g.state.discardPile.cards.some((c) => c.type === CardType.WuXie)).toBe(true);
     // 摸回了牌堆里的两张闪
-    expect(sunquan.hand.map((c) => c.id).sort((a, b) => a - b))
+    expect(sunquan.hand.cards.map((c) => c.id).sort((a, b) => a - b))
       .toEqual([deckShan1.id, deckShan2.id]);
   });
 
@@ -85,7 +85,7 @@ describe('制衡（孙权主动技能）', () => {
 
     // 杀正常打出（若先制衡，杀会被弃置、目标不受伤）
     expect(target.hp).toBe(hpBefore - 1);
-    expect(sunquan.hand.length).toBe(0);
+    expect(sunquan.hand.cards.length).toBe(0);
   });
 
   it('制衡后摸到可出的牌 → 继续出牌', async () => {
@@ -101,7 +101,7 @@ describe('制衡（孙权主动技能）', () => {
 
     // 制衡换到杀 → 打出杀
     expect(target.hp).toBe(hpBefore - 1);
-    expect(sunquan.hand.length).toBe(0);
+    expect(sunquan.hand.cards.length).toBe(0);
   });
 
   it('每回合限一次：制衡后仍无牌可出 → 不二次发动', async () => {
@@ -114,11 +114,11 @@ describe('制衡（孙权主动技能）', () => {
     await playPhase(g, { player: sunquan });
 
     // 制衡一次：手牌换成牌堆那张 ♥7 闪
-    expect(sunquan.hand.length).toBe(1);
+    expect(sunquan.hand.cards.length).toBe(1);
     expect(sunquan.hand.cards[0].suit).toBe('♥');
     expect(sunquan.hand.cards[0].number).toBe(7);
     // 若二次制衡会再弃 1 摸 1，弃牌堆会有 2 张闪
-    expect(g.state.discardPile.filter((c) => c.type === CardType.Shan).length).toBe(1);
+    expect(g.state.discardPile.cards.filter((c) => c.type === CardType.Shan).length).toBe(1);
   });
 
   it('非孙权（无制衡技能）→ 不发动', async () => {
@@ -130,9 +130,9 @@ describe('制衡（孙权主动技能）', () => {
 
     await playPhase(g, { player: liubei });
 
-    expect(liubei.hand.length).toBe(1);
+    expect(liubei.hand.cards.length).toBe(1);
     expect(liubei.hand.cards[0].suit).toBe('♠'); // 还是原来的闪，没摸牌
-    expect(g.state.discardPile.length).toBe(0);
+    expect(g.state.discardPile.cards.length).toBe(0);
   });
 });
 

@@ -23,12 +23,12 @@ describe('反馈（司马懿技能）', () => {
     const simayi = g.state.players[1];
     const source = g.state.players[0];
     giveHand(source, CardType.Sha, CardType.Tao);
-    const before = source.hand.length;
+    const before = source.hand.cards.length;
 
     await damage(g, { target: simayi, source, amount: 1 });
 
-    expect(simayi.hand.length).toBe(1);
-    expect(source.hand.length).toBe(before - 1);
+    expect(simayi.hand.cards.length).toBe(1);
+    expect(source.hand.cards.length).toBe(before - 1);
   });
 
   it('无来源伤害（如闪电）→ 不触发', async () => {
@@ -38,7 +38,7 @@ describe('反馈（司马懿技能）', () => {
 
     await damage(g, { target: simayi, amount: 1 });
 
-    expect(simayi.hand.length).toBe(0);
+    expect(simayi.hand.cards.length).toBe(0);
   });
 
   it('获得伤害来源装备区的一张牌', async () => {
@@ -51,7 +51,7 @@ describe('反馈（司马懿技能）', () => {
     await damage(g, { target: simayi, source, amount: 1 });
 
     expect(source.equipment.weapon).toBeUndefined();
-    expect(simayi.hand.some((c) => c.type === CardType.ZhugeLianNu)).toBe(true);
+    expect(simayi.hand.cards.some((c) => c.type === CardType.ZhugeLianNu)).toBe(true);
   });
 });
 
@@ -72,9 +72,9 @@ describe('鬼才（司马懿技能）', () => {
 
     await damage(g, { target: xiahou, source: liubei, amount: 1 });
 
-    expect(simayi.hand.length).toBe(0);   // 鬼才已打出
+    expect(simayi.hand.cards.length).toBe(0);   // 鬼才已打出
     expect(liubei.hp).toBe(hpBefore);     // 判定被替换成红桃 → 刚烈无事
-    expect(g.state.discardPile.some((c) => c.suit === '♥')).toBe(true); // 替换牌进弃牌堆
+    expect(g.state.discardPile.cards.some((c) => c.suit === '♥')).toBe(true); // 替换牌进弃牌堆
   });
 
   it('无手牌 → 不替换，原判定生效', async () => {
@@ -89,8 +89,8 @@ describe('鬼才（司马懿技能）', () => {
 
     await damage(g, { target: xiahou, source: liubei, amount: 1 });
 
-    expect(simayi.hand.length).toBe(0);      // 司马懿无手牌，鬼才无法发动
+    expect(simayi.hand.cards.length).toBe(0);      // 司马懿无手牌，鬼才无法发动
     expect(liubei.hp).toBe(hpBefore);        // 来源不受伤
-    expect(liubei.hand.length).toBe(0);      // 但弃了两张响应刚烈
+    expect(liubei.hand.cards.length).toBe(0);      // 但弃了两张响应刚烈
   });
 });

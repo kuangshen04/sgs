@@ -47,8 +47,8 @@ describe('武圣（关羽转化牌）', () => {
     await playPhase(g, { player: guanyu });
 
     expect(target.hp).toBe(hpBefore - 1);
-    expect(guanyu.hand.length).toBe(0);
-    expect(g.state.processing.length).toBe(0);
+    expect(guanyu.hand.cards.length).toBe(0);
+    expect(g.state.processing.cards.length).toBe(0);
     expect(g.state.discardPile.cards).toContain(red);
   });
 
@@ -64,9 +64,9 @@ describe('武圣（关羽转化牌）', () => {
     await playPhase(g, { player: guanyu });
 
     expect(caocao.hp).toBe(hpBefore - 1);
-    expect(caocao.hand.map((c) => c.id)).toContain(red.id);
+    expect(caocao.hand.cards.map((c) => c.id)).toContain(red.id);
     expect(g.state.discardPile.cards).not.toContain(red);
-    expect(g.state.processing.length).toBe(0);
+    expect(g.state.processing.cards.length).toBe(0);
   });
 
   it('没有红色牌时武圣不作为动作候选', async () => {

@@ -29,7 +29,7 @@ describe('resolveShaResponse', () => {
     const cancelled = await resolveShaResponse(g, attacker, defender, sha, marks);
 
     expect(cancelled).toBe(true);
-    expect(defender.hand.length).toBe(0);
+    expect(defender.hand.cards.length).toBe(0);
     expect(captured.data?.attacker).toBe(attacker);
     expect(captured.data?.defender).toBe(defender);
     expect(captured.data?.shanCount).toBe(1);
@@ -61,7 +61,7 @@ describe('resolveShaResponse', () => {
     const cancelled = await resolveShaResponse(g, attacker, defender, sha, marks);
 
     expect(cancelled).toBe(true);
-    expect(defender.hand.length).toBe(0);
+    expect(defender.hand.cards.length).toBe(0);
   });
 
   it('无双：只出一张闪 → 未抵消（已出的闪不返还）', async () => {
@@ -75,7 +75,7 @@ describe('resolveShaResponse', () => {
     const cancelled = await resolveShaResponse(g, attacker, defender, sha, marks);
 
     expect(cancelled).toBe(false);
-    expect(defender.hand.length).toBe(1); // 只剩桃，闪已打出
+    expect(defender.hand.cards.length).toBe(1); // 只剩桃，闪已打出
   });
 
   it('铁骑（unavoidable）：跳过响应，未抵消', async () => {
@@ -91,7 +91,7 @@ describe('resolveShaResponse', () => {
     const cancelled = await resolveShaResponse(g, attacker, defender, sha, marks);
 
     expect(cancelled).toBe(false);
-    expect(defender.hand.length).toBe(1); // 闪没被打出
+    expect(defender.hand.cards.length).toBe(1); // 闪没被打出
     expect(captured.fired).toBe(false);
   });
 });
@@ -105,7 +105,7 @@ describe('resolveJueDouResponse', () => {
     const ok = await resolveJueDouResponse(g, player, 2);
 
     expect(ok).toBe(true);
-    expect(player.hand.length).toBe(0);
+    expect(player.hand.cards.length).toBe(0);
   });
 
   it('杀不足 required 张 → 失败（已打出的不返还）', async () => {
@@ -116,7 +116,7 @@ describe('resolveJueDouResponse', () => {
     const ok = await resolveJueDouResponse(g, player, 2);
 
     expect(ok).toBe(false);
-    expect(player.hand.length).toBe(1); // 只剩桃，杀已打出
+    expect(player.hand.cards.length).toBe(1); // 只剩桃，杀已打出
   });
 
   it('无杀 → 失败', async () => {
@@ -140,8 +140,8 @@ describe('杀→闪响应窗口的转化', () => {
     const cancelled = await resolveShaResponse(g, attacker, defender, sha, {});
 
     expect(cancelled).toBe(true);
-    expect(defender.hand.length).toBe(0);
-    expect(g.state.discardPile.some((c) => c.type === CardType.Sha)).toBe(true);
+    expect(defender.hand.cards.length).toBe(0);
+    expect(g.state.discardPile.cards.some((c) => c.type === CardType.Sha)).toBe(true);
   });
 
   it('倾国：黑牌当闪，受伤免掉，源牌进弃牌堆', async () => {
@@ -154,8 +154,8 @@ describe('杀→闪响应窗口的转化', () => {
     const cancelled = await resolveShaResponse(g, attacker, defender, sha, {});
 
     expect(cancelled).toBe(true);
-    expect(defender.hand.length).toBe(0);
-    expect(g.state.discardPile.some((c) => c.suit === '♠')).toBe(true);
+    expect(defender.hand.cards.length).toBe(0);
+    expect(g.state.discardPile.cards.some((c) => c.suit === '♠')).toBe(true);
   });
 
   it('有真闪时默认优先真闪，不用转化', async () => {
@@ -169,7 +169,7 @@ describe('杀→闪响应窗口的转化', () => {
     const cancelled = await resolveShaResponse(g, attacker, defender, makeUniqueCard(CardType.Sha), {});
 
     expect(cancelled).toBe(true);
-    expect(defender.hand.map((c) => c.id)).toContain(shaSource.id); // 杀未被打出
+    expect(defender.hand.cards.map((c) => c.id)).toContain(shaSource.id); // 杀未被打出
     expect(g.state.discardPile.cards).toContain(realShan);
   });
 });

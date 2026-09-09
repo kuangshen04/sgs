@@ -36,7 +36,7 @@ describe('铁骑（马超触发技能）', () => {
     await useCard(g, { player: machao, card: machao.hand.cards[0], targets: [target] });
 
     expect(target.hp).toBe(hpBefore - 1); // 不可闪避，命中
-    expect(target.hand.length).toBe(1);   // 闪未打出
+    expect(target.hand.cards.length).toBe(1);   // 闪未打出
   });
 
   it('判定为黑色 → 目标可出闪抵消', async () => {
@@ -52,6 +52,6 @@ describe('铁骑（马超触发技能）', () => {
     await useCard(g, { player: machao, card: machao.hand.cards[0], targets: [target] });
 
     expect(target.hp).toBe(hpBefore);     // 闪抵消
-    expect(target.hand.length).toBe(0);
+    expect(target.hand.cards.length).toBe(0);
   });
 });

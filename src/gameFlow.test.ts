@@ -27,7 +27,7 @@ describe('playPhase', () => {
     await playPhase(g, { player });
 
     // 默认 AI 出杀
-    expect(player.hand.length).toBe(0);
+    expect(player.hand.cards.length).toBe(0);
     expect(target.hp).toBe(hpBefore - 1);
   });
 
@@ -38,7 +38,7 @@ describe('playPhase', () => {
 
     await playPhase(g, { player });
 
-    expect(player.hand.length).toBe(1);
+    expect(player.hand.cards.length).toBe(1);
   });
 
   it('多张可用牌 → 按优先级循环打出', async () => {
@@ -52,7 +52,7 @@ describe('playPhase', () => {
 
     // 默认 AI：决斗(70) → 杀(60)，两轮循环
     expect(target.hp).toBe(hpBefore - 2);
-    expect(player.hand.length).toBe(0);
+    expect(player.hand.cards.length).toBe(0);
   });
 });
 
@@ -71,8 +71,8 @@ describe('judgePhase', () => {
     await judgePhase(g, { player });
 
     expect(player.skipPlayPhase).toBeFalsy();
-    expect(player.judgment.length).toBe(0);
-    expect(g.state.discardPile.find((c) => c.id === lebu.id)).toBeDefined();
+    expect(player.judgment.cards.length).toBe(0);
+    expect(g.state.discardPile.cards.find((c) => c.id === lebu.id)).toBeDefined();
   });
 
   it('判定为非红桃 → 跳过出牌阶段', async () => {
@@ -85,7 +85,7 @@ describe('judgePhase', () => {
     await judgePhase(g, { player });
 
     expect(player.skipPlayPhase).toBe(true);
-    expect(player.judgment.length).toBe(0);
+    expect(player.judgment.cards.length).toBe(0);
   });
 
   it('判定前被无懈 → 判定牌无效，不判定', async () => {
@@ -101,10 +101,10 @@ describe('judgePhase', () => {
     await judgePhase(g, { player });
 
     expect(player.skipPlayPhase).toBeFalsy();   // 未生效
-    expect(player.judgment.length).toBe(0);     // 乐不思蜀被弃置
-    expect(g.state.discardPile.find((c) => c.id === lebu.id)).toBeDefined();
+    expect(player.judgment.cards.length).toBe(0);     // 乐不思蜀被弃置
+    expect(g.state.discardPile.cards.find((c) => c.id === lebu.id)).toBeDefined();
     expect(g.state.deck.cards).toContain(deckCard);   // 未判定，牌堆未动
-    expect(player.hand.length).toBe(0);         // 无懈已打出
+    expect(player.hand.cards.length).toBe(0);         // 无懈已打出
   });
 
   it('skipPlayPhase 标记 → playPhase 直接跳过', async () => {
@@ -115,7 +115,7 @@ describe('judgePhase', () => {
 
     await playPhase(g, { player });
 
-    expect(player.hand.length).toBe(1); // 未出牌
+    expect(player.hand.cards.length).toBe(1); // 未出牌
   });
 
   it('闪电判定为黑桃2~9 → 受到 3 点伤害', async () => {
@@ -129,8 +129,8 @@ describe('judgePhase', () => {
     await judgePhase(g, { player });
 
     expect(player.hp).toBe(hpBefore - 3);
-    expect(player.judgment.length).toBe(0);
-    expect(g.state.discardPile.find((c) => c.id === shandian.id)).toBeDefined();
+    expect(player.judgment.cards.length).toBe(0);
+    expect(g.state.discardPile.cards.find((c) => c.id === shandian.id)).toBeDefined();
   });
 
   it('闪电判定非黑桃2~9 → 移到下家判定区', async () => {
@@ -143,8 +143,8 @@ describe('judgePhase', () => {
 
     await judgePhase(g, { player });
 
-    expect(player.judgment.length).toBe(0);
-    expect(next.judgment.map((c) => c.id)).toContain(shandian.id);
-    expect(g.state.discardPile.find((c) => c.id === shandian.id)).toBeUndefined();
+    expect(player.judgment.cards.length).toBe(0);
+    expect(next.judgment.cards.map((c) => c.id)).toContain(shandian.id);
+    expect(g.state.discardPile.cards.find((c) => c.id === shandian.id)).toBeUndefined();
   });
 });

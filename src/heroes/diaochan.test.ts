@@ -22,11 +22,11 @@ describe('闭月（貂蝉技能）', () => {
     const g = freshGame({}, diaochanHeroes);
     registerSkills(g);
     const diaochan = g.state.players[1];
-    const before = diaochan.hand.length;
+    const before = diaochan.hand.cards.length;
 
     await endPhase(g, { player: diaochan });
 
-    expect(diaochan.hand.length).toBe(before + 1);
+    expect(diaochan.hand.cards.length).toBe(before + 1);
   });
 
   it('回合结束 → 摸 1 张牌', async () => {
@@ -35,12 +35,12 @@ describe('闭月（貂蝉技能）', () => {
     // 牌堆放桃：满血不可出，保证出牌阶段不出牌（结果确定）
     g.state.deck.replaceAll([makeUniqueCard(CardType.Tao), makeUniqueCard(CardType.Tao), makeUniqueCard(CardType.Tao)]);
     const diaochan = g.state.players[1];
-    const before = diaochan.hand.length;
+    const before = diaochan.hand.cards.length;
 
     await turn(g, { player: diaochan });
 
     // 摸牌阶段 2 张 + 闭月 1 张
-    expect(diaochan.hand.length).toBe(before + 3);
+    expect(diaochan.hand.cards.length).toBe(before + 3);
   });
 
   it('非貂蝉回合 → 不触发闭月', async () => {
@@ -49,11 +49,11 @@ describe('闭月（貂蝉技能）', () => {
     // 牌堆放桃：满血不可出，保证出牌阶段不出牌（结果确定）
     g.state.deck.replaceAll([makeUniqueCard(CardType.Tao), makeUniqueCard(CardType.Tao)]);
     const liubei = g.state.players[0];
-    const before = liubei.hand.length;
+    const before = liubei.hand.cards.length;
 
     await turn(g, { player: liubei });
 
     // 只有摸牌阶段 2 张
-    expect(liubei.hand.length).toBe(before + 2);
+    expect(liubei.hand.cards.length).toBe(before + 2);
   });
 });

@@ -31,8 +31,8 @@ describe('刚烈（夏侯惇技能）', () => {
     await damage(g, { target: xiahoudun, source, amount: 1 });
 
     expect(source.hp).toBe(hpBefore);   // 不受伤
-    expect(source.hand.length).toBe(2); // 不弃牌
-    expect(g.state.discardPile.some((c) => c.suit === '♥')).toBe(true); // 判定牌已进弃牌堆
+    expect(source.hand.cards.length).toBe(2); // 不弃牌
+    expect(g.state.discardPile.cards.some((c) => c.suit === '♥')).toBe(true); // 判定牌已进弃牌堆
   });
 
   it('判定为非红桃且来源手牌充足 → 来源弃两张', async () => {
@@ -47,8 +47,8 @@ describe('刚烈（夏侯惇技能）', () => {
     await damage(g, { target: xiahoudun, source, amount: 1 });
 
     expect(source.hp).toBe(hpBefore);
-    expect(source.hand.length).toBe(0); // 弃了两张
-    expect(g.state.discardPile.filter((c) => c.type === CardType.Sha).length).toBe(2);
+    expect(source.hand.cards.length).toBe(0); // 弃了两张
+    expect(g.state.discardPile.cards.filter((c) => c.type === CardType.Sha).length).toBe(2);
   });
 
   it('判定为非红桃且来源手牌不足 → 来源受到 1 点伤害', async () => {
@@ -78,6 +78,6 @@ describe('刚烈（夏侯惇技能）', () => {
 
     // 不触发刚烈：不判定、来源不弃牌不受伤
     expect(source.hp).toBe(hpBefore);
-    expect(source.hand.length).toBe(2);
+    expect(source.hand.cards.length).toBe(2);
   });
 });

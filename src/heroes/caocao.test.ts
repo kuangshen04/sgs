@@ -32,7 +32,7 @@ describe('奸雄（曹操技能）', () => {
     await useCard(g, { player: attacker, card: shaCard, targets: [caocao] });
 
     expect(caocao.hp).toBe(hpBefore - 1);
-    expect(caocao.hand.map((c) => c.id)).toContain(shaCard.id);
+    expect(caocao.hand.cards.map((c) => c.id)).toContain(shaCard.id);
   });
 
   it('受到决斗造成的伤害 → 获得那张决斗', async () => {
@@ -46,7 +46,7 @@ describe('奸雄（曹操技能）', () => {
 
     await useCard(g, { player: attacker, card: jdCard, targets: [caocao] });
 
-    expect(caocao.hand.map((c) => c.id)).toContain(jdCard.id);
+    expect(caocao.hand.cards.map((c) => c.id)).toContain(jdCard.id);
   });
 
   it('非使用牌造成的伤害 → 不获得', async () => {
@@ -56,7 +56,7 @@ describe('奸雄（曹操技能）', () => {
 
     await damage(g, { target: caocao, source: g.state.players[0], amount: 1 });
 
-    expect(caocao.hand.length).toBe(0);
+    expect(caocao.hand.cards.length).toBe(0);
   });
 
   it('刚烈反击伤害不误归原杀（曹操用杀被反击，不得获得杀）', async () => {
@@ -76,8 +76,8 @@ describe('奸雄（曹操技能）', () => {
     expect(xiahoudun.hp).toBe(3);                    // 曹操的杀命中
     expect(caocao.hp).toBe(hpBefore - 1);            // 曹操被刚烈反击 1 点
     // 反击是技能伤害（damage 无 card）：奸雄不得把杀拿回手里
-    expect(caocao.hand.length).toBe(0);
-    expect(g.state.discardPile.some((c) => c.id === shaCard.id)).toBe(true); // 杀结算后进弃牌堆
+    expect(caocao.hand.cards.length).toBe(0);
+    expect(g.state.discardPile.cards.some((c) => c.id === shaCard.id)).toBe(true); // 杀结算后进弃牌堆
   });
 
   it('非曹操受伤 → 不触发', async () => {
@@ -90,7 +90,7 @@ describe('奸雄（曹操技能）', () => {
 
     await useCard(g, { player: attacker, card: shaCard, targets: [liubei] });
 
-    expect(liubei.hand.length).toBe(0);
+    expect(liubei.hand.cards.length).toBe(0);
   });
 });
 
@@ -109,7 +109,7 @@ describe('护驾（曹操主公技）', () => {
     await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [caocao] });
 
     expect(caocao.hp).toBe(hpBefore);
-    expect(guojia.hand.length).toBe(0);
-    expect(g.state.discardPile.some((c) => c.type === CardType.Shan)).toBe(true);
+    expect(guojia.hand.cards.length).toBe(0);
+    expect(g.state.discardPile.cards.some((c) => c.type === CardType.Shan)).toBe(true);
   });
 });

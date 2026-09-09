@@ -60,9 +60,9 @@ export async function drawPhase(
         console.log(`[摸牌阶段] ${player.name} 本阶段摸牌数被修改为 0，不摸牌`);
         return;
       }
-      const before = player.hand.length;
+      const before = player.hand.cards.length;
       await drawCards(game, { target: player, count: event.data.count });
-      const after = player.hand.length;
+      const after = player.hand.cards.length;
       console.log(`[摸牌阶段] ${player.name} 摸了 ${after - before} 张牌`);
     });
 }
@@ -87,7 +87,7 @@ export async function judgePhase(
       console.log(`[判定阶段]`);
 
       // 快照：结算过程中判定区会变化
-      const cards = [...player.judgment];
+      const cards = [...player.judgment.cards];
       for (const card of cards) {
         const def = cardRegistry.get(card.type);
         if (!def?.tags.includes(CardTag.Delay)) continue; // 非延时牌（理论上不会出现）
@@ -178,20 +178,20 @@ export async function discardPhase(
         return;
       }
 
-      if (player.hand.length <= player.hp) {
-        if (player.hand.length > 0) {
-          console.log(`[弃牌阶段] ${player.name} 手牌数(${player.hand.length}) ≤ 体力(${player.hp})，无需弃牌`);
+      if (player.hand.cards.length <= player.hp) {
+        if (player.hand.cards.length > 0) {
+          console.log(`[弃牌阶段] ${player.name} 手牌数(${player.hand.cards.length}) ≤ 体力(${player.hp})，无需弃牌`);
         }
         return;
       }
 
-      const excess = player.hand.length - player.hp;
+      const excess = player.hand.cards.length - player.hp;
       console.log(
-        `[弃牌阶段] ${player.name} 手牌数(${player.hand.length}) > 体力(${player.hp})，需要弃置 ${excess} 张`,
+        `[弃牌阶段] ${player.name} 手牌数(${player.hand.cards.length}) > 体力(${player.hp})，需要弃置 ${excess} 张`,
       );
 
       // 按 discardPriority 升序排列（越小越先弃）
-      const sorted = [...player.hand].sort(
+      const sorted = [...player.hand.cards].sort(
         (a, b) => (cardRegistry.get(a.type)?.ai.discardPriority ?? 0)
                 - (cardRegistry.get(b.type)?.ai.discardPriority ?? 0),
       );

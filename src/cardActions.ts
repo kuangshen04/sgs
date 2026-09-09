@@ -33,7 +33,7 @@ export async function takeTop(
   reason: CardMoveReason,
   mover?: Player,
 ): Promise<Card[]> {
-  if (game.state.deck.length === 0) await reshuffle(game);
+  if (game.state.deck.cards.length === 0) await reshuffle(game);
   const cards = peekTop(game, count);
   return moveCards(game, { to, cards, reason, mover });
 }
@@ -46,7 +46,7 @@ export async function takeBottom(
   reason: CardMoveReason,
   mover?: Player,
 ): Promise<Card[]> {
-  if (game.state.deck.length === 0) await reshuffle(game);
+  if (game.state.deck.cards.length === 0) await reshuffle(game);
   const cards = game.state.deck.cards.slice(0, count);
   return moveCards(game, { to, cards, reason, mover });
 }

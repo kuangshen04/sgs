@@ -49,7 +49,7 @@ skillRegistry.register({
     if (target !== owner) return false;          // 大乔成为杀的目标时
     if (card.type !== CardType.Sha) return false;
     // 需有牌可弃（手牌/装备区）
-    if (owner.hand.length === 0
+    if (owner.hand.cards.length === 0
       && !owner.equipment.weapon && !owner.equipment.armor
       && !owner.equipment.defensiveHorse && !owner.equipment.offensiveHorse) return false;
     // 需有合法转移目标（攻击范围内、非使用者、非自己）

@@ -30,7 +30,7 @@ activeSkillRegistry.register({
   name: '反间',
   canUse: (game, player, ctx) =>
     !ctx.usedSkills.has('反间') &&                              // 规则：每回合限一次
-    player.hand.length >= 1 &&                                  // 规则：需交出 1 张牌
+    player.hand.cards.length >= 1 &&                            // 规则：需交出 1 张牌
     game.state.players.some((p) => p !== player && p.alive),    // 规则：需有其他角色
   selectionPlan: (game, player) => ({
     nextStep(answers) {

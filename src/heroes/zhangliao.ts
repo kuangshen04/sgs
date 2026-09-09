@@ -17,14 +17,14 @@ const tuxiContent = async (game: Game, event: GameEvent<any>, owner: Player): Pr
   const drawPhaseEvent = event as GameEvent<DrawPhaseEventData>;
   drawPhaseEvent.data.count = 0; // 摸牌阶段的摸牌数改为 0
   const candidates = game.state.players.filter(
-    (p) => p !== owner && p.alive && p.hand.length > 0,
+    (p) => p !== owner && p.alive && p.hand.cards.length > 0,
   );
   // askForTargets：突袭抢哪两名角色（候选人洗牌后取前 2 → 随机；默认 AI）
   const picks = await askForTargets(game, owner, '突袭：抢谁的手牌', shuffle(candidates), 2);
   if (!picks) return;
   for (const target of picks) {
     // 随机取一张手牌（阶段 2：容器读走 .cards 视图）
-    const card = target.hand.cards[Math.floor(Math.random() * target.hand.length)];
+    const card = target.hand.cards[Math.floor(Math.random() * target.hand.cards.length)];
     await giveCards(game, target, owner, [card]);
     console.log(`  ✨${owner.name} 发动【突袭】！获得 ${target.name} 的一张手牌`);
   }
@@ -35,7 +35,7 @@ skillRegistry.register({
   trigger: 'drawPhase.before',
   canTrigger: (game, event, owner, subject) =>
     subject === owner &&
-    game.state.players.some((p) => p !== owner && p.alive && p.hand.length > 0),
+    game.state.players.some((p) => p !== owner && p.alive && p.hand.cards.length > 0),
   content: tuxiContent,
 });
 

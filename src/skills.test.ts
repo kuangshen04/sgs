@@ -25,12 +25,12 @@ describe('技能分发 — 死亡规则', () => {
     registerSkills(g);
     const guojia = g.state.players[1];
     guojia.hp = 2;
-    const before = guojia.hand.length;
+    const before = guojia.hand.cards.length;
 
     await loseHp(g, guojia, 1);
 
     expect(guojia.hp).toBe(1);
-    expect(guojia.hand.length).toBe(before); // 遗计（damage.after）未触发
+    expect(guojia.hand.cards.length).toBe(before); // 遗计（damage.after）未触发
   });
 
   it('死亡后不再发动技能（遗计）', async () => {
@@ -42,7 +42,7 @@ describe('技能分发 — 死亡规则', () => {
     await damage(g, { target: guojia, source: g.state.players[0], amount: 1 });
 
     expect(guojia.alive).toBe(false);
-    expect(guojia.hand.length).toBe(0); // 死亡后遗计不触发
+    expect(guojia.hand.cards.length).toBe(0); // 死亡后遗计不触发
   });
 
   it('刚烈反杀当前回合角色 → 出牌阶段终止，不再出牌', async () => {
@@ -59,7 +59,7 @@ describe('技能分发 — 死亡规则', () => {
 
     expect(sunquan.alive).toBe(false);    // 被刚烈反杀
     expect(xiahou.hp).toBe(hpBefore - 1); // 杀已生效
-    expect(sunquan.hand.length).toBe(1);  // 剩余杀未继续打出
+    expect(sunquan.hand.cards.length).toBe(1);  // 剩余杀未继续打出
   });
 });
 

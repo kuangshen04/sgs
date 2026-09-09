@@ -28,7 +28,7 @@ describe('苦肉（黄盖主动技能）', () => {
     await playPhase(g, { player: huanggai });
 
     expect(huanggai.hp).toBe(1);        // 3 → 2 → 1（连续两次苦肉）
-    expect(huanggai.hand.length).toBe(5); // 1 张闪 + 2 次 × 摸 2
+    expect(huanggai.hand.cards.length).toBe(5); // 1 张闪 + 2 次 × 摸 2
   });
 
   it('体力 1 时不发动（AI 避免濒死）', async () => {
@@ -41,6 +41,6 @@ describe('苦肉（黄盖主动技能）', () => {
     await playPhase(g, { player: huanggai });
 
     expect(huanggai.hp).toBe(1);
-    expect(huanggai.hand.length).toBe(1); // 未发动
+    expect(huanggai.hand.cards.length).toBe(1); // 未发动
   });
 });

@@ -17,12 +17,12 @@ import type { Game } from '../game.js';
 effectRegistry.register({
   kind: 'immuneSha',
   value: (player: Player) =>
-    (player.hero.skills?.includes('空城') && player.hand.length === 0 ? 1 : 0),
+    (player.hero.skills?.includes('空城') && player.hand.cards.length === 0 ? 1 : 0),
 });
 effectRegistry.register({
   kind: 'immuneJueDou',
   value: (player: Player) =>
-    (player.hero.skills?.includes('空城') && player.hand.length === 0 ? 1 : 0),
+    (player.hero.skills?.includes('空城') && player.hand.cards.length === 0 ? 1 : 0),
 });
 
 /** 观星：准备阶段观看牌堆顶 X 张，任选放顶/放底（顶、底各自可排序） */

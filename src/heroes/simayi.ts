@@ -61,7 +61,7 @@ skillRegistry.register({
   name: '鬼才',
   trigger: 'judge.judging',
   // 响应型：任何角色的判定都可响应，不看事件主体
-  canTrigger: (_game, _event, owner) => owner.hand.length > 0,
+  canTrigger: (_game, _event, owner) => owner.hand.cards.length > 0,
   content: guicaiContent,
 });
 

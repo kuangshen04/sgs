@@ -28,7 +28,7 @@ conversionRegistry.register({
   toType: CardType.Sha,
   canUse: (game, player, shaUsed) => {
     const def = cardRegistry.get(CardType.Sha)!;
-    return player.hand.some((c) => c.type === CardType.Shan)
+    return player.hand.cards.some((c) => c.type === CardType.Shan)
       && def.canUse(player, game.state.players, shaUsed);
   },
   selectionPlan: (game, player) => ({
@@ -72,7 +72,7 @@ responseRuleRegistry.register({
   respondsTo: CardType.Sha,
   ownerSkill: '龙胆',
   canUse: (_game, player, request) =>
-    request.type === 'play' && player.hand.some((c) => c.type === CardType.Shan),
+    request.type === 'play' && player.hand.cards.some((c) => c.type === CardType.Shan),
   selectionPlan: (_game, player) => ({
     nextStep(answers) {
       if (answers.source) return null;
@@ -99,7 +99,7 @@ responseRuleRegistry.register({
   name: '龙胆·当闪',
   respondsTo: CardType.Shan,
   ownerSkill: '龙胆',
-  canUse: (_game, player) => player.hand.some((c) => c.type === CardType.Sha),
+  canUse: (_game, player) => player.hand.cards.some((c) => c.type === CardType.Sha),
   selectionPlan: (_game, player) => ({
     nextStep(answers) {
       if (answers.source) return null;

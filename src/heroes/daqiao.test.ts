@@ -33,7 +33,7 @@ describe('流离（大乔技能）', () => {
 
     expect(daqiao.hp).toBe(daqiaoHpBefore);          // 原目标不受伤害
     expect(redirected.hp).toBe(redirectedHpBefore - 1); // 新目标受伤害
-    expect(daqiao.hand.length).toBe(0);              // 弃了一张牌
+    expect(daqiao.hand.cards.length).toBe(0);              // 弃了一张牌
   });
 
   it('无合法转移目标（只有使用者）→ 不发动，正常受击', async () => {
@@ -48,7 +48,7 @@ describe('流离（大乔技能）', () => {
     await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [daqiao] });
 
     expect(daqiao.hp).toBe(hpBefore - 1); // 杀命中
-    expect(daqiao.hand.length).toBe(1);   // 未弃牌
+    expect(daqiao.hand.cards.length).toBe(1);   // 未弃牌
   });
 
   it('无牌可弃 → 不发动', async () => {
@@ -77,6 +77,6 @@ describe('流离（大乔技能）', () => {
 
     // 决斗：大乔无杀 → 大乔受伤，流离不触发
     expect(daqiao.hp).toBe(hpBefore - 1);
-    expect(daqiao.hand.length).toBe(1); // 未弃牌
+    expect(daqiao.hand.cards.length).toBe(1); // 未弃牌
   });
 });

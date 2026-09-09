@@ -23,22 +23,22 @@ describe('英姿（周瑜技能）', () => {
     const g = freshGame({}, zhouyuHeroes);
     registerSkills(g);
     const zhouyu = g.state.players[1];
-    const before = zhouyu.hand.length;
+    const before = zhouyu.hand.cards.length;
 
     await drawPhase(g, { player: zhouyu });
 
-    expect(zhouyu.hand.length).toBe(before + 3);
+    expect(zhouyu.hand.cards.length).toBe(before + 3);
   });
 
   it('非周瑜摸牌阶段 → 只摸 2 张', async () => {
     const g = freshGame({}, zhouyuHeroes);
     registerSkills(g);
     const liubei = g.state.players[0];
-    const before = liubei.hand.length;
+    const before = liubei.hand.cards.length;
 
     await drawPhase(g, { player: liubei });
 
-    expect(liubei.hand.length).toBe(before + 2);
+    expect(liubei.hand.cards.length).toBe(before + 2);
   });
 });
 
@@ -59,8 +59,8 @@ describe('反间（周瑜主动技能）', () => {
     await playPhase(g, { player: zhouyu });
 
     expect([hpBefore - 1, hpBefore]).toContain(target.hp); // 猜对则不受伤
-    expect(zhouyu.hand.length).toBe(0);
-    expect(target.hand.map((c) => c.id)).toContain(givenId);
-    expect(g.state.discardPile.length).toBe(0); // 牌到了目标手牌
+    expect(zhouyu.hand.cards.length).toBe(0);
+    expect(target.hand.cards.map((c) => c.id)).toContain(givenId);
+    expect(g.state.discardPile.cards.length).toBe(0); // 牌到了目标手牌
   });
 });

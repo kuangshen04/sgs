@@ -17,7 +17,7 @@ activeSkillRegistry.register({
   name: '仁德',
   canUse: (game, player, ctx) =>
     !ctx.usedSkills.has('仁德') &&                              // 规则：每回合限一次
-    player.hand.length >= 1 &&                                  // 规则：需交出至少 1 张牌
+    player.hand.cards.length >= 1 &&                                  // 规则：需交出至少 1 张牌
     game.state.players.some((p) => p !== player && p.alive),    // 规则：需有其他角色
   selectionPlan: (game, player) => ({
     nextStep(answers) {
@@ -25,7 +25,7 @@ activeSkillRegistry.register({
         return handCardsStep('cards', player, {
           prompt: '仁德：选择要交给的牌',
           min: 1,
-          max: player.hand.length,
+          max: player.hand.cards.length,
           ai: (ctx) => ctx.step.options.slice(0, 2), // AI 默认给前两张
         });
       }

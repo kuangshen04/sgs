@@ -35,11 +35,11 @@ describe('useCard — 杀', () => {
     await useCard(g, { player: attacker, card, targets: [defender] });
 
     // 手牌已移除
-    expect(attacker.hand.find((c) => c.id === card.id)).toBeUndefined();
+    expect(attacker.hand.cards.find((c) => c.id === card.id)).toBeUndefined();
     // 敌人受伤
     expect(defender.hp).toBe(hpBefore - 1);
     // 牌进入弃牌堆
-    expect(g.state.discardPile.find((c) => c.id === card.id)).toBeDefined();
+    expect(g.state.discardPile.cards.find((c) => c.id === card.id)).toBeDefined();
   });
 
   it('敌人有闪 → 弃置闪，不受伤', async () => {
@@ -57,7 +57,7 @@ describe('useCard — 杀', () => {
     await useCard(g, { player: attacker, card: shaCard, targets: [defender] });
 
     // 闪被弃置
-    expect(defender.hand.find((c) => c.id === shanCard.id)).toBeUndefined();
+    expect(defender.hand.cards.find((c) => c.id === shanCard.id)).toBeUndefined();
     // 不受伤
     expect(defender.hp).toBe(hpBefore);
   });
@@ -77,7 +77,7 @@ describe('借刀杀人', () => {
 
     await useCard(g, { player: user, card: user.hand.cards[0], targets: [target] });
 
-    expect(target.hand.length).toBe(0);         // 杀打出去了
+    expect(target.hand.cards.length).toBe(0);         // 杀打出去了
     expect(shaVictim.hp).toBe(hpBefore - 1);    // 杀命中
     expect(target.equipment.weapon?.type).toBe(CardType.QiLinGong); // 武器保留
   });
@@ -93,7 +93,7 @@ describe('借刀杀人', () => {
     await useCard(g, { player: user, card: user.hand.cards[0], targets: [target] });
 
     expect(target.equipment.weapon).toBeUndefined();      // 武器被交出
-    expect(user.hand.map((c) => c.id)).toContain(weapon.id); // 武器到使用者手上
+    expect(user.hand.cards.map((c) => c.id)).toContain(weapon.id); // 武器到使用者手上
   });
 
   it('规则层面：无人装备武器 → 不可使用', () => {
@@ -121,7 +121,7 @@ describe('借刀杀人', () => {
 
     // 使用者（AI 默认取第一个合法角色）指定关羽；被借刀者出杀 → 关羽受伤、武器保留
     expect(shaVictim.hp).toBe(victimHpBefore - 1);
-    expect(target.hand.length).toBe(0);
+    expect(target.hand.cards.length).toBe(0);
     expect(target.equipment.weapon?.type).toBe(CardType.QingLongYanYueDao);
     // 空城角色被杀 targetFilter 排除，不会成为借刀的杀目标
     expect(kongcheng.hp).toBe(kongchengHp);
@@ -139,7 +139,7 @@ describe('useCard — 桃', () => {
     await useCard(g, { player, card, targets: [player] });
 
     expect(player.hp).toBe(3);
-    expect(player.hand.length).toBe(0);
+    expect(player.hand.cards.length).toBe(0);
   });
 });
 
@@ -150,11 +150,11 @@ describe('useCard — 无中生有', () => {
     giveHand(player, CardType.WuZhong);
 
     const card = player.hand.cards[0];
-    const before = player.hand.length;
+    const before = player.hand.cards.length;
     await useCard(g, { player, card, targets: [player] });
 
     // 用了 1 张，摸了 2 张 → net +1
-    expect(player.hand.length).toBe(before + 1);
+    expect(player.hand.cards.length).toBe(before + 1);
   });
 });
 
@@ -190,7 +190,7 @@ describe('useCard — 决斗', () => {
     // 防御方只有 1 张杀 → 攻击方 2 张杀 → 防御方受伤
     expect(defender.hp).toBe(hpBefore - 1);
     // 防御方手牌已空（杀被打出）
-    expect(defender.hand.length).toBe(0);
+    expect(defender.hand.cards.length).toBe(0);
   });
 });
 
@@ -213,7 +213,7 @@ describe('useCard — 南蛮入侵', () => {
 
     // p2 出了杀 → 不受伤
     expect(p2.hp).toBe(hp2Before);
-    expect(p2.hand.length).toBe(0); // 杀被弃置
+    expect(p2.hand.cards.length).toBe(0); // 杀被弃置
 
     // p3 没杀 → 受伤
     expect(p3.hp).toBe(hp3Before - 1);
@@ -239,7 +239,7 @@ describe('useCard — 万箭齐发', () => {
 
     // p2 出了闪 → 不受伤
     expect(p2.hp).toBe(hp2Before);
-    expect(p2.hand.length).toBe(0); // 闪被弃置
+    expect(p2.hand.cards.length).toBe(0); // 闪被弃置
 
     // p3 没闪 → 受伤
     expect(p3.hp).toBe(hp3Before - 1);
@@ -275,14 +275,14 @@ describe('useCard — 五谷丰登', () => {
     giveHand(player, CardType.WuGu);
 
     const card = player.hand.cards[0];
-    const deckBefore = g.state.deck.length;
+    const deckBefore = g.state.deck.cards.length;
     await useCard(g, { player, card, targets: [player, p2, p3] });
 
     // 自己：用了五谷（-1）又摸 1 → 手上 1 张；其余每人 +1
-    expect(player.hand.length).toBe(1);
-    expect(p2.hand.length).toBe(1);
-    expect(p3.hand.length).toBe(1);
-    expect(g.state.deck.length).toBe(deckBefore - 3); // 共摸 3 张
+    expect(player.hand.cards.length).toBe(1);
+    expect(p2.hand.cards.length).toBe(1);
+    expect(p3.hand.cards.length).toBe(1);
+    expect(g.state.deck.cards.length).toBe(deckBefore - 3); // 共摸 3 张
   });
 
   it('亮出存活人数张牌，按座次每人选一张', async () => {
@@ -298,10 +298,10 @@ describe('useCard — 五谷丰登', () => {
 
     await useCard(g, { player, card: player.hand.cards[0], targets: [player, p2, p3] });
 
-    const ids = [...player.hand, ...p2.hand, ...p3.hand].map((card) => card.id).sort();
+    const ids = [...player.hand.cards, ...p2.hand.cards, ...p3.hand.cards].map((card) => card.id).sort();
     expect(ids).toEqual([a.id, b.id, c.id].sort());
-    expect(g.state.deck).toHaveLength(0);
-    expect(g.state.processing).toHaveLength(0); // 五谷与亮出的牌都清理完
+    expect(g.state.deck.cards).toHaveLength(0);
+    expect(g.state.processing.cards).toHaveLength(0); // 五谷与亮出的牌都清理完
   });
 });
 
@@ -317,10 +317,10 @@ describe('useCard — 乐不思蜀（延时锦囊）', () => {
 
     await useCard(g, { player: attacker, card, targets: [target] });
 
-    expect(attacker.hand.length).toBe(0);
-    expect(target.judgment.map((c) => c.id)).toContain(card.id); // 置入判定区
-    expect(target.hand.map((c) => c.type)).toEqual([CardType.WuXie]); // 无懈未打出
-    expect(g.state.discardPile.find((c) => c.id === card.id)).toBeUndefined(); // 不在弃牌堆
+    expect(attacker.hand.cards.length).toBe(0);
+    expect(target.judgment.cards.map((c) => c.id)).toContain(card.id); // 置入判定区
+    expect(target.hand.cards.map((c) => c.type)).toEqual([CardType.WuXie]); // 无懈未打出
+    expect(g.state.discardPile.cards.find((c) => c.id === card.id)).toBeUndefined(); // 不在弃牌堆
   });
 });
 
@@ -333,9 +333,9 @@ describe('useCard — 装备', () => {
 
     await useCard(g, { player, card, targets: [player] });
 
-    expect(player.hand.length).toBe(0);
+    expect(player.hand.cards.length).toBe(0);
     expect(player.equipment.weapon).toBe(card);
-    expect(g.state.discardPile.find((c) => c.id === card.id)).toBeUndefined();
+    expect(g.state.discardPile.cards.find((c) => c.id === card.id)).toBeUndefined();
   });
 
   it('四种装备各进各的槽位，互不冲突', async () => {
@@ -357,7 +357,7 @@ describe('useCard — 装备', () => {
     expect(player.equipment.armor).toBe(cards[1]);
     expect(player.equipment.defensiveHorse).toBe(cards[2]);
     expect(player.equipment.offensiveHorse).toBe(cards[3]);
-    expect(player.hand.length).toBe(0);
+    expect(player.hand.cards.length).toBe(0);
   });
 
   it('同槽顶掉：旧装备进弃牌堆', async () => {
@@ -371,8 +371,8 @@ describe('useCard — 装备', () => {
     await useCard(g, { player, card: w2, targets: [player] });
 
     expect(player.equipment.weapon).toBe(w2);
-    expect(player.hand.length).toBe(0);
-    expect(g.state.discardPile.find((c) => c.id === w1.id)).toBeDefined(); // w1 被顶掉
+    expect(player.hand.cards.length).toBe(0);
+    expect(g.state.discardPile.cards.find((c) => c.id === w1.id)).toBeDefined(); // w1 被顶掉
   });
 });
 
@@ -387,10 +387,10 @@ describe('useCard — 过河拆桥', () => {
     const card = attacker.hand.cards[0];
     await useCard(g, { player: attacker, card, targets: [target] });
 
-    expect(target.hand.length).toBe(0);
-    expect(g.state.discardPile.some((c) => c.type === CardType.Sha)).toBe(true);
+    expect(target.hand.cards.length).toBe(0);
+    expect(g.state.discardPile.cards.some((c) => c.type === CardType.Sha)).toBe(true);
     // 过河拆桥本身也进入弃牌堆
-    expect(g.state.discardPile.some((c) => c.id === card.id)).toBe(true);
+    expect(g.state.discardPile.cards.some((c) => c.id === card.id)).toBe(true);
   });
 
   it('弃置目标装备区的一张牌', async () => {
@@ -404,7 +404,7 @@ describe('useCard — 过河拆桥', () => {
     await useCard(g, { player: attacker, card, targets: [target] });
 
     expect(target.equipment.weapon).toBeUndefined();
-    expect(g.state.discardPile.some((c) => c.type === CardType.ZhugeLianNu)).toBe(true);
+    expect(g.state.discardPile.cards.some((c) => c.type === CardType.ZhugeLianNu)).toBe(true);
   });
 });
 
@@ -419,10 +419,10 @@ describe('useCard — 顺手牵羊', () => {
     const card = attacker.hand.cards[0];
     await useCard(g, { player: attacker, card, targets: [target] });
 
-    expect(target.hand.length).toBe(0);
-    expect(attacker.hand.some((c) => c.type === CardType.Tao)).toBe(true);
+    expect(target.hand.cards.length).toBe(0);
+    expect(attacker.hand.cards.some((c) => c.type === CardType.Tao)).toBe(true);
     // 顺手牵羊本身进入弃牌堆
-    expect(g.state.discardPile.some((c) => c.id === card.id)).toBe(true);
+    expect(g.state.discardPile.cards.some((c) => c.id === card.id)).toBe(true);
   });
 
   it('获得目标装备区的一张牌', async () => {
@@ -436,7 +436,7 @@ describe('useCard — 顺手牵羊', () => {
     await useCard(g, { player: attacker, card, targets: [target] });
 
     expect(target.equipment.armor).toBeUndefined();
-    expect(attacker.hand.some((c) => c.type === CardType.BaGuaZhen)).toBe(true);
+    expect(attacker.hand.cards.some((c) => c.type === CardType.BaGuaZhen)).toBe(true);
   });
 
   it('可以被无懈可击抵消', async () => {
@@ -451,10 +451,10 @@ describe('useCard — 顺手牵羊', () => {
     await useCard(g, { player: attacker, card, targets: [p2] });
 
     // p2 用无懈保护自己 → 桃未被牵走
-    expect(p2.hand.length).toBe(1);
+    expect(p2.hand.cards.length).toBe(1);
     expect(p2.hand.cards[0].type).toBe(CardType.Tao);
-    expect(attacker.hand.length).toBe(0); // 顺手牵羊已消耗
-    expect(g.state.discardPile.some((c) => c.type === CardType.WuXie)).toBe(true);
+    expect(attacker.hand.cards.length).toBe(0); // 顺手牵羊已消耗
+    expect(g.state.discardPile.cards.some((c) => c.type === CardType.WuXie)).toBe(true);
   });
 });
 
@@ -484,9 +484,9 @@ describe('无懈可击', () => {
 
     expect(p2.hp).toBe(hp2Before);     // 被无懈保护
     expect(p3.hp).toBe(hp3Before - 1); // 无杀受伤
-    expect(g.state.discardPile.some((c) => c.id === attacker.hand.cards[0]?.id)).toBe(false);
+    expect(g.state.discardPile.cards.some((c) => c.id === attacker.hand.cards[0]?.id)).toBe(false);
     // 南蛮已进弃牌堆（手牌被移除），无懈也已进弃牌堆
-    expect(p2.hand.length).toBe(0);     // 无懈已打出
+    expect(p2.hand.cards.length).toBe(0);     // 无懈已打出
   });
 
   it('不抵消基本牌', async () => {
@@ -503,7 +503,7 @@ describe('无懈可击', () => {
 
     // 无懈不触发，杀正常结算
     expect(defender.hp).toBe(hpBefore - 1);
-    expect(defender.hand.length).toBe(1); // 无懈未打出
+    expect(defender.hand.cards.length).toBe(1); // 无懈未打出
   });
 
   it('不抵消自己对自己的牌', async () => {
@@ -517,7 +517,7 @@ describe('无懈可击', () => {
     await useCard(g, { player, card: player.hand.cards[0], targets: [player] });
 
     expect(player.hp).toBe(3);          // 桃生效
-    expect(player.hand.length).toBe(1); // 无懈未打出
+    expect(player.hand.cards.length).toBe(1); // 无懈未打出
   });
 
   it('无懈可击可以被反无懈（手动模拟反无懈）', async () => {
@@ -533,8 +533,8 @@ describe('无懈可击', () => {
 
     // 手动注册 handler：当 无懈 的 targeting 触发时，p2 出无懈反制
     const counterHandler = async (e: any) => {
-      if (e.data.card.type === CardType.WuXie && p2.hand.some((c: Card) => c.type === CardType.WuXie)) {
-        const wx = p2.hand.find((c: Card) => c.type === CardType.WuXie)!;
+      if (e.data.card.type === CardType.WuXie && p2.hand.cards.some((c: Card) => c.type === CardType.WuXie)) {
+        const wx = p2.hand.cards.find((c: Card) => c.type === CardType.WuXie)!;
         await useCard(g, { player: p2, card: wx, targets: [] });
       }
     };
@@ -638,11 +638,11 @@ describe('targeting', () => {
 
     g.triggerSystem.on(`${EventType.Targeting}.before`, (e) => { e.data.cancelled = true; });
 
-    const before = player.hand.length;
+    const before = player.hand.cards.length;
     await useCard(g, { player, card: player.hand.cards[0], targets: [] });
 
-    expect(player.hand.length).toBe(before - 1); // 牌已消耗
-    expect(g.state.discardPile.length).toBe(1);   // 牌在弃牌堆
+    expect(player.hand.cards.length).toBe(before - 1); // 牌已消耗
+    expect(g.state.discardPile.cards.length).toBe(1);   // 牌在弃牌堆
   });
 
   it('牌被全部抵消时仍进入弃牌堆', async () => {
@@ -656,9 +656,9 @@ describe('targeting', () => {
     await useCard(g, { player: attacker, card, targets: [g.state.players[1], g.state.players[2]] });
 
     // 手牌已移除
-    expect(attacker.hand.length).toBe(0);
+    expect(attacker.hand.cards.length).toBe(0);
     // 牌在弃牌堆
-    expect(g.state.discardPile.find((c) => c.id === card.id)).toBeDefined();
+    expect(g.state.discardPile.cards.find((c) => c.id === card.id)).toBeDefined();
   });
 });
 
@@ -675,7 +675,7 @@ describe('决斗/南蛮 响应窗口转化', () => {
 
     await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [guanyu] });
 
-    expect(guanyu.hand.length).toBe(0); // 红色源牌被武圣消耗
+    expect(guanyu.hand.cards.length).toBe(0); // 红色源牌被武圣消耗
     expect(attacker.hp).toBe(hpBefore - 1); // 我方无杀 → 受伤
     expect(g.state.discardPile.cards).toContain(red);
   });
@@ -693,7 +693,7 @@ describe('决斗/南蛮 响应窗口转化', () => {
     await useCard(g, { player: user, card: user.hand.cards[0], targets: [zhaoyun] });
 
     expect(zhaoyun.hp).toBe(hpBefore); // 免伤
-    expect(zhaoyun.hand.length).toBe(0); // 闪被龙胆消耗
+    expect(zhaoyun.hand.cards.length).toBe(0); // 闪被龙胆消耗
     expect(g.state.discardPile.cards).toContain(shan);
   });
 });

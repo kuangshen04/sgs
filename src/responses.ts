@@ -87,7 +87,7 @@ export function buildResponseActions(
 ): UseAction[] {
   const actions: UseAction[] = [];
 
-  for (const card of player.hand.filter((c) => c.type === request.cardType)) {
+  for (const card of player.hand.cards.filter((c) => c.type === request.cardType)) {
     actions.push({
       id: `real:${card.id}`,
       label: card.name,

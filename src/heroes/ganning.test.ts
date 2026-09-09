@@ -50,9 +50,9 @@ describe('奇袭（甘宁转化牌）', () => {
 
     await playPhase(g, { player: ganning });
 
-    expect(liubei.hand.length).toBe(0);
+    expect(liubei.hand.cards.length).toBe(0);
     expect(g.state.discardPile.cards).toContain(black);
     expect(g.state.discardPile.cards).toContain(tao);
-    expect(ganning.hand.length).toBe(0);
+    expect(ganning.hand.cards.length).toBe(0);
   });
 });

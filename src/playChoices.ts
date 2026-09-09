@@ -198,7 +198,7 @@ function lordShaActions(game: Game, player: Player, shaUsed: boolean): UseAction
 
   const sources = game.state.players
     .filter((p) => p.alive && p !== player && p.hero.group === '蜀')
-    .flatMap((p) => p.hand.filter((c) => c.type === CardType.Sha));
+    .flatMap((p) => p.hand.cards.filter((c) => c.type === CardType.Sha));
   if (sources.length === 0) return [];
 
   return [{
@@ -249,7 +249,7 @@ function lordShaTargetPlan(
 /** 方天画戟：最后一张手牌使用杀时可额外目标（至多 3），否则返回 null */
 function fangtianMaxTargets(player: Player): number | null {
   if (player.equipment.weapon?.type !== CardType.FangTianHuaJi) return null;
-  if (player.hand.length !== 1) return null;
+  if (player.hand.cards.length !== 1) return null;
   return 3;
 }
 

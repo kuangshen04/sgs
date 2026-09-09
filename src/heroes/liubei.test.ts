@@ -27,15 +27,15 @@ describe('仁德（刘备主动技能）', () => {
     const target = g.state.players[1];
     liubei.hp = 3; // 受伤
     giveHand(liubei, CardType.Shan, CardType.WuXie); // 不可出 → 触发主动技能
-    const givenIds = liubei.hand.map((c) => c.id);
+    const givenIds = liubei.hand.cards.map((c) => c.id);
 
     await playPhase(g, { player: liubei });
 
     expect(liubei.hp).toBe(4);
-    expect(liubei.hand.length).toBe(0);
-    expect(target.hand.map((c) => c.id).sort((a, b) => a - b))
+    expect(liubei.hand.cards.length).toBe(0);
+    expect(target.hand.cards.map((c) => c.id).sort((a, b) => a - b))
       .toEqual([...givenIds].sort((a, b) => a - b));
-    expect(g.state.discardPile.length).toBe(0); // 牌到了目标手牌，不是弃牌堆
+    expect(g.state.discardPile.cards.length).toBe(0); // 牌到了目标手牌，不是弃牌堆
   });
 
   it('满血时不发动（AI 策略：交牌换血不划算）', async () => {
@@ -67,7 +67,7 @@ describe('激将（刘备主公技）', () => {
 
     expect(caocao.hp).toBe(hpBefore - 1); // 刘备代打成功，曹操无杀受伤
     expect(liubei.hp).toBe(4);
-    expect(guanyu.hand.length).toBe(0); // 关羽的杀被代打消耗
+    expect(guanyu.hand.cards.length).toBe(0); // 关羽的杀被代打消耗
   });
 
   it('出牌阶段可借蜀盟友的杀', async () => {
@@ -83,7 +83,7 @@ describe('激将（刘备主公技）', () => {
     await playPhase(g, { player: liubei });
 
     expect(sunquan.hp).toBe(hpBefore - 1);
-    expect(guanyu.hand.length).toBe(0); // 关羽的杀被借走
-    expect(liubei.hand.length).toBe(0);
+    expect(guanyu.hand.cards.length).toBe(0); // 关羽的杀被借走
+    expect(liubei.hand.cards.length).toBe(0);
   });
 });

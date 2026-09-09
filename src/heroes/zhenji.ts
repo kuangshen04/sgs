@@ -46,7 +46,7 @@ responseRuleRegistry.register({
   respondsTo: CardType.Shan,
   ownerSkill: '倾国',
   canUse: (_game, player) =>
-    player.hand.some((c) => c.suit === '♠' || c.suit === '♣'),
+    player.hand.cards.some((c) => c.suit === '♠' || c.suit === '♣'),
   selectionPlan: (_game, player) => ({
     nextStep(answers) {
       if (answers.source) return null;

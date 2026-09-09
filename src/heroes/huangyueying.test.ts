@@ -30,7 +30,7 @@ describe('集智（黄月英技能）', () => {
     await useCard(g, { player: yueying, card, targets: [yueying] });
 
     // 无中生有：用 1 摸 2，集智再摸 1 → 3 张
-    expect(yueying.hand.length).toBe(3);
+    expect(yueying.hand.cards.length).toBe(3);
   });
 
   it('使用基本牌 → 不触发', async () => {
@@ -42,7 +42,7 @@ describe('集智（黄月英技能）', () => {
 
     await useCard(g, { player: yueying, card, targets: [g.state.players[0]] });
 
-    expect(yueying.hand.length).toBe(0); // 杀已用，未摸牌
+    expect(yueying.hand.cards.length).toBe(0); // 杀已用，未摸牌
   });
 
   it('使用延时锦囊 → 不触发', async () => {
@@ -54,7 +54,7 @@ describe('集智（黄月英技能）', () => {
 
     await useCard(g, { player: yueying, card, targets: [g.state.players[2]] });
 
-    expect(yueying.hand.length).toBe(0); // 乐不思蜀置入判定区，未摸牌
+    expect(yueying.hand.cards.length).toBe(0); // 乐不思蜀置入判定区，未摸牌
   });
 });
 

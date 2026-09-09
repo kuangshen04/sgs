@@ -32,7 +32,7 @@ describe('麒麟弓（装备触发）', () => {
 
     expect(target.hp).toBe(hpBefore - 1);                     // 伤害照常
     expect(target.equipment.offensiveHorse).toBeUndefined();  // 坐骑被弃
-    expect(g.state.discardPile.some((c) => c.type === CardType.ChiTu)).toBe(true);
+    expect(g.state.discardPile.cards.some((c) => c.type === CardType.ChiTu)).toBe(true);
   });
 
   it('目标无坐骑 → 不发动', async () => {
@@ -47,7 +47,7 @@ describe('麒麟弓（装备触发）', () => {
     await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [target] });
 
     expect(target.hp).toBe(hpBefore - 1);
-    expect(g.state.discardPile.filter((c) => c.type === CardType.ChiTu).length).toBe(0);
+    expect(g.state.discardPile.cards.filter((c) => c.type === CardType.ChiTu).length).toBe(0);
   });
 });
 
@@ -65,7 +65,7 @@ describe('寒冰剑（装备触发）', () => {
     await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [target] });
 
     expect(target.hp).toBe(hpBefore);   // 伤害被防止
-    expect(target.hand.length).toBe(0); // 两张都被弃
+    expect(target.hand.cards.length).toBe(0); // 两张都被弃
   });
 
   it('目标无手牌但有装备区牌 → 弃置装备区牌', async () => {
@@ -149,7 +149,7 @@ describe('雌雄双股剑（装备触发）', () => {
 
     await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [target] });
 
-    expect(target.hand.length).toBe(1); // 弃了一张手牌
+    expect(target.hand.cards.length).toBe(1); // 弃了一张手牌
     expect(target.hp).toBe(hpBefore - 1); // 杀照常命中
   });
 
@@ -163,7 +163,7 @@ describe('雌雄双股剑（装备触发）', () => {
 
     await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [target] });
 
-    expect(attacker.hand.length).toBe(1); // 杀出掉后摸回一张
+    expect(attacker.hand.cards.length).toBe(1); // 杀出掉后摸回一张
   });
 
   it('指定同性目标 → 不发动', async () => {
@@ -178,7 +178,7 @@ describe('雌雄双股剑（装备触发）', () => {
 
     await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [target] });
 
-    expect(target.hand.length).toBe(1); // 手牌未被要求弃置
+    expect(target.hand.cards.length).toBe(1); // 手牌未被要求弃置
     expect(target.hp).toBe(hpBefore - 1);
   });
 
@@ -194,7 +194,7 @@ describe('雌雄双股剑（装备触发）', () => {
 
     await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [target] });
 
-    expect(target.hand.length).toBe(1); // 决斗造成的伤害不触发剑效果
+    expect(target.hand.cards.length).toBe(1); // 决斗造成的伤害不触发剑效果
     expect(target.hp).toBe(hpBefore - 1);
   });
 });
@@ -227,8 +227,8 @@ describe('青龙偃月刀（杀被抵消后）', () => {
 
     // 第一杀被抵消 → 青龙再出第二杀 → 又被抵消
     expect(target.hp).toBe(hpBefore);
-    expect(attacker.hand.length).toBe(0);
-    expect(target.hand.length).toBe(0);
+    expect(attacker.hand.cards.length).toBe(0);
+    expect(target.hand.cards.length).toBe(0);
   });
 
   it('杀未被抵消（目标无闪）→ 不追加', async () => {
@@ -244,7 +244,7 @@ describe('青龙偃月刀（杀被抵消后）', () => {
     await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [target] });
 
     expect(target.hp).toBe(hpBefore - 1); // 命中，不再追加
-    expect(attacker.hand.length).toBe(1); // 第二张杀未用
+    expect(attacker.hand.cards.length).toBe(1); // 第二张杀未用
   });
 });
 
@@ -279,7 +279,7 @@ describe('贯石斧（杀被抵消后弃牌命中）', () => {
     await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [target] });
 
     expect(target.hp).toBe(hpBefore); // 被抵消，贯石斧不发动
-    expect(attacker.hand.length).toBe(0); // 杀已打出
+    expect(attacker.hand.cards.length).toBe(0); // 杀已打出
   });
 });
 
@@ -298,10 +298,10 @@ describe('丈八蛇矛（转化牌）', () => {
     await playPhase(g, { player: attacker });
 
     expect(target.hp).toBe(hpBefore - 1);
-    expect(attacker.hand.length).toBe(0);
+    expect(attacker.hand.cards.length).toBe(0);
     expect(g.state.discardPile.cards).toContain(tao);
     expect(g.state.discardPile.cards).toContain(shan);
-    expect(g.state.processing.length).toBe(0);
+    expect(g.state.processing.cards.length).toBe(0);
   });
 
   it('奸雄获得丈八对应的全部实体牌', async () => {
@@ -316,8 +316,8 @@ describe('丈八蛇矛（转化牌）', () => {
 
     await playPhase(g, { player: attacker });
 
-    expect(caocao.hand.map((c) => c.id)).toContain(tao.id);
-    expect(caocao.hand.map((c) => c.id)).toContain(shan.id);
+    expect(caocao.hand.cards.map((c) => c.id)).toContain(tao.id);
+    expect(caocao.hand.cards.map((c) => c.id)).toContain(shan.id);
     expect(g.state.discardPile.cards).not.toContain(tao);
     expect(g.state.discardPile.cards).not.toContain(shan);
   });
@@ -336,7 +336,7 @@ describe('方天画戟（多目标杀）', () => {
     await playPhase(g, { player: attacker });
 
     expect(targets.map((p) => p.hp)).toEqual(hpBefore.map((h) => h - 1));
-    expect(attacker.hand.length).toBe(0);
+    expect(attacker.hand.cards.length).toBe(0);
   });
 
   it('杀不是最后一张手牌 → 只选一个目标', async () => {
@@ -370,7 +370,7 @@ describe('八卦阵（响应规则）', () => {
     await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [defender] });
 
     expect(defender.hp).toBe(hpBefore);
-    expect(defender.hand.length).toBe(0);
+    expect(defender.hand.cards.length).toBe(0);
     expect(g.state.discardPile.cards).toContain(red); // 判定牌进弃牌堆
   });
 
@@ -389,7 +389,7 @@ describe('八卦阵（响应规则）', () => {
     await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [defender] });
 
     expect(defender.hp).toBe(hpBefore);
-    expect(defender.hand.length).toBe(0); // 八卦阵黑失败后出了真闪
+    expect(defender.hand.cards.length).toBe(0); // 八卦阵黑失败后出了真闪
     expect(g.state.discardPile.cards).toContain(realShan);
   });
 });

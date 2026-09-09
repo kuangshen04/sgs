@@ -19,7 +19,7 @@ describe('askForCard', () => {
     const card = await askForCard(g, player, '请打出闪', [CardType.Shan]);
 
     expect(card).toBe(player.hand.cards[0]);
-    expect(player.hand.length).toBe(3); // 只读，不消耗
+    expect(player.hand.cards.length).toBe(3); // 只读，不消耗
   });
 
   it('多类型 → 按手牌顺序返回第一个匹配', async () => {
@@ -51,7 +51,7 @@ describe('askFromAreas', () => {
     const card = await askFromAreas(g, player, '弃置目标一张牌');
 
     expect(card).not.toBeNull();
-    expect([...player.hand, player.equipment.weapon]).toContain(card);
+    expect([...player.hand.cards, player.equipment.weapon]).toContain(card);
   });
 
   it('areas 限定只从指定区域选', async () => {

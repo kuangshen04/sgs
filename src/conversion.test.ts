@@ -40,7 +40,7 @@ describe('useCard — 转化牌建模（mock 武圣）', () => {
 
     expect(defender.hp).toBe(hpBefore - 1);
     expect(attacker.hand.cards).not.toContain(red);
-    expect(g.state.processing).toHaveLength(0);
+    expect(g.state.processing.cards).toHaveLength(0);
     expect(g.state.discardPile.cards).toContain(red); // 实体牌正常回弃牌堆
   });
 
@@ -60,8 +60,8 @@ describe('useCard — 转化牌建模（mock 武圣）', () => {
     });
 
     expect(caocao.hp).toBe(hpBefore - 1);
-    expect(caocao.hand.map((c) => c.id)).toContain(red.id); // 奸雄拿走实体源牌
+    expect(caocao.hand.cards.map((c) => c.id)).toContain(red.id); // 奸雄拿走实体源牌
     expect(g.state.discardPile.cards).not.toContain(red);
-    expect(g.state.processing).toHaveLength(0);
+    expect(g.state.processing.cards).toHaveLength(0);
   });
 });

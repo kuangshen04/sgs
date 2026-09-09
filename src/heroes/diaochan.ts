@@ -11,11 +11,11 @@ import type { Player } from '../types.js';
 
 /** 闭月：结束阶段摸一张牌 */
 const biyueContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
-  const before = owner.hand.length;
+  const before = owner.hand.cards.length;
   await drawCards(game, { target: owner, count: 1 });
   console.log(
     `  ✨${owner.name} 发动【闭月】！回合结束摸了 1 张牌` +
-    `（${before} → ${owner.hand.length}）`,
+    `（${before} → ${owner.hand.cards.length}）`,
   );
 };
 

@@ -217,9 +217,9 @@ cardRegistry.register({
       // askYesNo：目标选择"弃一张手牌"还是"令使用者摸一张牌"
       // （默认 AI：有手牌则弃牌，否则令使用者摸牌）
       const discardHand = await askYesNo(
-        game, target, `是否弃置一张手牌（否则 ${owner.name} 摸一张牌）`, target.hand.length > 0,
+        game, target, `是否弃置一张手牌（否则 ${owner.name} 摸一张牌）`, target.hand.cards.length > 0,
       );
-      if (discardHand && target.hand.length > 0) {
+      if (discardHand && target.hand.cards.length > 0) {
         await discardCards(game, target, [target.hand.cards[0]]);
         console.log(
           `  ⚔️${owner.name} 的雌雄双股剑发动！${target.name} 弃置了一张手牌`,
@@ -281,7 +281,7 @@ conversionRegistry.register({
   canUse: (game, player, shaUsed) => {
     const def = cardRegistry.get(CardType.Sha)!;
     return player.equipment.weapon?.type === CardType.ZhangBaSheMao
-      && player.hand.length >= 2
+      && player.hand.cards.length >= 2
       && def.canUse(player, game.state.players, shaUsed);
   },
   selectionPlan: (game, player) => ({
@@ -340,7 +340,7 @@ cardRegistry.register({
     canTrigger: (game, event, owner) => {
       const { attacker } = event.data as ShaCancelledEventData;
       if (attacker !== owner) return false; // 只有装备者使用的杀被抵消
-      return owner.hand.some((c) => c.type === CardType.Sha); // AI：有杀才再出（发动询问接入前简化）
+      return owner.hand.cards.some((c) => c.type === CardType.Sha); // AI：有杀才再出（发动询问接入前简化）
     },
     content: async (game, event, owner) => {
       const { defender } = event.data as ShaCancelledEventData;

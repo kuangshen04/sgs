@@ -17,7 +17,7 @@ activeSkillRegistry.register({
   name: '青囊',
   canUse: (game, player, ctx) =>
     !ctx.usedSkills.has('青囊') &&                              // 每回合限一次
-    player.hand.length >= 1 &&                                  // 需弃 1 张手牌
+    player.hand.cards.length >= 1 &&                                  // 需弃 1 张手牌
     game.state.players.some((p) => p.alive && p.hp < p.maxHp),  // 需有受伤角色
   selectionPlan: (game, player) => ({
     nextStep(answers) {
@@ -64,7 +64,7 @@ responseRuleRegistry.register({
     request.type === 'use'
     && !!request.target
     && game.state.players[game.state.currentIndex] !== player // 回合外
-    && player.hand.some((c) => c.suit === '♥' || c.suit === '♦'),
+    && player.hand.cards.some((c) => c.suit === '♥' || c.suit === '♦'),
   selectionPlan: (_game, player) => ({
     nextStep(answers) {
       if (answers.source) return null;
