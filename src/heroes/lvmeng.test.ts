@@ -11,7 +11,8 @@ import { freshGame, giveHand } from '../test-utils.js';
 import { discardPhase } from '../gameFlow.js';
 import { useCard } from '../cardActions.js';
 import { GameEvent } from '../events/index.js';
-import { registerSkills, skillRegistry } from '../skills.js';
+import { installEffects } from '../skills.js';
+import { skillRegistry } from '../effects.js';
 import { heroRegistry } from '../heroRegistry.js';
 
 import { CardType } from '../types.js';
@@ -24,7 +25,7 @@ describe('克己（吕蒙）', () => {
 
   it('本回合未用杀 → 跳过弃牌阶段', async () => {
     const g = freshGame({}, ['吕蒙', '刘备', '孙权']);
-    registerSkills(g);
+    installEffects(g);
     const lv = g.state.players[0];
     lv.hp = 4;
     giveHand(lv, CardType.Shan, CardType.Shan, CardType.Shan, CardType.Shan, CardType.Shan);
@@ -38,7 +39,7 @@ describe('克己（吕蒙）', () => {
 
   it('本回合用过杀 → 正常弃牌（历史查询命中）', async () => {
     const g = freshGame({}, ['吕蒙', '刘备', '孙权']);
-    registerSkills(g);
+    installEffects(g);
     const lv = g.state.players[0];
     const liubei = g.state.players[1];
     lv.hp = 4;
@@ -56,7 +57,7 @@ describe('克己（吕蒙）', () => {
 
   it('回合作用域：别人回合里用杀不计入，自己回合仍可克己', async () => {
     const g = freshGame({}, ['刘备', '吕蒙', '孙权']);
-    registerSkills(g);
+    installEffects(g);
     const liubei = g.state.players[0];
     const lv = g.state.players[1];
     const sunquan = g.state.players[2];

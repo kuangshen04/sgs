@@ -4,7 +4,7 @@
 
 import './cards/index.js';  // 触发卡牌注册（side-effect import）
 import { STANDARD_DECK } from './cards/index.js';
-import { registerSkills } from './skills.js';
+import { installEffects } from './skills.js';
 import { createGame } from './game.js';
 import { printState } from './display.js';
 import { runGame } from './gameFlow.js';
@@ -16,7 +16,7 @@ import { GameOverError } from './life.js';
 
 async function main() {
   const game = createGame(STANDARD_DECK, ['刘备', '曹操', '夏侯惇', '司马懿', '郭嘉', '甄宓', '孙权', '周瑜', '貂蝉']);
-  registerSkills(game); // 把技能/装备/无懈触发器挂到本局
+  installEffects(game); // 把本局全部效果（技能/装备/常驻/响应）装到引擎上
 
   console.clear();
   printState(game.state);

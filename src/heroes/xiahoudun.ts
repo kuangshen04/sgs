@@ -4,7 +4,8 @@
 
 import { discardCards, judge } from '../cardActions.js';
 import { damage } from '../life.js';
-import { skillRegistry, subjectIsOwner } from '../skills.js';
+import { subjectIsOwner } from '../skills.js';
+import { defineSkill } from '../effects.js';
 import type { GameEvent } from '../events/index.js';
 import type { DamageEventData } from '../events/index.js';
 import { heroRegistry } from '../heroRegistry.js';
@@ -27,11 +28,14 @@ const ganglieContent = async (game: Game, event: GameEvent<any>, owner: Player):
   }
 };
 
-skillRegistry.register({
+defineSkill({
   name: '刚烈',
-  trigger: 'damage.after',
-  canTrigger: subjectIsOwner,
-  content: ganglieContent,
+  effects: [{
+    form: 'triggered',
+    timing: 'damage.after',
+    condition: subjectIsOwner,
+    run: ganglieContent,
+  }],
 });
 
 heroRegistry.register({ name: '夏侯惇', maxHp: 4, sex: 'male', group: '魏', skills: ['刚烈'] });

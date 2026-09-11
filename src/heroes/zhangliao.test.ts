@@ -8,7 +8,8 @@ import { freshGame, giveHand } from '../test-utils.js';
 
 import { drawPhase } from '../gameFlow.js';
 
-import { registerSkills, skillRegistry } from '../skills.js';
+import { installEffects } from '../skills.js';
+import { skillRegistry } from '../effects.js';
 
 import { CardType } from '../types.js';
 
@@ -19,7 +20,7 @@ describe('突袭（张辽技能）', () => {
 
   it('摸牌阶段：摸牌数改为 0，随机获得其他角色手牌', async () => {
     const g = freshGame({}, ['刘备', '张辽', '孙权']);
-    registerSkills(g);
+    installEffects(g);
     const zhangliao = g.state.players[1];
     const p1 = g.state.players[0];
     const p2 = g.state.players[2];

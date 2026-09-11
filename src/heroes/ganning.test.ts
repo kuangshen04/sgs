@@ -8,15 +8,15 @@ import { freshGame } from '../test-utils.js';
 
 import { playPhase } from '../gameFlow.js';
 import { choosePlayAction } from '../playChoices.js';
-import { registerSkills } from '../skills.js';
-import { conversionRegistry } from '../conversions.js';
+import { installEffects } from '../skills.js';
+import { skillRegistry } from '../effects.js';
 import { heroRegistry } from '../heroRegistry.js';
 
 import { CardType } from '../types.js';
 
 describe('奇袭（甘宁转化牌）', () => {
-  it('conversionRegistry 已注册奇袭，heroRegistry 已注册甘宁', () => {
-    expect(conversionRegistry.get('奇袭')).toBeDefined();
+  it('skillRegistry 已注册奇袭（conversion 效果），heroRegistry 已注册甘宁', () => {
+    expect(skillRegistry.get('奇袭')?.effects.some((e) => e.form === 'conversion')).toBe(true);
     expect(heroRegistry.get('甘宁')?.skills).toContain('奇袭');
   });
 
@@ -40,7 +40,7 @@ describe('奇袭（甘宁转化牌）', () => {
 
   it('出牌阶段：黑牌当过河拆桥，目标一张牌进弃牌堆', async () => {
     const g = freshGame({}, ['甘宁', '刘备', '孙权']);
-    registerSkills(g);
+    installEffects(g);
     const ganning = g.state.players[0];
     const liubei = g.state.players[1];
     const black = { id: 9012, type: CardType.Shan, name: '闪', suit: '♣', number: 6 };

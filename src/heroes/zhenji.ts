@@ -1,13 +1,13 @@
 // ============================================================
-// 甄宓 — 洛神
+// 甄宓 — 洛神 / 倾国
 // ============================================================
 
 import { judge, takeFromDiscard } from '../cardActions.js';
 import { playUsedCard } from '../cardActions.js';
 import { cardEmoji, displayNumber, asUsedCard } from '../cardRegistry.js';
 import { askYesNo, handCardsStep, selectedCards } from '../choose.js';
-import { skillRegistry, subjectIsOwner } from '../skills.js';
-import { responseRuleRegistry } from '../responses.js';
+import { subjectIsOwner } from '../skills.js';
+import { defineSkill } from '../effects.js';
 import type { GameEvent } from '../events/index.js';
 import { heroRegistry } from '../heroRegistry.js';
 import type { Game } from '../game.js';
@@ -34,39 +34,45 @@ const luoshenContent = async (game: Game, event: GameEvent<any>, owner: Player):
   }
 };
 
-skillRegistry.register({
+defineSkill({
   name: '洛神',
-  trigger: 'preparePhase.before',
-  canTrigger: subjectIsOwner,
-  content: luoshenContent,
+  effects: [{
+    form: 'triggered',
+    timing: 'preparePhase.before',
+    condition: subjectIsOwner,
+    run: luoshenContent,
+  }],
 });
 
-responseRuleRegistry.register({
-  name: '倾国·当闪',
-  respondsTo: CardType.Shan,
-  ownerSkill: '倾国',
-  canUse: (_game, player) =>
-    player.hand.cards.some((c) => c.suit === '♠' || c.suit === '♣'),
-  selectionPlan: (_game, player) => ({
-    nextStep(answers) {
-      if (answers.source) return null;
-      return handCardsStep('source', player, {
-        prompt: '倾国：选择一张黑色牌当闪',
-        filter: (c) => c.suit === '♠' || c.suit === '♣',
-        min: 1,
-        max: 1,
-      });
+defineSkill({
+  name: '倾国',
+  effects: [{
+    form: 'response',
+    name: '倾国·当闪',
+    respondsTo: CardType.Shan,
+    canUse: (_game, player) =>
+      player.hand.cards.some((c) => c.suit === '♠' || c.suit === '♣'),
+    selectionPlan: (_game, player) => ({
+      nextStep(answers) {
+        if (answers.source) return null;
+        return handCardsStep('source', player, {
+          prompt: '倾国：选择一张黑色牌当闪',
+          filter: (c) => c.suit === '♠' || c.suit === '♣',
+          min: 1,
+          max: 1,
+        });
+      },
+    }),
+    resolve: async (game, player, _request, answers) => {
+      const source = selectedCards(answers, 'source')[0];
+      if (source) await playUsedCard(game, player, asUsedCard(source));
+      return 'done';
     },
-  }),
-  resolve: async (game, player, _request, answers) => {
-    const source = selectedCards(answers, 'source')[0];
-    if (source) await playUsedCard(game, player, asUsedCard(source));
-    return 'done';
-  },
-  ai: {
-    shouldUse: () => true,
-    priority: 50,
-  },
+    ai: {
+      shouldUse: () => true,
+      priority: 50,
+    },
+  }],
 });
 
 heroRegistry.register({ name: '甄宓', maxHp: 3, sex: 'female', group: '魏', skills: ['洛神', '倾国'] });

@@ -50,13 +50,13 @@ describe('resolveShaResponse', () => {
     expect(captured.fired).toBe(false);
   });
 
-  it('无双（shanRequired=2）：两张闪都出才抵消，逐张询问', async () => {
-    const g = freshGame();
+  it('无双（常驻 shaRequired：需两张闪）：两张闪都出才抵消，逐张询问', async () => {
+    const g = freshGame({}, ['吕布', '刘备', '孙权']); // 吕布：无双 → 杀需两张闪
     const attacker = g.state.players[0];
     const defender = g.state.players[1];
     const sha = makeUniqueCard(CardType.Sha);
     giveHand(defender, CardType.Shan, CardType.Shan);
-    const marks: RespondMarks = { shanRequired: 2 };
+    const marks: RespondMarks = {};
 
     const cancelled = await resolveShaResponse(g, attacker, defender, sha, marks);
 
@@ -65,12 +65,12 @@ describe('resolveShaResponse', () => {
   });
 
   it('无双：只出一张闪 → 未抵消（已出的闪不返还）', async () => {
-    const g = freshGame();
+    const g = freshGame({}, ['吕布', '刘备', '孙权']); // 吕布：无双 → 杀需两张闪
     const attacker = g.state.players[0];
     const defender = g.state.players[1];
     const sha = makeUniqueCard(CardType.Sha);
     giveHand(defender, CardType.Shan, CardType.Tao); // 只有一张闪
-    const marks: RespondMarks = { shanRequired: 2 };
+    const marks: RespondMarks = {};
 
     const cancelled = await resolveShaResponse(g, attacker, defender, sha, marks);
 

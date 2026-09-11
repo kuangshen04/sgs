@@ -11,7 +11,7 @@ import { freshGame, giveHand, makeUniqueCard, equipAt } from './test-utils.js';
 import { useCard } from './cardActions.js';
 
 import { cardRegistry } from './cardRegistry.js';
-import { registerSkills } from './skills.js';
+import { installEffects } from './skills.js';
 import { EventType } from './events/index.js';
 
 import { CardType } from './types.js';
@@ -308,7 +308,7 @@ describe('useCard — 五谷丰登', () => {
 describe('useCard — 乐不思蜀（延时锦囊）', () => {
   it('使用时直接置入目标判定区，不能被无懈', async () => {
     const g = freshGame();
-    registerSkills(g);
+    installEffects(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1];
     giveHand(attacker, CardType.LeBu);
@@ -441,7 +441,7 @@ describe('useCard — 顺手牵羊', () => {
 
   it('可以被无懈可击抵消', async () => {
     const g = freshGame();
-    registerSkills(g);
+    installEffects(g);
     const attacker = g.state.players[0];
     const p2 = g.state.players[1];
     giveHand(attacker, CardType.ShunShou);
@@ -465,7 +465,7 @@ describe('useCard — 顺手牵羊', () => {
 describe('无懈可击', () => {
   it('抵消南蛮入侵对单个目标的效果', async () => {
     const g = freshGame();
-    registerSkills(g);
+    installEffects(g);
     const attacker = g.state.players[0];
     const p2 = g.state.players[1];
     const p3 = g.state.players[2];
@@ -491,7 +491,7 @@ describe('无懈可击', () => {
 
   it('不抵消基本牌', async () => {
     const g = freshGame({}, ['刘备', '孙权', '曹操']); // 防御方用孙权，避免奸雄拿牌干扰手牌断言
-    registerSkills(g);
+    installEffects(g);
     const attacker = g.state.players[0];
     const defender = g.state.players[1];
 
@@ -508,7 +508,7 @@ describe('无懈可击', () => {
 
   it('不抵消自己对自己的牌', async () => {
     const g = freshGame();
-    registerSkills(g);
+    installEffects(g);
     const player = g.state.players[0];
     player.hp = 2;
     giveHand(player, CardType.Tao, CardType.WuXie);
@@ -522,7 +522,7 @@ describe('无懈可击', () => {
 
   it('无懈可击可以被反无懈（手动模拟反无懈）', async () => {
     const g = freshGame();
-    registerSkills(g);
+    installEffects(g);
     const attacker = g.state.players[0];
     const p1 = g.state.players[1];
     const p2 = g.state.players[2];
@@ -665,7 +665,7 @@ describe('targeting', () => {
 describe('决斗/南蛮 响应窗口转化', () => {
   it('关羽通过武圣·当杀 响应决斗', async () => {
     const g = freshGame({}, ['关羽', '刘备', '孙权']);
-    registerSkills(g);
+    installEffects(g);
     const guanyu = g.state.players[0];
     const attacker = g.state.players[1]; // 刘备
     const red = { id: 9101, type: CardType.Shan, name: '闪', suit: '♥', number: 3 };
@@ -682,7 +682,7 @@ describe('决斗/南蛮 响应窗口转化', () => {
 
   it('赵云通过龙胆·当杀 响应南蛮，免伤', async () => {
     const g = freshGame({}, ['赵云', '刘备']);
-    registerSkills(g);
+    installEffects(g);
     const zhaoyun = g.state.players[0];
     const user = g.state.players[1]; // 刘备
     const shan = { id: 9102, type: CardType.Shan, name: '闪', suit: '♦', number: 5 };

@@ -155,8 +155,11 @@ export async function playPhase(
             player, card: action.card, targets: action.targets,
           });
         } else if (action?.kind === 'skill') {
-          usedSkills.add(action.skill.name);
-          await action.skill.execute(game, player, action.answers);
+          const skillName = action.effect.skill ?? action.effect.name ?? '效果';
+          usedSkills.add(skillName);
+          const result = await action.effect.execute(game, player, action.answers);
+          // 效果回执：如激将借盟友的杀当杀使用 → 消耗本阶段"杀"次数
+          if (result?.usedShaLimit) shaUsed = true;
         } else {
           break;
         }

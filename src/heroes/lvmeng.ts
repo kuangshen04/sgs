@@ -3,7 +3,8 @@
 // ============================================================
 
 import { askYesNo } from '../choose.js';
-import { skillRegistry, subjectIsOwner } from '../skills.js';
+import { subjectIsOwner } from '../skills.js';
+import { defineSkill } from '../effects.js';
 import { findEventSince } from '../events/index.js';
 import type { UseCardEventData } from '../events/index.js';
 import { CardType } from '../types.js';
@@ -28,16 +29,19 @@ function usedShaThisTurn(game: Game, current: GameEvent<any>, owner: Player): bo
   }) !== null;
 }
 
-skillRegistry.register({
+defineSkill({
   name: '克己',
-  trigger: 'discardPhase.before',
-  canTrigger: (game, event, owner, subject) =>
-    subject === owner && !usedShaThisTurn(game, event, owner),
-  content: async (game, event, owner) => {
-    if (!(await askYesNo(game, owner, '克己：是否跳过弃牌阶段', true))) return;
-    owner.skipDiscardPhase = true;
-    console.log(`  ✨${owner.name} 发动【克己】！跳过弃牌阶段`);
-  },
+  effects: [{
+    form: 'triggered',
+    timing: 'discardPhase.before',
+    condition: (game, event, owner, subject) =>
+      subject === owner && !usedShaThisTurn(game, event, owner),
+    run: async (game, event, owner) => {
+      if (!(await askYesNo(game, owner, '克己：是否跳过弃牌阶段', true))) return;
+      owner.skipDiscardPhase = true;
+      console.log(`  ✨${owner.name} 发动【克己】！跳过弃牌阶段`);
+    },
+  }],
 });
 
 heroRegistry.register({

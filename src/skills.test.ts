@@ -1,6 +1,6 @@
 // ============================================================
 // 三国杀最小原型 — 技能系统基础设施测试
-// 分发模型 / 死亡规则 / pickActiveSkill / 注册表完整性
+// 分发模型 / 死亡规则 / pickActiveEffect / 注册表完整性
 // 具体技能行为测试在各武将文件中（heroes/*.test.ts）。
 // ============================================================
 
@@ -11,7 +11,8 @@ import { freshGame, giveHand, makeUniqueCard } from './test-utils.js';
 import { damage, loseHp } from './life.js';
 import { playPhase } from './gameFlow.js';
 
-import { activeSkillRegistry, pickActiveSkill, registerSkills, skillRegistry } from './skills.js';
+import { installEffects, pickActiveEffect } from './skills.js';
+import { skillRegistry } from './effects.js';
 
 import { CardType } from './types.js';
 
@@ -22,7 +23,7 @@ import { CardType } from './types.js';
 describe('技能分发 — 死亡规则', () => {
   it('失去体力不触发伤害事件（遗计不响应）', async () => {
     const g = freshGame({}, ['刘备', '郭嘉', '孙权']);
-    registerSkills(g);
+    installEffects(g);
     const guojia = g.state.players[1];
     guojia.hp = 2;
     const before = guojia.hand.cards.length;
@@ -35,7 +36,7 @@ describe('技能分发 — 死亡规则', () => {
 
   it('死亡后不再发动技能（遗计）', async () => {
     const g = freshGame({}, ['刘备', '郭嘉', '孙权']);
-    registerSkills(g);
+    installEffects(g);
     const guojia = g.state.players[1];
     guojia.hp = 1; // 受到致死伤害，无桃 → 死亡
 
@@ -47,7 +48,7 @@ describe('技能分发 — 死亡规则', () => {
 
   it('刚烈反杀当前回合角色 → 出牌阶段终止，不再出牌', async () => {
     const g = freshGame({}, ['孙权', '夏侯惇', '刘备']);
-    registerSkills(g);
+    installEffects(g);
     const sunquan = g.state.players[0];
     const xiahou = g.state.players[1];
     sunquan.hp = 1;
@@ -64,21 +65,21 @@ describe('技能分发 — 死亡规则', () => {
 });
 
 // ============================================================
-// pickActiveSkill
+// pickActiveEffect
 // ============================================================
 
-describe('pickActiveSkill', () => {
+describe('pickActiveEffect', () => {
   it('死亡角色返回 null（不发动主动技能）', () => {
     const g = freshGame({}, ['刘备', '孙权', '曹操']);
     const sunquan = g.state.players[1];
     sunquan.alive = false;
     giveHand(sunquan, CardType.Shan);
 
-    const skill = pickActiveSkill(g, sunquan, {
+    const effect = pickActiveEffect(g, sunquan, {
       shaUsed: false, usedSkills: new Set<string>(), hasCardOption: false,
     });
 
-    expect(skill).toBeNull();
+    expect(effect).toBeNull();
   });
 });
 
@@ -93,9 +94,9 @@ describe('注册表完整性', () => {
     }
   });
 
-  it('activeSkillRegistry 已注册所有主动技能', () => {
+  it('已注册所有主动技能（activated 效果）', () => {
     for (const name of ['制衡', '仁德', '反间', '青囊']) {
-      expect(activeSkillRegistry.get(name)).toBeDefined();
+      expect(skillRegistry.get(name)?.effects.some((e) => e.form === 'activated')).toBe(true);
     }
   });
 });

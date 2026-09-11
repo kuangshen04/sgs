@@ -8,15 +8,15 @@ import { freshGame } from '../test-utils.js';
 
 import { playPhase } from '../gameFlow.js';
 import { choosePlayAction } from '../playChoices.js';
-import { registerSkills } from '../skills.js';
-import { conversionRegistry } from '../conversions.js';
+import { installEffects } from '../skills.js';
+import { skillRegistry } from '../effects.js';
 import { heroRegistry } from '../heroRegistry.js';
 
 import { CardType } from '../types.js';
 
 describe('龙胆①（赵云转化牌）', () => {
-  it('conversionRegistry 已注册龙胆，heroRegistry 已注册赵云', () => {
-    expect(conversionRegistry.get('龙胆')).toBeDefined();
+  it('skillRegistry 已注册龙胆（conversion 效果），heroRegistry 已注册赵云', () => {
+    expect(skillRegistry.get('龙胆')?.effects.some((e) => e.form === 'conversion')).toBe(true);
     expect(heroRegistry.get('赵云')?.skills).toContain('龙胆');
   });
 
@@ -38,7 +38,7 @@ describe('龙胆①（赵云转化牌）', () => {
 
   it('出牌阶段：闪当杀，造成伤害，实体闪回弃牌堆', async () => {
     const g = freshGame({}, ['赵云', '刘备', '孙权']);
-    registerSkills(g);
+    installEffects(g);
     const zhaoyun = g.state.players[0];
     const target = g.state.players[1];
     const shan = { id: 9021, type: CardType.Shan, name: '闪', suit: '♥', number: 8 };

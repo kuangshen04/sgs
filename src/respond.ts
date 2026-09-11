@@ -12,12 +12,14 @@ import type { ShaCancelledEventData } from './events/index.js';
 import { cardEmoji, asUsedCard } from './cardRegistry.js';
 import { chooseUseAction } from './useWindow.js';
 import { buildResponseActions, executeResponse } from './responses.js';
-import type { ResponseRequest, ResponseRule } from './responses.js';
+import type { ResponseRequest } from './responses.js';
+import type { ResponseEffect } from './effects.js';
+import { effectRegistry } from './persistentEffects.js';
 
 /**
  * 结算一张杀的闪响应，返回是否被抵消。
  * - 不可闪避（铁骑标记）→ 跳过响应，未抵消
- * - 所需闪数（无双标记）→ 逐张询问；成功后再问下一张
+ * - 所需闪数（无双 = 常驻 'shaRequired' 查询）→ 逐张询问；成功后再问下一张
  * - 全部出完 → 触发 shaCancelled 抵消时点（青龙偃月刀/贯石斧监听）
  */
 export async function resolveShaResponse(
@@ -29,17 +31,17 @@ export async function resolveShaResponse(
     return false;
   }
 
-  const need = marks.shanRequired ?? 1;
+  const need = 1 + effectRegistry.sum(attacker, 'shaRequired');
   const request: ResponseRequest = { type: 'play', cardType: CardType.Shan };
 
   for (let i = 0; i < need; i++) {
-    const usedRules = new Set<string>();
+    const usedEffects = new Set<ResponseEffect>();
     // 八卦阵失败（retry）时重新询问
     while (true) {
       const choice = await chooseUseAction(
         game,
         defender,
-        buildResponseActions(game, defender, request, usedRules),
+        buildResponseActions(game, defender, request, usedEffects),
       );
       if (!choice || choice.action.group === 'decline') {
         console.log(`  ${defender.name} 无法打出闪！`);
@@ -47,7 +49,7 @@ export async function resolveShaResponse(
       }
       const outcome = await executeResponse(game, defender, request, choice.action, choice.answers);
       if (outcome === 'retry') {
-        usedRules.add((choice.action.data as ResponseRule).name);
+        usedEffects.add(choice.action.data as ResponseEffect);
         continue;
       }
       if (outcome === 'done') {
@@ -75,13 +77,13 @@ export async function resolvePlayResponse(
   cardType: CardType,
 ): Promise<boolean> {
   const request: ResponseRequest = { type: 'play', cardType };
-  const usedRules = new Set<string>();
+  const usedEffects = new Set<ResponseEffect>();
   while (true) {
-    const choice = await chooseUseAction(game, player, buildResponseActions(game, player, request, usedRules));
+    const choice = await chooseUseAction(game, player, buildResponseActions(game, player, request, usedEffects));
     if (!choice || choice.action.group === 'decline') return false;
     const outcome = await executeResponse(game, player, request, choice.action, choice.answers);
     if (outcome === 'retry') {
-      usedRules.add((choice.action.data as ResponseRule).name);
+      usedEffects.add(choice.action.data as ResponseEffect);
       continue;
     }
     return outcome === 'done';
@@ -97,13 +99,13 @@ export async function resolveUseResponse(
   player: Player,
   request: ResponseRequest,
 ): Promise<boolean> {
-  const usedRules = new Set<string>();
+  const usedEffects = new Set<ResponseEffect>();
   while (true) {
-    const choice = await chooseUseAction(game, player, buildResponseActions(game, player, request, usedRules));
+    const choice = await chooseUseAction(game, player, buildResponseActions(game, player, request, usedEffects));
     if (!choice || choice.action.group === 'decline') return false;
     const outcome = await executeResponse(game, player, request, choice.action, choice.answers);
     if (outcome === 'retry') {
-      usedRules.add((choice.action.data as ResponseRule).name);
+      usedEffects.add(choice.action.data as ResponseEffect);
       continue;
     }
     return outcome === 'done';
@@ -111,7 +113,7 @@ export async function resolveUseResponse(
 }
 
 /**
- * 决斗中一个角色的单次响应：需打出 required 张杀（无双②），逐张询问。
+ * 决斗中一个角色的单次响应：需打出 required 张杀（无双② = 常驻 'juedouShaRequired' 查询），逐张询问。
  * 不足则失败（打不出杀 → 受到伤害）；已打出的杀不返还。
  */
 export async function resolveJueDouResponse(

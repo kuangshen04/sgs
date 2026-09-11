@@ -8,7 +8,8 @@ import { freshGame, giveHand } from '../test-utils.js';
 
 import { useCard } from '../cardActions.js';
 
-import { registerSkills, skillRegistry } from '../skills.js';
+import { installEffects } from '../skills.js';
+import { skillRegistry } from '../effects.js';
 
 import { CardType } from '../types.js';
 
@@ -21,7 +22,7 @@ describe('无双（吕布锁定技）', () => {
 
   it('吕布使用杀 → 目标需两张闪：只有一张则命中', async () => {
     const g = freshGame({}, lvbuHeroes);
-    registerSkills(g);
+    installEffects(g);
     const lvbu = g.state.players[0];
     const target = g.state.players[1];
     giveHand(lvbu, CardType.Sha);
@@ -36,7 +37,7 @@ describe('无双（吕布锁定技）', () => {
 
   it('目标有两张闪 → 抵消', async () => {
     const g = freshGame({}, lvbuHeroes);
-    registerSkills(g);
+    installEffects(g);
     const lvbu = g.state.players[0];
     const target = g.state.players[1];
     giveHand(lvbu, CardType.Sha);
@@ -51,7 +52,7 @@ describe('无双（吕布锁定技）', () => {
 
   it('非吕布使用杀 → 一张闪即可抵消', async () => {
     const g = freshGame({}, lvbuHeroes);
-    registerSkills(g);
+    installEffects(g);
     const liubei = g.state.players[1];
     const target = g.state.players[0]; // 吕布
     giveHand(liubei, CardType.Sha);
@@ -68,7 +69,7 @@ describe('无双（吕布锁定技）', () => {
 describe('无双②（决斗）', () => {
   it('吕布使用决斗 → 对方每次响应需两张杀', async () => {
     const g = freshGame({}, lvbuHeroes);
-    registerSkills(g);
+    installEffects(g);
     const lvbu = g.state.players[0];
     const target = g.state.players[1];
     giveHand(lvbu, CardType.JueDou);
@@ -84,7 +85,7 @@ describe('无双②（决斗）', () => {
 
   it('吕布是决斗目标 → 自己每次响应只需一张杀，对方需两张', async () => {
     const g = freshGame({}, lvbuHeroes);
-    registerSkills(g);
+    installEffects(g);
     const liubei = g.state.players[1];
     const lvbu = g.state.players[0];
     giveHand(liubei, CardType.JueDou);
@@ -103,7 +104,7 @@ describe('无双②（决斗）', () => {
 
   it('双方都有两张杀 → 先耗尽的一方失败', async () => {
     const g = freshGame({}, lvbuHeroes);
-    registerSkills(g);
+    installEffects(g);
     const lvbu = g.state.players[0];
     const target = g.state.players[1];
     giveHand(lvbu, CardType.JueDou, CardType.Sha, CardType.Sha, CardType.Sha, CardType.Sha);
@@ -121,7 +122,7 @@ describe('无双②（决斗）', () => {
 
   it('双方都是吕布 → 双方每次响应都需两张杀', async () => {
     const g = freshGame({}, ['吕布', '吕布', '孙权']);
-    registerSkills(g);
+    installEffects(g);
     const lvbuA = g.state.players[0];
     const lvbuB = g.state.players[1];
     giveHand(lvbuA, CardType.JueDou, CardType.Sha, CardType.Sha, CardType.Tao);

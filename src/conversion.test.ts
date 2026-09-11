@@ -8,7 +8,7 @@ import { describe, it, expect } from 'vitest';
 
 import { freshGame } from './test-utils.js';
 import { useCard } from './cardActions.js';
-import { registerSkills } from './skills.js';
+import { installEffects } from './skills.js';
 import { CardType } from './types.js';
 import type { Card, UsedCard } from './types.js';
 
@@ -25,7 +25,7 @@ function virtualSha(physical: Card): UsedCard {
 describe('useCard — 转化牌建模（mock 武圣）', () => {
   it('虚拟杀使用：实体红牌进处理区并结算进弃牌堆，虚拟杀不占位置', async () => {
     const g = freshGame();
-    registerSkills(g);
+    installEffects(g);
     const attacker = g.state.players[0];
     const defender = g.state.players[2]; // 孙权，无奸雄
     const red = { id: 9001, type: CardType.Shan, name: '闪', suit: '♥', number: 3 };
@@ -46,7 +46,7 @@ describe('useCard — 转化牌建模（mock 武圣）', () => {
 
   it('奸雄获得虚拟牌对应的全部实体牌', async () => {
     const g = freshGame();
-    registerSkills(g);
+    installEffects(g);
     const attacker = g.state.players[0];
     const caocao = g.state.players[1];
     const red = { id: 9002, type: CardType.Shan, name: '闪', suit: '♦', number: 7 };

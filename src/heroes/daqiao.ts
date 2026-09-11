@@ -4,7 +4,7 @@
 
 import { discardCards } from '../cardActions.js';
 import { askFromAreas, askForTargets } from '../choose.js';
-import { skillRegistry } from '../skills.js';
+import { defineSkill } from '../effects.js';
 import type { GameEvent } from '../events/index.js';
 import type { TargetingEventData } from '../events/index.js';
 import { distanceTo, attackRange } from '../distance.js';
@@ -41,24 +41,27 @@ const liuliContent = async (
   );
 };
 
-skillRegistry.register({
+defineSkill({
   name: '流离',
-  trigger: 'targeting.before',
-  canTrigger: (game, event, owner) => {
-    const { user, card, target } = event.data as TargetingEventData;
-    if (target !== owner) return false;          // 大乔成为杀的目标时
-    if (card.type !== CardType.Sha) return false;
-    // 需有牌可弃（手牌/装备区）
-    if (owner.hand.cards.length === 0
-      && !owner.equipment.weapon && !owner.equipment.armor
-      && !owner.equipment.defensiveHorse && !owner.equipment.offensiveHorse) return false;
-    // 需有合法转移目标（攻击范围内、非使用者、非自己）
-    return game.state.players.some(
-      (p) => p.alive && p !== owner && p !== user
-        && distanceTo(game.state.players, owner, p) <= attackRange(owner),
-    );
-  },
-  content: liuliContent,
+  effects: [{
+    form: 'triggered',
+    timing: 'targeting.before',
+    condition: (game, event, owner) => {
+      const { user, card, target } = event.data as TargetingEventData;
+      if (target !== owner) return false;          // 大乔成为杀的目标时
+      if (card.type !== CardType.Sha) return false;
+      // 需有牌可弃（手牌/装备区）
+      if (owner.hand.cards.length === 0
+        && !owner.equipment.weapon && !owner.equipment.armor
+        && !owner.equipment.defensiveHorse && !owner.equipment.offensiveHorse) return false;
+      // 需有合法转移目标（攻击范围内、非使用者、非自己）
+      return game.state.players.some(
+        (p) => p.alive && p !== owner && p !== user
+          && distanceTo(game.state.players, owner, p) <= attackRange(owner),
+      );
+    },
+    run: liuliContent,
+  }],
 });
 
 heroRegistry.register({ name: '大乔', maxHp: 3, sex: 'female', group: '吴', skills: ['流离'] });

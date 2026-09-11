@@ -7,22 +7,18 @@
 // ============================================================
 
 import { CardType } from './types.js';
-import type { Card, Player, UsedCard } from './types.js';
+import type { Player, UsedCard } from './types.js';
 import type { Game } from './game.js';
 import {
   computeCardOptions,
   computeTargetOptions,
-  cardsStep,
   targetsStep,
-  selectedCards,
-  selectedPlayers,
 } from './choose.js';
 import type { CardOption } from './choose.js';
-import { asUsedCard, cardRegistry } from './cardRegistry.js';
-import { collectConversions } from './conversions.js';
-import type { ConversionDef } from './conversions.js';
-import { activeSkillRegistry } from './skills.js';
-import type { ActiveSkillContext, ActiveSkillDef } from './skills.js';
+import { asUsedCard } from './cardRegistry.js';
+import { collectConversionEffects } from './conversions.js';
+import { collectActiveEffects } from './skills.js';
+import type { ActiveContext, ActivatedEffect, ConversionEffect } from './effects.js';
 import { chooseUseAction } from './useWindow.js';
 import type { UseAction } from './useWindow.js';
 import type { SelectionAnswers, SelectionPlan } from './selection.js';
@@ -34,10 +30,10 @@ export interface CardActionResult {
   targets: Player[];
 }
 
-/** 选中主动技能后的结果（含确认后的选择结果，execute 据此执行） */
+/** 选中主动效果后的结果（含确认后的选择结果，execute 据此执行） */
 export interface SkillActionResult {
   kind: 'skill';
-  skill: ActiveSkillDef;
+  effect: ActivatedEffect;
   answers: SelectionAnswers;
 }
 
@@ -65,30 +61,13 @@ export async function choosePlayAction(
     return { kind: 'card', card: asUsedCard(option.card), targets };
   }
   if (choice.action.group === 'conversion') {
-    const conversion = choice.action.data as ConversionDef;
+    const conversion = choice.action.data as ConversionEffect;
     const resolved = conversion.resolve(choice.answers);
     return { kind: 'card', card: resolved.card, targets: resolved.targets };
   }
-  if (choice.action.group === 'lord') {
-    const source = selectedCards(choice.answers, 'source')[0];
-    const targets = (choice.answers.target ?? [])
-      .map((o) => o.data as Player)
-      .filter((p): p is Player => !!p);
-    return {
-      kind: 'card',
-      card: {
-        type: CardType.Sha,
-        name: '杀',
-        suit: source.suit,
-        number: source.number,
-        physicalCards: [source],
-      },
-      targets,
-    };
-  }
   return {
     kind: 'skill',
-    skill: choice.action.data as ActiveSkillDef,
+    effect: choice.action.data as ActivatedEffect,
     answers: choice.answers,
   };
 }
@@ -117,39 +96,36 @@ function buildPlayActions(
     });
   }
 
-  // 主动技能：规则 canUse + AI shouldUse（hasCardOption 供制衡等参考）
-  const ctx: ActiveSkillContext = {
+  // 主动效果：规则 canUse + AI shouldUse（hasCardOption 供制衡等参考）
+  const ctx: ActiveContext = {
     shaUsed,
     usedSkills,
     hasCardOption: cardOptions.length > 0,
   };
-  for (const skill of collectActiveSkills(game, player, ctx)) {
+  for (const effect of collectActiveEffects(game, player, ctx)) {
     actions.push({
-      id: `skill:${skill.name}`,
-      label: skill.name,
+      id: `skill:${effect.skill ?? effect.name ?? '效果'}`,
+      label: effect.skill ?? effect.name ?? '效果',
       group: 'skill',
-      priority: skill.ai.priority,
-      data: skill,
-      continuation: (g, p) => skill.selectionPlan(g, p, ctx),
+      priority: effect.ai.priority,
+      data: effect,
+      continuation: (g, p) => effect.selectionPlan(g, p, ctx),
     });
   }
 
   // 转化牌（武圣等）：源牌存在 + 效果牌规则合法 + AI 愿意用
-  for (const conversion of collectConversions(player)) {
+  for (const conversion of collectConversionEffects(player)) {
     if (!conversion.canUse(game, player, shaUsed)) continue;
     if (!conversion.ai.shouldUse(game, player, shaUsed)) continue;
     actions.push({
-      id: `conversion:${conversion.name}`,
-      label: conversion.name,
+      id: `conversion:${conversion.skill ?? conversion.name ?? '转化'}`,
+      label: conversion.skill ?? conversion.name ?? '转化',
       group: 'conversion',
       priority: conversion.ai.usePriority,
       data: conversion,
       continuation: (g, p) => conversion.selectionPlan(g, p),
     });
   }
-
-  // 激将：出牌阶段借蜀盟友的杀（杀次数由 Sha.canUse 把关）
-  actions.push(...lordShaActions(game, player, shaUsed));
 
   return actions;
 }
@@ -189,80 +165,9 @@ function cardTargetPlan(
   };
 }
 
-/** 激将（出牌阶段借杀）：有蜀盟友提供真杀且杀次数合法时可选用 */
-function lordShaActions(game: Game, player: Player, shaUsed: boolean): UseAction[] {
-  if (!player.hero.skills?.includes('激将')) return [];
-  if (game.state.lord && player !== game.state.lord) return []; // 身份场非主公不可用
-  const shaDef = cardRegistry.get(CardType.Sha)!;
-  if (!shaDef.canUse(player, game.state.players, shaUsed)) return [];
-
-  const sources = game.state.players
-    .filter((p) => p.alive && p !== player && p.hero.group === '蜀')
-    .flatMap((p) => p.hand.cards.filter((c) => c.type === CardType.Sha));
-  if (sources.length === 0) return [];
-
-  return [{
-    id: 'lord:激将',
-    label: '激将（借杀）',
-    group: 'lord',
-    priority: shaDef.ai.usePriority,
-    continuation: (g, p) => lordShaTargetPlan(g, p, sources),
-  }];
-}
-
-/** 激将的后续选择：先选盟友提供的杀，再按杀规则选目标 */
-function lordShaTargetPlan(
-  game: Game,
-  player: Player,
-  sources: Card[],
-): SelectionPlan {
-  return {
-    nextStep(answers) {
-      if (!answers.source) {
-        return cardsStep('source', sources, {
-          prompt: '激将：选择盟友提供的杀',
-          min: 1,
-          max: 1,
-        });
-      }
-      if (!answers.target) {
-        const source = selectedCards(answers, 'source')[0];
-        const used: UsedCard = {
-          type: CardType.Sha,
-          name: '杀',
-          suit: source.suit,
-          number: source.number,
-          physicalCards: [source],
-        };
-        const targetOptions = computeTargetOptions(game, used, player);
-        return targetsStep('target', player, targetOptions.map((t) => t.player), {
-          prompt: '激将：选择杀的目标',
-          min: 1,
-          max: 1,
-        });
-      }
-      return null;
-    },
-  };
-}
-
 /** 方天画戟：最后一张手牌使用杀时可额外目标（至多 3），否则返回 null */
 function fangtianMaxTargets(player: Player): number | null {
   if (player.equipment.weapon?.type !== CardType.FangTianHuaJi) return null;
   if (player.hand.cards.length !== 1) return null;
   return 3;
-}
-
-/** 收集当前可发动的主动技能（规则 + AI） */
-function collectActiveSkills(
-  game: Game,
-  player: Player,
-  ctx: ActiveSkillContext,
-): ActiveSkillDef[] {
-  if (!player.alive) return [];
-  return (player.hero.skills ?? [])
-    .map((name) => activeSkillRegistry.get(name))
-    .filter((s): s is ActiveSkillDef => !!s)
-    .filter((s) => s.canUse(game, player, ctx))
-    .filter((s) => s.ai.shouldUse(game, player, ctx));
 }

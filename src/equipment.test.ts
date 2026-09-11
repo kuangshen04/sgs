@@ -1,6 +1,6 @@
 // ============================================================
 // 三国杀最小原型 — 装备触发效果测试（麒麟弓/寒冰剑）
-// 独立文件：这些测试需要 registerSkills(g) 接线（触发器随局隔离）。
+// 独立文件：这些测试需要 installEffects(g) 接线（触发器随局隔离）。
 // ============================================================
 
 import { describe, it, expect } from 'vitest';
@@ -11,7 +11,7 @@ import { useCard } from './cardActions.js';
 import { playPhase } from './gameFlow.js';
 import { choosePlayAction } from './playChoices.js';
 
-import { registerSkills } from './skills.js';
+import { installEffects } from './skills.js';
 
 import { cardRegistry } from './cardRegistry.js';
 import { CardTag, CardType } from './types.js';
@@ -20,7 +20,7 @@ import { cardsInAreas } from './areas.js';
 describe('麒麟弓（装备触发）', () => {
   it('使用杀造成伤害后弃置目标一张坐骑牌', async () => {
     const g = freshGame();
-    registerSkills(g);
+    installEffects(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1];
     equipAt(g, attacker, makeUniqueCard(CardType.QiLinGong));
@@ -37,7 +37,7 @@ describe('麒麟弓（装备触发）', () => {
 
   it('目标无坐骑 → 不发动', async () => {
     const g = freshGame();
-    registerSkills(g);
+    installEffects(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1];
     equipAt(g, attacker, makeUniqueCard(CardType.QiLinGong));
@@ -54,7 +54,7 @@ describe('麒麟弓（装备触发）', () => {
 describe('寒冰剑（装备触发）', () => {
   it('使用杀造成伤害时：防止伤害并弃置两张牌', async () => {
     const g = freshGame();
-    registerSkills(g);
+    installEffects(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1];
     equipAt(g, attacker, makeUniqueCard(CardType.HanBingJian));
@@ -70,7 +70,7 @@ describe('寒冰剑（装备触发）', () => {
 
   it('目标无手牌但有装备区牌 → 弃置装备区牌', async () => {
     const g = freshGame();
-    registerSkills(g);
+    installEffects(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1];
     equipAt(g, attacker, makeUniqueCard(CardType.HanBingJian));
@@ -88,7 +88,7 @@ describe('寒冰剑（装备触发）', () => {
 
   it('决斗伤害不发动（仅杀）', async () => {
     const g = freshGame();
-    registerSkills(g);
+    installEffects(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1];
     equipAt(g, attacker, makeUniqueCard(CardType.HanBingJian));
@@ -106,7 +106,7 @@ describe('寒冰剑（装备触发）', () => {
 describe('仁王盾（装备触发）', () => {
   it('黑色杀对装备者无效（targeting 时取消目标）', async () => {
     const g = freshGame();
-    registerSkills(g);
+    installEffects(g);
     const attacker = g.state.players[0];
     const defender = g.state.players[1];
     equipAt(g, defender, makeUniqueCard(CardType.RenWangDun));
@@ -121,7 +121,7 @@ describe('仁王盾（装备触发）', () => {
 
   it('红色杀正常生效', async () => {
     const g = freshGame();
-    registerSkills(g);
+    installEffects(g);
     const attacker = g.state.players[0];
     const defender = g.state.players[1];
     equipAt(g, defender, makeUniqueCard(CardType.RenWangDun));
@@ -139,7 +139,7 @@ describe('雌雄双股剑（装备触发）', () => {
 
   it('使用杀指定异性目标后，目标弃置一张手牌', async () => {
     const g = freshGame({}, mixedHeroes);
-    registerSkills(g);
+    installEffects(g);
     const attacker = g.state.players[0]; // 刘备（男）
     const target = g.state.players[1];   // 甄宓（女）
     equipAt(g, attacker, makeUniqueCard(CardType.CiXiongShuangGuJian));
@@ -155,7 +155,7 @@ describe('雌雄双股剑（装备触发）', () => {
 
   it('异性目标无手牌 → 使用者摸一张牌', async () => {
     const g = freshGame({}, mixedHeroes);
-    registerSkills(g);
+    installEffects(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1];
     equipAt(g, attacker, makeUniqueCard(CardType.CiXiongShuangGuJian));
@@ -168,7 +168,7 @@ describe('雌雄双股剑（装备触发）', () => {
 
   it('指定同性目标 → 不发动', async () => {
     const g = freshGame({}, mixedHeroes);
-    registerSkills(g);
+    installEffects(g);
     const attacker = g.state.players[0]; // 刘备（男）
     const target = g.state.players[2];   // 孙权（男）
     equipAt(g, attacker, makeUniqueCard(CardType.CiXiongShuangGuJian));
@@ -184,7 +184,7 @@ describe('雌雄双股剑（装备触发）', () => {
 
   it('非杀（决斗）→ 不发动', async () => {
     const g = freshGame({}, mixedHeroes);
-    registerSkills(g);
+    installEffects(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1]; // 异性
     equipAt(g, attacker, makeUniqueCard(CardType.CiXiongShuangGuJian));
@@ -215,7 +215,7 @@ describe('马匹（白板注册）', () => {
 describe('青龙偃月刀（杀被抵消后）', () => {
   it('杀被闪抵消后，有杀则对同一目标再使用杀', async () => {
     const g = freshGame();
-    registerSkills(g);
+    installEffects(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1];
     equipAt(g, attacker, makeUniqueCard(CardType.QingLongYanYueDao));
@@ -233,7 +233,7 @@ describe('青龙偃月刀（杀被抵消后）', () => {
 
   it('杀未被抵消（目标无闪）→ 不追加', async () => {
     const g = freshGame();
-    registerSkills(g);
+    installEffects(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1];
     equipAt(g, attacker, makeUniqueCard(CardType.QingLongYanYueDao));
@@ -251,7 +251,7 @@ describe('青龙偃月刀（杀被抵消后）', () => {
 describe('贯石斧（杀被抵消后弃牌命中）', () => {
   it('杀被闪抵消后，弃两张牌令其依然造成伤害', async () => {
     const g = freshGame();
-    registerSkills(g);
+    installEffects(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1];
     equipAt(g, attacker, makeUniqueCard(CardType.GuanShiFu));
@@ -268,7 +268,7 @@ describe('贯石斧（杀被抵消后弃牌命中）', () => {
 
   it('装备者区域牌不足两张 → 不发动', async () => {
     const g = freshGame();
-    registerSkills(g);
+    installEffects(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1];
     equipAt(g, attacker, makeUniqueCard(CardType.GuanShiFu));
@@ -286,7 +286,7 @@ describe('贯石斧（杀被抵消后弃牌命中）', () => {
 describe('丈八蛇矛（转化牌）', () => {
   it('两张手牌当杀：造成伤害，两张源牌进弃牌堆', async () => {
     const g = freshGame({}, ['刘备', '孙权', '曹操']);
-    registerSkills(g);
+    installEffects(g);
     const attacker = g.state.players[0];
     const target = g.state.players[1];
     equipAt(g, attacker, makeUniqueCard(CardType.ZhangBaSheMao));
@@ -306,7 +306,7 @@ describe('丈八蛇矛（转化牌）', () => {
 
   it('奸雄获得丈八对应的全部实体牌', async () => {
     const g = freshGame({}, ['刘备', '曹操', '孙权']);
-    registerSkills(g);
+    installEffects(g);
     const attacker = g.state.players[0];
     const caocao = g.state.players[1];
     equipAt(g, attacker, makeUniqueCard(CardType.ZhangBaSheMao));
@@ -326,7 +326,7 @@ describe('丈八蛇矛（转化牌）', () => {
 describe('方天画戟（多目标杀）', () => {
   it('最后一张手牌杀可指定至多三个目标', async () => {
     const g = freshGame({}, ['刘备', '孙权', '张辽', '黄盖']);
-    registerSkills(g);
+    installEffects(g);
     const attacker = g.state.players[0];
     equipAt(g, attacker, makeUniqueCard(CardType.FangTianHuaJi));
     attacker.hand.replaceAll([makeUniqueCard(CardType.Sha)]);
@@ -341,7 +341,7 @@ describe('方天画戟（多目标杀）', () => {
 
   it('杀不是最后一张手牌 → 只选一个目标', async () => {
     const g = freshGame({}, ['刘备', '孙权', '张辽', '黄盖']);
-    registerSkills(g);
+    installEffects(g);
     const attacker = g.state.players[0];
     equipAt(g, attacker, makeUniqueCard(CardType.FangTianHuaJi));
     attacker.hand.replaceAll([makeUniqueCard(CardType.Sha), makeUniqueCard(CardType.Shan)]);
@@ -358,7 +358,7 @@ describe('方天画戟（多目标杀）', () => {
 describe('八卦阵（响应规则）', () => {
   it('判定红 → 视为出了一张闪，免伤且不消耗手牌', async () => {
     const g = freshGame();
-    registerSkills(g);
+    installEffects(g);
     const attacker = g.state.players[0];
     const defender = g.state.players[1];
     attacker.hand.replaceAll([makeUniqueCard(CardType.Sha)]);
@@ -376,7 +376,7 @@ describe('八卦阵（响应规则）', () => {
 
   it('判定黑 → 失败后可再出真闪', async () => {
     const g = freshGame();
-    registerSkills(g);
+    installEffects(g);
     const attacker = g.state.players[0];
     const defender = g.state.players[1];
     attacker.hand.replaceAll([makeUniqueCard(CardType.Sha)]);

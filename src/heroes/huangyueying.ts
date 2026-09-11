@@ -1,11 +1,10 @@
 // ============================================================
-// 黄月英 — 集智
+// 黄月英 — 集智 / 奇才（锁定技）
 // ============================================================
 
 import { drawCards } from '../cardActions.js';
 import { cardRegistry } from '../cardRegistry.js';
-import { effectRegistry } from '../persistentEffects.js';
-import { skillRegistry } from '../skills.js';
+import { defineSkill } from '../effects.js';
 import type { GameEvent } from '../events/index.js';
 import { CardTag } from '../types.js';
 import { heroRegistry } from '../heroRegistry.js';
@@ -18,21 +17,25 @@ const jizhiContent = async (game: Game, event: GameEvent<any>, owner: Player): P
   console.log(`  ✨${owner.name} 发动【集智】！使用锦囊摸了 1 张牌`);
 };
 
-skillRegistry.register({
+defineSkill({
   name: '集智',
-  trigger: 'useCard.after',
-  canTrigger: (game, event, owner, subject) => {
-    if (subject !== owner) return false;
-    const def = cardRegistry.get(event.data.card.type);
-    return !!def?.tags.includes(CardTag.Trick) && !def.tags.includes(CardTag.Delay);
-  },
-  content: jizhiContent,
+  effects: [{
+    form: 'triggered',
+    timing: 'useCard.after',
+    condition: (game, event, owner, subject) => {
+      if (subject !== owner) return false;
+      const def = cardRegistry.get(event.data.card.type);
+      return !!def?.tags.includes(CardTag.Trick) && !def.tags.includes(CardTag.Delay);
+    },
+    run: jizhiContent,
+  }],
 });
 
-// 锁定技：使用锦囊牌无距离限制（顺手牵羊等距离类锦囊的豁免）
-effectRegistry.register({
-  kind: 'noTrickDistance',
-  value: (player: Player) => (player.hero.skills?.includes('奇才') ? 1 : 0),
+/** 奇才：锁定技，使用锦囊牌无距离限制（顺手牵羊等距离类锦囊的豁免） */
+defineSkill({
+  name: '奇才',
+  meta: { compulsory: true },
+  effects: [{ form: 'persistent', key: 'noTrickDistance', value: () => 1 }],
 });
 
 heroRegistry.register({ name: '黄月英', maxHp: 3, sex: 'female', group: '蜀', skills: ['集智', '奇才'] });

@@ -6,18 +6,18 @@ import { CardType } from '../types.js';
 import type { Player } from '../types.js';
 import { displayNumber } from '../cardRegistry.js';
 import { judge } from '../cardActions.js';
-import { effectRegistry } from '../persistentEffects.js';
-import { skillRegistry } from '../skills.js';
+import { defineSkill } from '../effects.js';
 import { heroRegistry } from '../heroRegistry.js';
 import type { GameEvent } from '../events/index.js';
 import type { TargetingEventData, UseCardEventData } from '../events/index.js';
 import { EventType } from '../events/index.js';
 import type { Game } from '../game.js';
 
-// 马术：锁定技，纯常驻效果
-effectRegistry.register({
-  kind: 'offensiveDistance',
-  value: (player: Player) => (player.hero.skills?.includes('马术') ? 1 : 0),
+/** 马术：锁定技，纯常驻效果（归属由引擎按技能名判定） */
+defineSkill({
+  name: '马术',
+  meta: { compulsory: true },
+  effects: [{ form: 'persistent', key: 'offensiveDistance', value: () => 1 }],
 });
 
 /** 铁骑：使用杀指定目标后判定，红色则此杀不可闪避 */
@@ -39,14 +39,17 @@ const tieqiContent = async (
   }
 };
 
-skillRegistry.register({
+defineSkill({
   name: '铁骑',
-  trigger: 'targeting.after',
-  canTrigger: (_game, event, owner) => {
-    const { user, card } = event.data as TargetingEventData;
-    return user === owner && card.type === CardType.Sha;
-  },
-  content: tieqiContent,
+  effects: [{
+    form: 'triggered',
+    timing: 'targeting.after',
+    condition: (_game, event, owner) => {
+      const { user, card } = event.data as TargetingEventData;
+      return user === owner && card.type === CardType.Sha;
+    },
+    run: tieqiContent,
+  }],
 });
 
 heroRegistry.register({

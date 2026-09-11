@@ -5,7 +5,7 @@
 import { giveCards } from '../cardActions.js';
 import { shuffle } from '../cardRegistry.js';
 import { askForTargets } from '../choose.js';
-import { skillRegistry, subjectIsOwner } from '../skills.js';
+import { defineSkill } from '../effects.js';
 import type { GameEvent } from '../events/index.js';
 import type { DrawPhaseEventData } from '../events/index.js';
 import { heroRegistry } from '../heroRegistry.js';
@@ -30,13 +30,16 @@ const tuxiContent = async (game: Game, event: GameEvent<any>, owner: Player): Pr
   }
 };
 
-skillRegistry.register({
+defineSkill({
   name: '突袭',
-  trigger: 'drawPhase.before',
-  canTrigger: (game, event, owner, subject) =>
-    subject === owner &&
-    game.state.players.some((p) => p !== owner && p.alive && p.hand.cards.length > 0),
-  content: tuxiContent,
+  effects: [{
+    form: 'triggered',
+    timing: 'drawPhase.before',
+    condition: (game, _event, owner, subject) =>
+      subject === owner &&
+      game.state.players.some((p) => p !== owner && p.alive && p.hand.cards.length > 0),
+    run: tuxiContent,
+  }],
 });
 
 heroRegistry.register({ name: '张辽', maxHp: 4, sex: 'male', group: '魏', skills: ['突袭'] });

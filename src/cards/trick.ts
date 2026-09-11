@@ -39,10 +39,9 @@ const juedouContent: CardContentFn = async (game, data, _event) => {
   let opponent = initiator;
 
   while (true) {
-    // 无双②：每次响应时看对方是否持有无双——持有则需打出两张杀。
-    // 无双是唯一影响响应数的技能，单例特判（吕布使用决斗时目标需两张、
-    // 吕布成为目标时对手需两张；双方都是吕布则双方都需两张）。
-    const required = opponent.hero.skills?.includes('无双') ? 2 : 1;
+    // 无双②：每次响应时看对方是否持有无双——持有则需打出两张杀（常驻查询 'juedouShaRequired'；
+    // 吕布使用决斗时目标需两张、吕布成为目标时对手需两张；双方都是吕布则双方都需两张）。
+    const required = 1 + effectRegistry.sum(opponent, 'juedouShaRequired');
     const ok = await resolveJueDouResponse(game, current, required);
     if (!ok) {
       // 打不出杀 → 受伤（失败时点暂无监听者，直接结算）；card = 决斗（造成伤害的牌）

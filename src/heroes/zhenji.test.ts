@@ -8,7 +8,8 @@ import { freshGame, makeUniqueCard } from '../test-utils.js';
 
 import { preparePhase } from '../gameFlow.js';
 
-import { registerSkills, skillRegistry } from '../skills.js';
+import { installEffects } from '../skills.js';
+import { skillRegistry } from '../effects.js';
 
 import { CardType } from '../types.js';
 
@@ -19,7 +20,7 @@ describe('洛神（甄宓技能）', () => {
 
   it('连续判定黑色 → 获得判定牌，红色停止', async () => {
     const g = freshGame({}, ['刘备', '甄宓', '孙权']);
-    registerSkills(g);
+    installEffects(g);
     const zhenji = g.state.players[1];
     const black1 = makeUniqueCard(CardType.JueDou, '♣', 7);
     const black2 = makeUniqueCard(CardType.Sha, '♠', 5);
@@ -36,7 +37,7 @@ describe('洛神（甄宓技能）', () => {
 
   it('判定为红色 → 不获得', async () => {
     const g = freshGame({}, ['刘备', '甄宓', '孙权']);
-    registerSkills(g);
+    installEffects(g);
     const zhenji = g.state.players[1];
     const red = makeUniqueCard(CardType.Shan, '♥', 1);
     g.state.deck.replaceAll([red]);

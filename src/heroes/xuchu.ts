@@ -2,7 +2,8 @@
 // 许褚 — 裸衣
 // ============================================================
 
-import { skillRegistry, subjectIsOwner } from '../skills.js';
+import { subjectIsOwner } from '../skills.js';
+import { defineSkill } from '../effects.js';
 import { EventType } from '../events/index.js';
 import type { GameEvent } from '../events/index.js';
 import type { DrawPhaseEventData } from '../events/index.js';
@@ -44,11 +45,14 @@ const luoyiContent = async (game: Game, event: GameEvent<any>, owner: Player): P
   console.log(`  ✨${owner.name} 发动【裸衣】！少摸 1 张牌，本回合杀/决斗伤害+1`);
 };
 
-skillRegistry.register({
+defineSkill({
   name: '裸衣',
-  trigger: 'drawPhase.before',
-  canTrigger: subjectIsOwner,
-  content: luoyiContent,
+  effects: [{
+    form: 'triggered',
+    timing: 'drawPhase.before',
+    condition: subjectIsOwner,
+    run: luoyiContent,
+  }],
 });
 
 heroRegistry.register({ name: '许褚', maxHp: 4, sex: 'male', group: '魏', skills: ['裸衣'] });

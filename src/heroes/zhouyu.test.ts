@@ -8,7 +8,8 @@ import { freshGame, giveHand } from '../test-utils.js';
 
 import { drawPhase, playPhase } from '../gameFlow.js';
 
-import { activeSkillRegistry, registerSkills, skillRegistry } from '../skills.js';
+import { installEffects } from '../skills.js';
+import { skillRegistry } from '../effects.js';
 
 import { CardType } from '../types.js';
 
@@ -21,7 +22,7 @@ describe('英姿（周瑜技能）', () => {
 
   it('摸牌阶段 → 正常 2 张 + 英姿 1 张', async () => {
     const g = freshGame({}, zhouyuHeroes);
-    registerSkills(g);
+    installEffects(g);
     const zhouyu = g.state.players[1];
     const before = zhouyu.hand.cards.length;
 
@@ -32,7 +33,7 @@ describe('英姿（周瑜技能）', () => {
 
   it('非周瑜摸牌阶段 → 只摸 2 张', async () => {
     const g = freshGame({}, zhouyuHeroes);
-    registerSkills(g);
+    installEffects(g);
     const liubei = g.state.players[0];
     const before = liubei.hand.cards.length;
 
@@ -43,13 +44,13 @@ describe('英姿（周瑜技能）', () => {
 });
 
 describe('反间（周瑜主动技能）', () => {
-  it('activeSkillRegistry 已注册反间', () => {
-    expect(activeSkillRegistry.get('反间')).toBeDefined();
+  it('skillRegistry 已注册反间（activated 效果）', () => {
+    expect(skillRegistry.get('反间')?.effects.some((e) => e.form === 'activated')).toBe(true);
   });
 
   it('交给目标 1 张牌并造成 1 点伤害', async () => {
     const g = freshGame({}, zhouyuHeroes);
-    registerSkills(g);
+    installEffects(g);
     const zhouyu = g.state.players[1];
     const target = g.state.players[0];
     giveHand(zhouyu, CardType.Shan); // 不可出 → 触发主动技能

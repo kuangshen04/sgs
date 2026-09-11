@@ -8,18 +8,19 @@ import { freshGame, giveHand, makeUniqueCard } from '../test-utils.js';
 
 import { playPhase } from '../gameFlow.js';
 
-import { activeSkillRegistry, registerSkills } from '../skills.js';
+import { installEffects } from '../skills.js';
+import { skillRegistry } from '../effects.js';
 
 import { CardType } from '../types.js';
 
 describe('苦肉（黄盖主动技能）', () => {
-  it('activeSkillRegistry 已注册苦肉', () => {
-    expect(activeSkillRegistry.get('苦肉')).toBeDefined();
+  it('skillRegistry 已注册苦肉（activated 效果）', () => {
+    expect(skillRegistry.get('苦肉')?.effects.some((e) => e.form === 'activated')).toBe(true);
   });
 
   it('出牌阶段失去 1 点体力摸 2 张牌（可连续发动至体力 1）', async () => {
     const g = freshGame({}, ['黄盖', '刘备', '孙权']);
-    registerSkills(g);
+    installEffects(g);
     const huanggai = g.state.players[0];
     huanggai.hp = 3;
     giveHand(huanggai, CardType.Shan); // 不可出 → 触发主动技能
@@ -33,7 +34,7 @@ describe('苦肉（黄盖主动技能）', () => {
 
   it('体力 1 时不发动（AI 避免濒死）', async () => {
     const g = freshGame({}, ['黄盖', '刘备', '孙权']);
-    registerSkills(g);
+    installEffects(g);
     const huanggai = g.state.players[0];
     huanggai.hp = 1;
     giveHand(huanggai, CardType.Shan);

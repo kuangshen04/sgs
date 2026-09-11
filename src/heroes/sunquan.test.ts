@@ -9,53 +9,58 @@ import { freshGame, giveHand, makeUniqueCard } from '../test-utils.js';
 import { playPhase } from '../gameFlow.js';
 import { useCard } from '../cardActions.js';
 
-import { activeSkillRegistry, registerSkills, skillRegistry } from '../skills.js';
+import { installEffects } from '../skills.js';
+import { skillRegistry } from '../effects.js';
+import type { ActivatedEffect } from '../effects.js';
 
 import { CardType } from '../types.js';
 
 const sunquanHeroes = ['刘备', '孙权', '曹操'];
 
 describe('制衡（孙权主动技能）', () => {
-  it('activeSkillRegistry 已注册制衡', () => {
-    expect(activeSkillRegistry.get('制衡')).toBeDefined();
+  it('skillRegistry 已注册制衡（activated 效果）', () => {
+    expect(skillRegistry.get('制衡')?.effects.some((e) => e.form === 'activated')).toBe(true);
   });
 
   it('规则与 AI 分层：有牌可出时规则允许、AI 不使用', () => {
     const g = freshGame({}, sunquanHeroes);
     const sunquan = g.state.players[1];
     giveHand(sunquan, CardType.Sha);
-    const skill = activeSkillRegistry.get('制衡')!;
+    const effect = skillRegistry.get('制衡')!.effects
+      .find((e) => e.form === 'activated') as ActivatedEffect;
     const ctx = { shaUsed: false, usedSkills: new Set<string>(), hasCardOption: true };
 
-    expect(skill.canUse(g, sunquan, ctx)).toBe(true);        // 规则：合法
-    expect(skill.ai.shouldUse(g, sunquan, ctx)).toBe(false);  // AI：不该用
+    expect(effect.canUse(g, sunquan, ctx)).toBe(true);        // 规则：合法
+    expect(effect.ai.shouldUse(g, sunquan, ctx)).toBe(false);  // AI：不该用
   });
 
   it('规则与 AI 分层：无牌可出时两者都为 true', () => {
     const g = freshGame({}, sunquanHeroes);
     const sunquan = g.state.players[1];
     giveHand(sunquan, CardType.Shan);
-    const skill = activeSkillRegistry.get('制衡')!;
+    const effect = skillRegistry.get('制衡')!.effects
+      .find((e) => e.form === 'activated') as ActivatedEffect;
     const ctx = { shaUsed: false, usedSkills: new Set<string>(), hasCardOption: false };
 
-    expect(skill.canUse(g, sunquan, ctx)).toBe(true);
-    expect(skill.ai.shouldUse(g, sunquan, ctx)).toBe(true);
+    expect(effect.canUse(g, sunquan, ctx)).toBe(true);
+    expect(effect.ai.shouldUse(g, sunquan, ctx)).toBe(true);
   });
 
   it('规则层面：已用过 → canUse 为 false（限一次）', () => {
     const g = freshGame({}, sunquanHeroes);
     const sunquan = g.state.players[1];
     giveHand(sunquan, CardType.Shan);
-    const skill = activeSkillRegistry.get('制衡')!;
+    const effect = skillRegistry.get('制衡')!.effects
+      .find((e) => e.form === 'activated') as ActivatedEffect;
 
     expect(
-      skill.canUse(g, sunquan, { shaUsed: false, usedSkills: new Set(['制衡']), hasCardOption: false }),
+      effect.canUse(g, sunquan, { shaUsed: false, usedSkills: new Set(['制衡']), hasCardOption: false }),
     ).toBe(false);
   });
 
   it('手牌全部不可出 → 制衡发动，弃置所有手牌并摸等量', async () => {
     const g = freshGame({}, sunquanHeroes);
-    registerSkills(g);
+    installEffects(g);
     const sunquan = g.state.players[1];
     giveHand(sunquan, CardType.Shan, CardType.WuXie); // 闪/无懈不可主动出
 
@@ -75,7 +80,7 @@ describe('制衡（孙权主动技能）', () => {
 
   it('有牌可出 → 出牌优先，制衡不发动', async () => {
     const g = freshGame({}, sunquanHeroes);
-    registerSkills(g);
+    installEffects(g);
     const sunquan = g.state.players[1];
     const target = g.state.players[0];
     giveHand(sunquan, CardType.Sha);
@@ -90,7 +95,7 @@ describe('制衡（孙权主动技能）', () => {
 
   it('制衡后摸到可出的牌 → 继续出牌', async () => {
     const g = freshGame({}, sunquanHeroes);
-    registerSkills(g);
+    installEffects(g);
     const sunquan = g.state.players[1];
     const target = g.state.players[0];
     giveHand(sunquan, CardType.WuXie); // 不可出 → 制衡换牌
@@ -106,7 +111,7 @@ describe('制衡（孙权主动技能）', () => {
 
   it('每回合限一次：制衡后仍无牌可出 → 不二次发动', async () => {
     const g = freshGame({}, sunquanHeroes);
-    registerSkills(g);
+    installEffects(g);
     const sunquan = g.state.players[1];
     giveHand(sunquan, CardType.Shan);
     g.state.deck.replaceAll([makeUniqueCard(CardType.Shan, '♥', 7)]); // 摸到的还是闪
@@ -123,7 +128,7 @@ describe('制衡（孙权主动技能）', () => {
 
   it('非孙权（无制衡技能）→ 不发动', async () => {
     const g = freshGame({}, sunquanHeroes);
-    registerSkills(g);
+    installEffects(g);
     const liubei = g.state.players[0];
     giveHand(liubei, CardType.Shan);
     g.state.deck.replaceAll([makeUniqueCard(CardType.Shan, '♥', 7)]);
@@ -139,7 +144,7 @@ describe('制衡（孙权主动技能）', () => {
 describe('救援（孙权主公技）', () => {
   it('吴势力桃对孙权 → 回复 +1', async () => {
     const g = freshGame({}, ['孙权', '周瑜', '刘备']);
-    registerSkills(g);
+    installEffects(g);
     const sunquan = g.state.players[0];
     const zhouyu = g.state.players[1];
     sunquan.hp = 2;
@@ -152,7 +157,7 @@ describe('救援（孙权主公技）', () => {
 
   it('非吴势力桃对孙权 → 不触发救援', async () => {
     const g = freshGame({}, ['孙权', '刘备', '曹操']); // 刘备：蜀
-    registerSkills(g);
+    installEffects(g);
     const sunquan = g.state.players[0];
     const liubei = g.state.players[1];
     sunquan.hp = 2;
@@ -165,7 +170,7 @@ describe('救援（孙权主公技）', () => {
 
   it('身份场开启且孙权非主公 → 不发动', async () => {
     const g = freshGame({}, ['孙权', '周瑜', '刘备']);
-    registerSkills(g);
+    installEffects(g);
     g.state.lord = g.state.players[2]; // 刘备是主公（孙权非主公）
     const sunquan = g.state.players[0];
     const zhouyu = g.state.players[1];

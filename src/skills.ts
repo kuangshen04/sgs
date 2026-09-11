@@ -1,151 +1,65 @@
 // ============================================================
-// 三国杀最小原型 — 技能系统基础设施
-// 技能定义/注册表/分发；具体技能在各武将文件中注册（heroes/*.ts）。
+// 技能基础设施 — 效果分发入口（installEffects）与查询助手
+//
+// 阶段 3 起：技能不再是"注册表里的一条行为"，而是 effects.ts 里的
+// "元数据 + 效果集合"；本模块只负责把效果装载进一局游戏并分发：
+//   - triggered 效果：按时点分组挂到 triggerSystem（技能来源 → 装备来源 → 裸效果）
+//   - persistent 效果：无钩子，由 persistentEffects.ts 查询
+//   - activated / response / conversion：由出牌窗口 / 响应窗口查询
 // ============================================================
 
+import type { Player } from './types.js';
 import type { Game } from './game.js';
 import type { GameEvent } from './events/index.js';
-import { cardRegistry } from './cardRegistry.js';
 import { installWuxieTrigger } from './cards/trick.js';
-import { CardType } from './types.js';
-import type { Player } from './types.js';
 import { askYesNo } from './choose.js';
-import type { SelectionAnswers, SelectionPlan } from './selection.js';
+import {
+  activatedEffects,
+  effectLordGate,
+  effectOwnedBy,
+  triggeredEffectsAt,
+  triggeredTimings,
+} from './effects.js';
+import type { ActiveContext, ActivatedEffect, Effect, TriggeredEffect } from './effects.js';
+
+export type { ActiveContext } from './effects.js';
 
 // ============================================================
-// 触发技能
-// ============================================================
-
-export interface SkillDef {
-  name: string;
-  /** 主公技：身份场开启（state.lord 已设）且自己不是主公时不发动 */
-  lordSkill?: boolean;
-  /** 触发时点，如 'damage.after'（事件类型 + before/after 阶段） */
-  trigger: string;
-  /**
-   * 角色匹配谓词（FreeKill can_trigger 风格）：
-   * 引擎按座次询问所有存活角色，对每个拥有此技能的角色调用本函数决定是否发动。
-   * subject 为事件主体（event.data.target 优先，其次 player）。
-   */
-  canTrigger: (game: Game, event: GameEvent<any>, owner: Player, subject: Player | undefined) => boolean;
-  /** 发动效果（owner 为被询问且通过 canTrigger 的角色） */
-  content: (game: Game, event: GameEvent<any>, owner: Player) => Promise<void>;
-}
-
-const _skills = new Map<string, SkillDef>();
-
-export const skillRegistry = {
-  register(def: SkillDef): void {
-    _skills.set(def.name, def);
-  },
-  get(name: string): SkillDef | undefined {
-    return _skills.get(name);
-  },
-  /** 遍历所有已注册的 SkillDef */
-  all(): IterableIterator<SkillDef> {
-    return _skills.values();
-  },
-};
-
-// ============================================================
-// 主动技能（出牌阶段发动）
-// ============================================================
-
-/** 主动技能的决策上下文（由出牌阶段循环提供） */
-export interface ActiveSkillContext {
-  shaUsed: boolean;
-  /** 本回合已发动过的限次技能名 */
-  usedSkills: ReadonlySet<string>;
-  /** 本轮是否存在 AI 愿意使用的可用牌（制衡"没牌能出才换牌"等 AI 参考） */
-  hasCardOption: boolean;
-}
-
-/** 出牌阶段可发动的技能定义 */
-export interface ActiveSkillDef {
-  name: string;
-  /** 规则层面：当前是否合法可用（次数限制、前提条件等） */
-  canUse: (game: Game, player: Player, ctx: ActiveSkillContext) => boolean;
-  /** 该技能的选择计划（从“已选该技能”开始；无选择步骤时 nextStep 直接返回 null） */
-  selectionPlan: (game: Game, player: Player, ctx: ActiveSkillContext) => SelectionPlan;
-  /** 执行：只依据确认后的 answers 执行，不再做选择 */
-  execute: (game: Game, player: Player, answers: SelectionAnswers) => Promise<void>;
-  /** AI 层面策略（与 CardDef.ai 同级）：规则合法 ≠ 现在应该用 */
-  ai: {
-    /** AI 当前是否应该发动（策略，如"没牌能出才换牌"） */
-    shouldUse: (game: Game, player: Player, ctx: ActiveSkillContext) => boolean;
-    /** 多个技能并列时的优先级（越大越优先） */
-    priority: number;
-  };
-}
-
-const _activeSkills = new Map<string, ActiveSkillDef>();
-
-export const activeSkillRegistry = {
-  register(def: ActiveSkillDef): void {
-    _activeSkills.set(def.name, def);
-  },
-  get(name: string): ActiveSkillDef | undefined {
-    return _activeSkills.get(name);
-  },
-};
-
-// ============================================================
-// 分发
+// 事件主体与常用谓词
 // ============================================================
 
 /** 事件主体：优先 target，其次 player（FreeKill 的 target 参数） */
-function eventSubject(event: GameEvent<any>): Player | undefined {
+export function eventSubject(event: GameEvent<any>): Player | undefined {
   const data = event.data as { target?: Player; player?: Player };
   return data.target ?? data.player;
 }
 
 /** 最常见的角色匹配：事件主体是自己时发动 */
-export const subjectIsOwner: SkillDef['canTrigger'] = (_game, _event, owner, subject) => subject === owner;
+export const subjectIsOwner: NonNullable<TriggeredEffect['condition']> =
+  (_game, _event, owner, subject) => subject === owner;
 
-/** 玩家装备区是否装备了指定类型的牌 */
-function hasEquipped(player: Player, cardType: CardType): boolean {
-  const eq = player.equipment;
-  return eq.weapon?.type === cardType
-    || eq.armor?.type === cardType
-    || eq.defensiveHorse?.type === cardType
-    || eq.offensiveHorse?.type === cardType;
-}
+// ============================================================
+// 装载：把本局所有效果接到引擎上（每个对局调用一次）
+// ============================================================
 
-/**
- * 本局的触发器接线入口：把技能、装备触发器、无懈响应全部注册到 game.triggerSystem。
- * 每个对局调用一次。
- */
-export function registerSkills(game: Game): void {
-  // 技能触发器
-  for (const skill of skillRegistry.all()) {
-    game.triggerSystem.on(skill.trigger, async (event) => {
-      const game = event.game;
+export function installEffects(game: Game): void {
+  for (const timing of triggeredTimings()) {
+    const effects = triggeredEffectsAt(timing);
+    game.triggerSystem.on(timing, async (event: GameEvent<any>) => {
+      const g = event.game;
       const subject = eventSubject(event);
-      // 按座次询问所有存活角色（FreeKill 模型）
-      for (const player of game.state.players) {
-        if (!player.alive) continue; // 死亡后技能失效
-        if (!player.hero.skills?.includes(skill.name)) continue;
-        // 身份场：主公技仅主公自己可发动
-        if (skill.lordSkill && game.state.lord && player !== game.state.lord) continue;
-        if (!skill.canTrigger(game, event, player, subject)) continue;
-        // askYesNo：触发技能"你可以"的发动与否（默认 AI：自动发动）
-        if (!(await askYesNo(game, player, `是否发动【${skill.name}】`, true))) continue;
-        await skill.content(game, event, player);
-      }
-    });
-  }
-
-  // 装备触发器（CardDef.equipTrigger）：装备在对应栏位时对事件响应
-  for (const def of cardRegistry.all()) {
-    const et = def.equipTrigger;
-    if (!et) continue;
-    game.triggerSystem.on(et.trigger, async (event) => {
-      const game = event.game;
-      for (const player of game.state.players) {
-        if (!player.alive) continue;
-        if (!hasEquipped(player, def.type)) continue;
-        if (et.canTrigger && !et.canTrigger(game, event, player)) continue;
-        await et.content(game, event, player);
+      for (const effect of effects) {
+        // 按座次询问所有存活角色（FreeKill 模型）
+        for (const player of g.state.players) {
+          if (!player.alive) continue; // 死亡后技能失效
+          if (!effectOwnedBy(effect, player)) continue;
+          if (!effectLordGate(g, player, effect)) continue;
+          if (effect.condition && !effect.condition(g, event, player, subject)) continue;
+          // 技能来源的"你可以"询问；强制发动（forced）与装备/裸效果不询问
+          const needsAsk = !!effect.skill && !effect.forced;
+          if (needsAsk && !(await askYesNo(g, player, `是否发动【${effect.skill}】`, true))) continue;
+          await effect.run(g, event, player);
+        }
       }
     });
   }
@@ -154,21 +68,38 @@ export function registerSkills(game: Game): void {
   installWuxieTrigger(game);
 }
 
-/**
- * 出牌阶段挑选可发动的主动技能：
- * 从 player.hero.skills 解析出已注册的主动技能，过滤 canUse，按 priority 取最高。
- */
-export function pickActiveSkill(
+// ============================================================
+// 主动效果查询（出牌窗口用）
+// ============================================================
+
+/** 收集玩家当前可发动的主动效果（归属 + 主公门槛 + 规则 canUse + AI shouldUse） */
+export function collectActiveEffects(
   game: Game,
   player: Player,
-  ctx: ActiveSkillContext,
-): ActiveSkillDef | null {
-  if (!player.alive) return null; // 死亡角色不能发动主动技能
-  const candidates = (player.hero.skills ?? [])
-    .map((name) => activeSkillRegistry.get(name))
-    .filter((s): s is ActiveSkillDef => !!s)
-    .filter((s) => s.canUse(game, player, ctx))        // 规则：能不能用
-    .filter((s) => s.ai.shouldUse(game, player, ctx))  // AI：该不该用
+  ctx: ActiveContext,
+): ActivatedEffect[] {
+  if (!player.alive) return [];
+  return activatedEffects().filter((e) =>
+    effectOwnedBy(e, player)
+    && effectLordGate(game, player, e)
+    && e.canUse(game, player, ctx)
+    && e.ai.shouldUse(game, player, ctx),
+  );
+}
+
+/** 取优先级最高的一个主动效果（并列时按定义序取首个） */
+export function pickActiveEffect(
+  game: Game,
+  player: Player,
+  ctx: ActiveContext,
+): ActivatedEffect | null {
+  const candidates = collectActiveEffects(game, player, ctx)
+    .slice()
     .sort((a, b) => b.ai.priority - a.ai.priority);
   return candidates[0] ?? null;
+}
+
+/** 便捷：效果的可读名（日志/询问用） */
+export function effectLabel(effect: Effect): string {
+  return effect.skill ?? effect.name ?? effect.form;
 }

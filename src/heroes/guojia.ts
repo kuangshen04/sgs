@@ -7,7 +7,8 @@ import { cardEmoji, displayNumber } from '../cardRegistry.js';
 import { targetsStep, selectedPlayers } from '../choose.js';
 import { runSelection } from '../selection.js';
 import type { SelectionPlan } from '../selection.js';
-import { skillRegistry, subjectIsOwner } from '../skills.js';
+import { subjectIsOwner } from '../skills.js';
+import { defineSkill } from '../effects.js';
 import type { GameEvent } from '../events/index.js';
 import type { DamageEventData, JudgeEventData } from '../events/index.js';
 import { heroRegistry } from '../heroRegistry.js';
@@ -65,18 +66,24 @@ const tianduContent = async (game: Game, event: GameEvent<any>, owner: Player): 
   );
 };
 
-skillRegistry.register({
+defineSkill({
   name: '遗计',
-  trigger: 'damage.after',
-  canTrigger: subjectIsOwner,
-  content: yijiContent,
+  effects: [{
+    form: 'triggered',
+    timing: 'damage.after',
+    condition: subjectIsOwner,
+    run: yijiContent,
+  }],
 });
 
-skillRegistry.register({
+defineSkill({
   name: '天妒',
-  trigger: 'judge.after',
-  canTrigger: subjectIsOwner,
-  content: tianduContent,
+  effects: [{
+    form: 'triggered',
+    timing: 'judge.after',
+    condition: subjectIsOwner,
+    run: tianduContent,
+  }],
 });
 
 heroRegistry.register({ name: '郭嘉', maxHp: 3, sex: 'male', group: '魏', skills: ['遗计', '天妒'] });

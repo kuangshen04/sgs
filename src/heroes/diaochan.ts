@@ -3,7 +3,8 @@
 // ============================================================
 
 import { drawCards } from '../cardActions.js';
-import { skillRegistry, subjectIsOwner } from '../skills.js';
+import { subjectIsOwner } from '../skills.js';
+import { defineSkill } from '../effects.js';
 import type { GameEvent } from '../events/index.js';
 import { heroRegistry } from '../heroRegistry.js';
 import type { Game } from '../game.js';
@@ -19,11 +20,14 @@ const biyueContent = async (game: Game, event: GameEvent<any>, owner: Player): P
   );
 };
 
-skillRegistry.register({
+defineSkill({
   name: '闭月',
-  trigger: 'endPhase.before',
-  canTrigger: subjectIsOwner,
-  content: biyueContent,
+  effects: [{
+    form: 'triggered',
+    timing: 'endPhase.before',
+    condition: subjectIsOwner,
+    run: biyueContent,
+  }],
 });
 
 heroRegistry.register({ name: '貂蝉', maxHp: 3, sex: 'female', group: '群', skills: ['闭月'] });

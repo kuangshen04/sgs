@@ -35,7 +35,7 @@ describe('choosePlayAction', () => {
 
     expect(result?.kind).toBe('skill');
     if (result?.kind === 'skill') {
-      expect(result.skill.name).toBe('制衡');
+      expect(result.effect.skill).toBe('制衡');
     }
   });
 

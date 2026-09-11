@@ -5,7 +5,8 @@
 import { moveCards } from '../cardActions.js';
 import { cardEmoji, displayNumber } from '../cardRegistry.js';
 import { askForCard, askFromAreas } from '../choose.js';
-import { skillRegistry, subjectIsOwner } from '../skills.js';
+import { subjectIsOwner } from '../skills.js';
+import { defineSkill } from '../effects.js';
 import type { GameEvent } from '../events/index.js';
 import type { DamageEventData, JudgeEventData } from '../events/index.js';
 import { heroRegistry } from '../heroRegistry.js';
@@ -50,19 +51,25 @@ const guicaiContent = async (game: Game, event: GameEvent<any>, owner: Player): 
   );
 };
 
-skillRegistry.register({
+defineSkill({
   name: '反馈',
-  trigger: 'damage.after',
-  canTrigger: subjectIsOwner,
-  content: fankuiContent,
+  effects: [{
+    form: 'triggered',
+    timing: 'damage.after',
+    condition: subjectIsOwner,
+    run: fankuiContent,
+  }],
 });
 
-skillRegistry.register({
+defineSkill({
   name: '鬼才',
-  trigger: 'judge.judging',
-  // 响应型：任何角色的判定都可响应，不看事件主体
-  canTrigger: (_game, _event, owner) => owner.hand.cards.length > 0,
-  content: guicaiContent,
+  effects: [{
+    form: 'triggered',
+    timing: 'judge.judging',
+    // 响应型：任何角色的判定都可响应，不看事件主体
+    condition: (_game, _event, owner) => owner.hand.cards.length > 0,
+    run: guicaiContent,
+  }],
 });
 
 heroRegistry.register({ name: '司马懿', maxHp: 3, sex: 'male', group: '魏', skills: ['反馈', '鬼才'] });

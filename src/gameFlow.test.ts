@@ -9,7 +9,7 @@ import { freshGame, giveHand, makeUniqueCard } from './test-utils.js';
 
 import { judgePhase, playPhase } from './gameFlow.js';
 
-import { registerSkills } from './skills.js';
+import { installEffects } from './skills.js';
 import { CardType } from './types.js';
 
 // ============================================================
@@ -90,7 +90,7 @@ describe('judgePhase', () => {
 
   it('判定前被无懈 → 判定牌无效，不判定', async () => {
     const g = freshGame();
-    registerSkills(g);
+    installEffects(g);
     const player = g.state.players[0];
     const lebu = makeUniqueCard(CardType.LeBu);
     player.judgment.add(lebu);

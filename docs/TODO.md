@@ -250,12 +250,23 @@
 > 本节只列**需求 / 依赖 / 验收 / 触碰的开放问题**，不做具体设计；每项开始前按"先讨论后实现"
 > 过对应开放问题，达成一致后再动手。顺序基本即依赖序，可分批验收（每批全量测试绿）。
 
-1. **effect 统一收口（地基）**——效果 = 一等公民（时点 + 条件 + 行为），技能 = 效果的命名集合 + 元数据。
-   - 现状散落：`effectRegistry`（常驻 kind 词汇）/ `conversions`（转化）/ `equipTrigger`（装备触发）/
-     `skillRegistry` + `activeSkillRegistry`（两个技能注册表）/ `responseRuleRegistry`（响应规则）。
-   - 真实用例：现有全部技能与装备效果（回归即验收）；裸效果（裸衣的临时 `damage.before`、常驻 kind）。
-   - 依赖：无；后续各项都挂在它上。验收：全量测试绿 + 行为保持；注册面收敛为"一种效果概念"。
-   - 开放问题（第九节）：1 效果收口形态（阶段 3 做轻量形态，模块化/DI 收口留阶段 5）、4 可组合谓词层形态。
+1. [x] **effect 统一收口（地基）**——效果 = 一等公民（时点 + 条件 + 行为），技能 = 效果的命名集合 + 元数据。
+   - 落地（`src/effects.ts`）：`Effect` 五形态（triggered / persistent / activated / response / conversion），
+     共同字段 `skill?`（归属技能）/ `equipType?`（装备归属）/ `name?`；技能 = `defineSkill({name, meta, effects})`
+     （元数据 `info/lord/compulsory`）；裸效果 = `registerBareEffect`；**唯一注册面**。
+   - 装载：`installEffects(game)` 单分发器（回合内按座次；技能来源询问"是否发动"——`forced` 已留挂点；
+     装备/裸效果不询问）；查询面 `effectRegistry.sum/has`（常驻）、`skillRegistry.get/all`（技能）形态不变。
+   - 迁移：26 触发技 + 6 主动技 + 8 响应规则 + 4 转化 + 10 常驻 + 6 `equipTrigger` 全部归位；
+     旧注册面（`skillRegistry.register`/`activeSkillRegistry`/`responseRuleRegistry.register`/
+     `conversionRegistry.register`/`effectRegistry.register`/`CardDef.equipTrigger`）已删除，无兼容壳。
+   - 顺带清理（本次实现）：无双①② 由 `RespondMarks.shanRequired` + 决斗 content 特判 →
+     带归属的常驻查询 `shaRequired` / `juedouShaRequired`；激将出牌阶段由 `playChoices.lordShaActions`
+     特判 → `activated` 效果（逻辑等价搬运；借杀消耗"本阶段杀次数"通过 activated 回执
+     `usedShaLimit` 表达，行为与旧 `kind:'card'` 路径一致）。
+   - 验收：tsc 无错 + 全量测试绿（45 文件 / 403 用例，与基线一致）+ 行为保持（无双/激将仅结构变化，语义不变）。
+   - 注：装备效果本次只做**结构迁移**（`equipType` 归属 + 触发/响应/转化/常驻形态）；
+     装备技能建模（生命周期 / 局内存储 / 青釭剑）仍按第 8 项延后。
+   - 开放问题（第九节）：1 效果收口形态（本项为轻量形态，模块化/DI 收口留阶段 5）、4 可组合谓词层形态。
 2. **发动词汇三轴落地**（原"锁定技标记"，TODO #4）——三件事分属三类对象，勿混为一谈：
    - effect 级 `frequency.auto`（自动发动，绑 effect）：前端多一个"自动发动"按钮，**现在不做**，仅留词汇位置；
    - effect 级 `forced`（强制发动，绑触发技的 effect）：不进行"是否发动"的询问（本项落地）；
