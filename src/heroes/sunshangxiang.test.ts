@@ -10,7 +10,6 @@ import { playPhase } from '../gameFlow.js';
 
 import { discardCards, equipCard, moveCards } from '../cardActions.js';
 
-import { installEffects } from '../skills.js';
 import { skillRegistry } from '../effects.js';
 import type { ActivatedEffect } from '../effects.js';
 
@@ -25,7 +24,6 @@ describe('结姻（孙尚香主动技能）', () => {
 
   it('弃两张手牌，自己与受伤的男性目标各回复 1 点体力', async () => {
     const g = freshGame({}, sunshangxiangHeroes);
-    installEffects(g);
     const sun = g.state.players[0];
     const target = g.state.players[1]; // 刘备（男）
     sun.hp = 2;
@@ -41,7 +39,6 @@ describe('结姻（孙尚香主动技能）', () => {
 
   it('没有受伤的男性角色 → 规则不允许发动', async () => {
     const g = freshGame({}, sunshangxiangHeroes);
-    installEffects(g);
     const sun = g.state.players[0];
     const effect = skillRegistry.get('结姻')!.effects
       .find((e) => e.form === 'activated') as ActivatedEffect;
@@ -66,7 +63,6 @@ describe('结姻（孙尚香主动技能）', () => {
 
   it('孙尚香满血但队友受伤 → AI 不发动（保守策略）', async () => {
     const g = freshGame({}, sunshangxiangHeroes);
-    installEffects(g);
     const sun = g.state.players[0];
     const target = g.state.players[1];
     target.hp = 2;
@@ -89,7 +85,6 @@ describe('结姻（孙尚香主动技能）', () => {
 describe('枭姬（孙尚香触发技能）', () => {
   it('失去装备区内的牌 → 摸两张', async () => {
     const g = freshGame({}, sunshangxiangHeroes);
-    installEffects(g);
     const sun = g.state.players[0];
     const weapon = makeUniqueCard(CardType.ZhugeLianNu);
     equipAt(g, sun, weapon);
@@ -105,7 +100,6 @@ describe('枭姬（孙尚香触发技能）', () => {
 
   it('装备顶掉 → 旧装备失去触发枭姬', async () => {
     const g = freshGame({}, sunshangxiangHeroes);
-    installEffects(g);
     const sun = g.state.players[0];
     const oldWeapon = makeUniqueCard(CardType.QiLinGong);
     const newWeapon = makeUniqueCard(CardType.HanBingJian);
@@ -121,7 +115,6 @@ describe('枭姬（孙尚香触发技能）', () => {
 
   it('失去手牌 → 不触发枭姬', async () => {
     const g = freshGame({}, sunshangxiangHeroes);
-    installEffects(g);
     const sun = g.state.players[0];
     giveHand(sun, CardType.Sha);
     const before = sun.hand.cards.length;
@@ -133,7 +126,6 @@ describe('枭姬（孙尚香触发技能）', () => {
 
   it('非孙尚香 → 不触发', async () => {
     const g = freshGame({}, sunshangxiangHeroes);
-    installEffects(g);
     const liubei = g.state.players[1];
     const weapon = makeUniqueCard(CardType.ZhugeLianNu);
     equipAt(g, liubei, weapon);

@@ -9,7 +9,6 @@ import { freshGame, giveHand, makeUniqueCard } from '../test-utils.js';
 import { damage } from '../life.js';
 import { useCard } from '../cardActions.js';
 
-import { installEffects } from '../skills.js';
 import { skillRegistry } from '../effects.js';
 
 import { CardType } from '../types.js';
@@ -23,7 +22,6 @@ describe('奸雄（曹操技能）', () => {
 
   it('受到杀造成的伤害 → 获得那张杀', async () => {
     const g = freshGame({}, caocaoHeroes);
-    installEffects(g);
     const attacker = g.state.players[0];
     const caocao = g.state.players[1];
     giveHand(attacker, CardType.Sha);
@@ -38,7 +36,6 @@ describe('奸雄（曹操技能）', () => {
 
   it('受到决斗造成的伤害 → 获得那张决斗', async () => {
     const g = freshGame({}, caocaoHeroes);
-    installEffects(g);
     const attacker = g.state.players[0];
     const caocao = g.state.players[1];
     giveHand(attacker, CardType.JueDou);
@@ -52,7 +49,6 @@ describe('奸雄（曹操技能）', () => {
 
   it('非使用牌造成的伤害 → 不获得', async () => {
     const g = freshGame({}, caocaoHeroes);
-    installEffects(g);
     const caocao = g.state.players[1];
 
     await damage(g, { target: caocao, source: g.state.players[0], amount: 1 });
@@ -62,7 +58,6 @@ describe('奸雄（曹操技能）', () => {
 
   it('刚烈反击伤害不误归原杀（曹操用杀被反击，不得获得杀）', async () => {
     const g = freshGame({}, ['曹操', '夏侯惇', '孙权']);
-    installEffects(g);
     const caocao = g.state.players[0];
     const xiahoudun = g.state.players[1];
     // 曹操只 1 张手牌：被刚烈反击时手牌 <2 → 走"受 1 点伤害"分支
@@ -83,7 +78,6 @@ describe('奸雄（曹操技能）', () => {
 
   it('非曹操受伤 → 不触发', async () => {
     const g = freshGame({}, caocaoHeroes);
-    installEffects(g);
     const liubei = g.state.players[0];
     const attacker = g.state.players[1];
     giveHand(attacker, CardType.Sha);
@@ -98,7 +92,6 @@ describe('奸雄（曹操技能）', () => {
 describe('护驾（曹操主公技）', () => {
   it('魏盟友代打闪，曹操免伤', async () => {
     const g = freshGame({}, ['曹操', '郭嘉', '刘备']);
-    installEffects(g);
     const caocao = g.state.players[0];
     const guojia = g.state.players[1];
     const attacker = g.state.players[2];

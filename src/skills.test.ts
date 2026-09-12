@@ -11,7 +11,7 @@ import { freshGame, giveHand, makeUniqueCard } from './test-utils.js';
 import { damage, loseHp } from './life.js';
 import { playPhase } from './gameFlow.js';
 
-import { installEffects, pickActiveEffect } from './skills.js';
+import { pickActiveEffect } from './skills.js';
 import { skillRegistry } from './effects.js';
 
 import { CardType } from './types.js';
@@ -23,7 +23,6 @@ import { CardType } from './types.js';
 describe('技能分发 — 死亡规则', () => {
   it('失去体力不触发伤害事件（遗计不响应）', async () => {
     const g = freshGame({}, ['刘备', '郭嘉', '孙权']);
-    installEffects(g);
     const guojia = g.state.players[1];
     guojia.hp = 2;
     const before = guojia.hand.cards.length;
@@ -36,7 +35,6 @@ describe('技能分发 — 死亡规则', () => {
 
   it('死亡后不再发动技能（遗计）', async () => {
     const g = freshGame({}, ['刘备', '郭嘉', '孙权']);
-    installEffects(g);
     const guojia = g.state.players[1];
     guojia.hp = 1; // 受到致死伤害，无桃 → 死亡
 
@@ -48,7 +46,6 @@ describe('技能分发 — 死亡规则', () => {
 
   it('刚烈反杀当前回合角色 → 出牌阶段终止，不再出牌', async () => {
     const g = freshGame({}, ['孙权', '夏侯惇', '刘备']);
-    installEffects(g);
     const sunquan = g.state.players[0];
     const xiahou = g.state.players[1];
     sunquan.hp = 1;

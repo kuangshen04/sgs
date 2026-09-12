@@ -8,7 +8,6 @@ import { freshGame, giveHand, makeUniqueCard } from '../test-utils.js';
 
 import { playPhase } from '../gameFlow.js';
 
-import { installEffects } from '../skills.js';
 import { skillRegistry } from '../effects.js';
 
 import { CardType } from '../types.js';
@@ -20,7 +19,6 @@ describe('苦肉（黄盖主动技能）', () => {
 
   it('出牌阶段失去 1 点体力摸 2 张牌（可连续发动至体力 1）', async () => {
     const g = freshGame({}, ['黄盖', '刘备', '孙权']);
-    installEffects(g);
     const huanggai = g.state.players[0];
     huanggai.hp = 3;
     giveHand(huanggai, CardType.Shan); // 不可出 → 触发主动技能
@@ -34,7 +32,6 @@ describe('苦肉（黄盖主动技能）', () => {
 
   it('体力 1 时不发动（AI 避免濒死）', async () => {
     const g = freshGame({}, ['黄盖', '刘备', '孙权']);
-    installEffects(g);
     const huanggai = g.state.players[0];
     huanggai.hp = 1;
     giveHand(huanggai, CardType.Shan);

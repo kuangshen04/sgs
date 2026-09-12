@@ -8,7 +8,6 @@ import { freshGame } from '../test-utils.js';
 
 import { playPhase } from '../gameFlow.js';
 import { choosePlayAction } from '../playChoices.js';
-import { installEffects } from '../skills.js';
 import { skillRegistry } from '../effects.js';
 import { heroRegistry } from '../heroRegistry.js';
 
@@ -37,7 +36,6 @@ describe('武圣（关羽转化牌）', () => {
 
   it('出牌阶段：红牌当杀，造成伤害，实体牌回弃牌堆', async () => {
     const g = freshGame({}, ['关羽', '刘备', '孙权']);
-    installEffects(g);
     const guanyu = g.state.players[0];
     const target = g.state.players[1]; // 默认 AI：第一个其他存活角色（刘备）
     const red = { id: 9002, type: CardType.Shan, name: '闪', suit: '♦', number: 7 };
@@ -54,7 +52,6 @@ describe('武圣（关羽转化牌）', () => {
 
   it('奸雄获得武圣对应的实体源牌', async () => {
     const g = freshGame({}, ['关羽', '曹操', '孙权']);
-    installEffects(g);
     const guanyu = g.state.players[0];
     const caocao = g.state.players[1];
     const red = { id: 9003, type: CardType.Shan, name: '闪', suit: '♥', number: 9 };

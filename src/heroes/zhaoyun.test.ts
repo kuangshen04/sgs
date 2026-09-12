@@ -8,7 +8,6 @@ import { freshGame } from '../test-utils.js';
 
 import { playPhase } from '../gameFlow.js';
 import { choosePlayAction } from '../playChoices.js';
-import { installEffects } from '../skills.js';
 import { skillRegistry } from '../effects.js';
 import { heroRegistry } from '../heroRegistry.js';
 
@@ -38,7 +37,6 @@ describe('龙胆①（赵云转化牌）', () => {
 
   it('出牌阶段：闪当杀，造成伤害，实体闪回弃牌堆', async () => {
     const g = freshGame({}, ['赵云', '刘备', '孙权']);
-    installEffects(g);
     const zhaoyun = g.state.players[0];
     const target = g.state.players[1];
     const shan = { id: 9021, type: CardType.Shan, name: '闪', suit: '♥', number: 8 };

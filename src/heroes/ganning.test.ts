@@ -8,7 +8,6 @@ import { freshGame } from '../test-utils.js';
 
 import { playPhase } from '../gameFlow.js';
 import { choosePlayAction } from '../playChoices.js';
-import { installEffects } from '../skills.js';
 import { skillRegistry } from '../effects.js';
 import { heroRegistry } from '../heroRegistry.js';
 
@@ -40,7 +39,6 @@ describe('奇袭（甘宁转化牌）', () => {
 
   it('出牌阶段：黑牌当过河拆桥，目标一张牌进弃牌堆', async () => {
     const g = freshGame({}, ['甘宁', '刘备', '孙权']);
-    installEffects(g);
     const ganning = g.state.players[0];
     const liubei = g.state.players[1];
     const black = { id: 9012, type: CardType.Shan, name: '闪', suit: '♣', number: 6 };

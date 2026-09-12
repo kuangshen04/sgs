@@ -23,7 +23,6 @@ describe('遗计（郭嘉技能）', () => {
 
   it('郭嘉受到 1 点伤害 → 摸 2 张牌', async () => {
     const g = freshGame({}, guojiaHeroes);
-    installEffects(g);
     const guojia = g.state.players[1];
     const before = guojia.hand.cards.length;
 
@@ -34,7 +33,6 @@ describe('遗计（郭嘉技能）', () => {
 
   it('郭嘉受到 2 点伤害 → 摸 4 张牌', async () => {
     const g = freshGame({}, guojiaHeroes);
-    installEffects(g);
     const guojia = g.state.players[1];
     const before = guojia.hand.cards.length;
 
@@ -45,7 +43,6 @@ describe('遗计（郭嘉技能）', () => {
 
   it('非郭嘉受伤 → 不触发', async () => {
     const g = freshGame({}, guojiaHeroes);
-    installEffects(g);
     const liubei = g.state.players[0];
     const before = liubei.hand.cards.length;
 
@@ -54,14 +51,15 @@ describe('遗计（郭嘉技能）', () => {
     expect(liubei.hand.cards.length).toBe(before);
   });
 
-  it('未调用 installEffects → 不触发', async () => {
-    const g = freshGame({}, guojiaHeroes);
+  it('installEffects 幂等：重复调用不重复装载（遗计只触发一次）', async () => {
+    const g = freshGame({}, guojiaHeroes); // createGame 已内置装载效果
+    installEffects(g); // 重复调用应无副作用
     const guojia = g.state.players[1];
     const before = guojia.hand.cards.length;
 
     await damage(g, { target: guojia, source: g.state.players[0], amount: 1 });
 
-    expect(guojia.hand.cards.length).toBe(before);
+    expect(guojia.hand.cards.length).toBe(before + 2); // 只触发一次（若重复装载会是 +4）
   });
 });
 
@@ -72,7 +70,6 @@ describe('天妒（郭嘉技能）', () => {
 
   it('郭嘉判定后获得判定牌', async () => {
     const g = freshGame({}, guojiaHeroes);
-    installEffects(g);
     const guojia = g.state.players[1];
     const judgeCard = makeUniqueCard(CardType.Sha, '♠', 5);
     g.state.deck.replaceAll([judgeCard]);
@@ -86,7 +83,6 @@ describe('天妒（郭嘉技能）', () => {
 
   it('非郭嘉判定 → 不获得判定牌', async () => {
     const g = freshGame({}, guojiaHeroes);
-    installEffects(g);
     const liubei = g.state.players[0];
     const judgeCard = makeUniqueCard(CardType.Sha, '♠', 5);
     g.state.deck.replaceAll([judgeCard]);

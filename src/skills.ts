@@ -39,10 +39,15 @@ export const subjectIsOwner: NonNullable<TriggeredEffect['condition']> =
   (_game, _event, owner, subject) => subject === owner;
 
 // ============================================================
-// 装载：把本局所有效果接到引擎上（每个对局调用一次）
+// 装载：把本局所有效果接到引擎上（createGame 已内置调用；幂等）
 // ============================================================
 
+const _installedGames = new WeakSet<Game>();
+
 export function installEffects(game: Game): void {
+  if (_installedGames.has(game)) return; // 幂等：重复调用无副作用
+  _installedGames.add(game);
+
   for (const timing of triggeredTimings()) {
     const effects = triggeredEffectsAt(timing);
     game.triggerSystem.on(timing, async (event: GameEvent<any>) => {

@@ -9,7 +9,6 @@ import { freshGame, giveHand, makeUniqueCard } from '../test-utils.js';
 import { playPhase } from '../gameFlow.js';
 import { useCard } from '../cardActions.js';
 
-import { installEffects } from '../skills.js';
 import { skillRegistry } from '../effects.js';
 import type { ActivatedEffect } from '../effects.js';
 
@@ -60,7 +59,6 @@ describe('制衡（孙权主动技能）', () => {
 
   it('手牌全部不可出 → 制衡发动，弃置所有手牌并摸等量', async () => {
     const g = freshGame({}, sunquanHeroes);
-    installEffects(g);
     const sunquan = g.state.players[1];
     giveHand(sunquan, CardType.Shan, CardType.WuXie); // 闪/无懈不可主动出
 
@@ -80,7 +78,6 @@ describe('制衡（孙权主动技能）', () => {
 
   it('有牌可出 → 出牌优先，制衡不发动', async () => {
     const g = freshGame({}, sunquanHeroes);
-    installEffects(g);
     const sunquan = g.state.players[1];
     const target = g.state.players[0];
     giveHand(sunquan, CardType.Sha);
@@ -95,7 +92,6 @@ describe('制衡（孙权主动技能）', () => {
 
   it('制衡后摸到可出的牌 → 继续出牌', async () => {
     const g = freshGame({}, sunquanHeroes);
-    installEffects(g);
     const sunquan = g.state.players[1];
     const target = g.state.players[0];
     giveHand(sunquan, CardType.WuXie); // 不可出 → 制衡换牌
@@ -111,7 +107,6 @@ describe('制衡（孙权主动技能）', () => {
 
   it('每回合限一次：制衡后仍无牌可出 → 不二次发动', async () => {
     const g = freshGame({}, sunquanHeroes);
-    installEffects(g);
     const sunquan = g.state.players[1];
     giveHand(sunquan, CardType.Shan);
     g.state.deck.replaceAll([makeUniqueCard(CardType.Shan, '♥', 7)]); // 摸到的还是闪
@@ -128,7 +123,6 @@ describe('制衡（孙权主动技能）', () => {
 
   it('非孙权（无制衡技能）→ 不发动', async () => {
     const g = freshGame({}, sunquanHeroes);
-    installEffects(g);
     const liubei = g.state.players[0];
     giveHand(liubei, CardType.Shan);
     g.state.deck.replaceAll([makeUniqueCard(CardType.Shan, '♥', 7)]);
@@ -144,7 +138,6 @@ describe('制衡（孙权主动技能）', () => {
 describe('救援（孙权主公技）', () => {
   it('吴势力桃对孙权 → 回复 +1', async () => {
     const g = freshGame({}, ['孙权', '周瑜', '刘备']);
-    installEffects(g);
     const sunquan = g.state.players[0];
     const zhouyu = g.state.players[1];
     sunquan.hp = 2;
@@ -157,7 +150,6 @@ describe('救援（孙权主公技）', () => {
 
   it('非吴势力桃对孙权 → 不触发救援', async () => {
     const g = freshGame({}, ['孙权', '刘备', '曹操']); // 刘备：蜀
-    installEffects(g);
     const sunquan = g.state.players[0];
     const liubei = g.state.players[1];
     sunquan.hp = 2;
@@ -170,7 +162,6 @@ describe('救援（孙权主公技）', () => {
 
   it('身份场开启且孙权非主公 → 不发动', async () => {
     const g = freshGame({}, ['孙权', '周瑜', '刘备']);
-    installEffects(g);
     g.state.lord = g.state.players[2]; // 刘备是主公（孙权非主公）
     const sunquan = g.state.players[0];
     const zhouyu = g.state.players[1];

@@ -17,7 +17,6 @@ vi.mock('./choose.js', async (importOriginal) => {
 
 import { freshGame } from './test-utils.js';
 import { GameEvent } from './events/index.js';
-import { installEffects } from './skills.js';
 import { defineSkill, skillRegistry, allEffects } from './effects.js';
 import type { TriggeredEffect } from './effects.js';
 import { heroRegistry } from './heroRegistry.js';
@@ -56,7 +55,6 @@ heroRegistry.register({
 describe('发动词汇三轴', () => {
   it('forced 触发效果不询问"是否发动"；普通效果走询问', async () => {
     const g = freshGame({}, ['测试·强制', '测试·普通', '刘备']);
-    installEffects(g);
     asked.length = 0;
     const mock = vi.mocked(askYesNo);
     mock.mockClear();

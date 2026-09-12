@@ -8,7 +8,6 @@ import { freshGame, giveHand } from '../test-utils.js';
 
 import { useCard } from '../cardActions.js';
 
-import { installEffects } from '../skills.js';
 import { skillRegistry } from '../effects.js';
 
 import { CardType } from '../types.js';
@@ -20,7 +19,6 @@ describe('流离（大乔技能）', () => {
 
   it('成为杀的目标 → 弃一张牌，将杀转移给攻击范围内其他角色', async () => {
     const g = freshGame({}, ['大乔', '刘备', '孙权']);
-    installEffects(g);
     const daqiao = g.state.players[0];
     const attacker = g.state.players[1]; // 刘备
     const redirected = g.state.players[2]; // 孙权（大乔攻击范围内、非使用者）
@@ -39,7 +37,6 @@ describe('流离（大乔技能）', () => {
 
   it('无合法转移目标（只有使用者）→ 不发动，正常受击', async () => {
     const g = freshGame({}, ['刘备', '大乔']); // 2 人局：流离无其他角色可转移
-    installEffects(g);
     const attacker = g.state.players[0];
     const daqiao = g.state.players[1];
     giveHand(attacker, CardType.Sha);
@@ -54,7 +51,6 @@ describe('流离（大乔技能）', () => {
 
   it('无牌可弃 → 不发动', async () => {
     const g = freshGame({}, ['大乔', '刘备', '孙权']);
-    installEffects(g);
     const daqiao = g.state.players[0];
     const attacker = g.state.players[1];
     giveHand(attacker, CardType.Sha);
@@ -67,7 +63,6 @@ describe('流离（大乔技能）', () => {
 
   it('非杀（决斗）→ 不触发', async () => {
     const g = freshGame({}, ['大乔', '刘备', '孙权']);
-    installEffects(g);
     const daqiao = g.state.players[0];
     const attacker = g.state.players[1];
     giveHand(attacker, CardType.JueDou);

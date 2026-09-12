@@ -13,8 +13,6 @@ import { discardCards, moveCards } from '../cardActions.js';
 
 import { effectRegistry } from '../persistentEffects.js';
 
-import { installEffects } from '../skills.js';
-
 import { CardType } from '../types.js';
 
 describe('谦逊（陆逊锁定技）', () => {
@@ -57,7 +55,6 @@ describe('谦逊（陆逊锁定技）', () => {
 describe('连营（陆逊触发技能）', () => {
   it('失去最后手牌 → 摸一张牌', async () => {
     const g = freshGame({}, ['刘备', '陆逊', '孙权']);
-    installEffects(g);
     const luxun = g.state.players[1];
     giveHand(luxun, CardType.Sha);
 
@@ -68,7 +65,6 @@ describe('连营（陆逊触发技能）', () => {
 
   it('弃置后手牌仍非空 → 不触发', async () => {
     const g = freshGame({}, ['刘备', '陆逊', '孙权']);
-    installEffects(g);
     const luxun = g.state.players[1];
     giveHand(luxun, CardType.Sha, CardType.Tao);
 
@@ -79,7 +75,6 @@ describe('连营（陆逊触发技能）', () => {
 
   it('失去装备区内的牌 → 不触发连营', async () => {
     const g = freshGame({}, ['刘备', '陆逊', '孙权']);
-    installEffects(g);
     const luxun = g.state.players[1];
     const weapon = makeUniqueCard(CardType.ZhugeLianNu);
     equipAt(g, luxun, weapon);
@@ -94,7 +89,6 @@ describe('连营（陆逊触发技能）', () => {
 
   it('非陆逊 → 不触发', async () => {
     const g = freshGame({}, ['刘备', '陆逊', '孙权']);
-    installEffects(g);
     const liubei = g.state.players[0];
     giveHand(liubei, CardType.Sha);
 

@@ -11,7 +11,6 @@ import { useCard } from '../cardActions.js';
 import { asUsedCard } from '../cardRegistry.js';
 
 import { effectRegistry } from '../persistentEffects.js';
-import { installEffects } from '../skills.js';
 import { skillRegistry } from '../effects.js';
 
 import { CardType } from '../types.js';
@@ -23,7 +22,6 @@ describe('集智（黄月英技能）', () => {
 
   it('使用普通锦囊 → 摸 1 张牌', async () => {
     const g = freshGame({}, ['刘备', '黄月英', '孙权']);
-    installEffects(g);
     const yueying = g.state.players[1];
     giveHand(yueying, CardType.WuZhong);
     const card = yueying.hand.cards[0];
@@ -36,7 +34,6 @@ describe('集智（黄月英技能）', () => {
 
   it('使用基本牌 → 不触发', async () => {
     const g = freshGame({}, ['刘备', '黄月英', '孙权']);
-    installEffects(g);
     const yueying = g.state.players[1];
     giveHand(yueying, CardType.Sha);
     const card = yueying.hand.cards[0];
@@ -48,7 +45,6 @@ describe('集智（黄月英技能）', () => {
 
   it('使用延时锦囊 → 不触发', async () => {
     const g = freshGame({}, ['刘备', '黄月英', '孙权']);
-    installEffects(g);
     const yueying = g.state.players[1];
     giveHand(yueying, CardType.LeBu);
     const card = yueying.hand.cards[0];

@@ -9,7 +9,6 @@ import { freshGame, giveHand, makeUniqueCard, equipAt } from '../test-utils.js';
 import { playPhase } from '../gameFlow.js';
 import { useCard } from '../cardActions.js';
 
-import { installEffects } from '../skills.js';
 import { skillRegistry } from '../effects.js';
 import type { ActivatedEffect } from '../effects.js';
 
@@ -24,7 +23,6 @@ describe('仁德（刘备主动技能）', () => {
 
   it('交给目标 2 张牌并回复 1 点体力', async () => {
     const g = freshGame({}, liubeiHeroes);
-    installEffects(g);
     const liubei = g.state.players[0];
     const target = g.state.players[1];
     liubei.hp = 3; // 受伤
@@ -42,7 +40,6 @@ describe('仁德（刘备主动技能）', () => {
 
   it('满血时不发动（AI 策略：交牌换血不划算）', async () => {
     const g = freshGame({}, liubeiHeroes);
-    installEffects(g);
     const liubei = g.state.players[0];
     giveHand(liubei, CardType.Shan, CardType.WuXie);
     const effect = skillRegistry.get('仁德')!.effects
@@ -57,7 +54,6 @@ describe('仁德（刘备主动技能）', () => {
 describe('激将（刘备主公技）', () => {
   it('蜀盟友代打杀（决斗）', async () => {
     const g = freshGame({}, ['刘备', '关羽', '曹操']);
-    installEffects(g);
     const liubei = g.state.players[0];
     const guanyu = g.state.players[1];
     const caocao = g.state.players[2];
@@ -75,7 +71,6 @@ describe('激将（刘备主公技）', () => {
 
   it('出牌阶段可借蜀盟友的杀', async () => {
     const g = freshGame({}, ['刘备', '孙权', '关羽']);
-    installEffects(g);
     const liubei = g.state.players[0];
     const sunquan = g.state.players[1];
     const guanyu = g.state.players[2];
@@ -92,7 +87,6 @@ describe('激将（刘备主公技）', () => {
 
   it('借杀消耗本阶段杀次数：无连弩只借一次（行为保持）', async () => {
     const g = freshGame({}, ['刘备', '孙权', '关羽', '黄月英']);
-    installEffects(g);
     const liubei = g.state.players[0];
     const guanyu = g.state.players[2];
     const yueying = g.state.players[3];
@@ -109,7 +103,6 @@ describe('激将（刘备主公技）', () => {
 
   it('诸葛连弩下可连续借杀（unlimitedSha 生效）', async () => {
     const g = freshGame({}, ['刘备', '孙权', '关羽', '黄月英']);
-    installEffects(g);
     const liubei = g.state.players[0];
     const guanyu = g.state.players[2];
     const yueying = g.state.players[3];

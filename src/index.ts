@@ -4,7 +4,6 @@
 
 import './cards/index.js';  // 触发卡牌注册（side-effect import）
 import { STANDARD_DECK } from './cards/index.js';
-import { installEffects } from './skills.js';
 import { createGame } from './game.js';
 import { printState } from './display.js';
 import { runGame } from './gameFlow.js';
@@ -15,8 +14,8 @@ import { GameOverError } from './life.js';
 // ============================================================
 
 async function main() {
+  // createGame 内置：建容器/玩家（含技能实例）/备牌堆/起始发牌/初始状态/装载效果
   const game = createGame(STANDARD_DECK, ['刘备', '曹操', '夏侯惇', '司马懿', '郭嘉', '甄宓', '孙权', '周瑜', '貂蝉']);
-  installEffects(game); // 把本局全部效果（技能/装备/常驻/响应）装到引擎上
 
   console.clear();
   printState(game.state);

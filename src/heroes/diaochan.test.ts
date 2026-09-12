@@ -8,7 +8,6 @@ import { freshGame, makeUniqueCard } from '../test-utils.js';
 
 import { endPhase, turn } from '../gameFlow.js';
 
-import { installEffects } from '../skills.js';
 import { skillRegistry } from '../effects.js';
 import { CardType } from '../types.js';
 
@@ -21,7 +20,6 @@ describe('闭月（貂蝉技能）', () => {
 
   it('结束阶段 → 摸 1 张牌', async () => {
     const g = freshGame({}, diaochanHeroes);
-    installEffects(g);
     const diaochan = g.state.players[1];
     const before = diaochan.hand.cards.length;
 
@@ -32,7 +30,6 @@ describe('闭月（貂蝉技能）', () => {
 
   it('回合结束 → 摸 1 张牌', async () => {
     const g = freshGame({}, diaochanHeroes);
-    installEffects(g);
     // 牌堆放桃：满血不可出，保证出牌阶段不出牌（结果确定）
     g.state.deck.replaceAll([makeUniqueCard(CardType.Tao), makeUniqueCard(CardType.Tao), makeUniqueCard(CardType.Tao)]);
     const diaochan = g.state.players[1];
@@ -46,7 +43,6 @@ describe('闭月（貂蝉技能）', () => {
 
   it('非貂蝉回合 → 不触发闭月', async () => {
     const g = freshGame({}, diaochanHeroes);
-    installEffects(g);
     // 牌堆放桃：满血不可出，保证出牌阶段不出牌（结果确定）
     g.state.deck.replaceAll([makeUniqueCard(CardType.Tao), makeUniqueCard(CardType.Tao)]);
     const liubei = g.state.players[0];

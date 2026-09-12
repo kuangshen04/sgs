@@ -265,7 +265,54 @@ export function activatedEffects(): ActivatedEffect[] {
 }
 
 // ============================================================
-// 归属与门槛（三种效果（触发/常驻/响应/转化/主动）共用）
+// 局内技能实例（定义静态 + 局内实例，演进 9.2）
+// ============================================================
+
+/**
+ * 局内技能实例：定义层（`def`：效果集合 + 元数据）静态共享；
+ * 局内状态挂在实例上（失效标记、将来的次数/临时数据）。
+ */
+export interface SkillInstance {
+  /** 静态定义引用（内容模板，跨局共享） */
+  readonly def: Skill;
+  /** 局内失效标记（临时失去效果；施加/复原由"技能失效/复原"项提供） */
+  disabled: boolean;
+}
+
+/** 查玩家的技能实例；没有则 undefined */
+export function skillInstance(player: Player, name: string): SkillInstance | undefined {
+  return player.skills.get(name);
+}
+
+/** 是否有该技能且未失效（规则/效果归属判定用） */
+export function playerHasSkill(player: Player, name: string): boolean {
+  const inst = player.skills.get(name);
+  return !!inst && !inst.disabled;
+}
+
+/** 该技能是否处于失效状态 */
+export function playerSkillDisabled(player: Player, name: string): boolean {
+  const inst = player.skills.get(name);
+  return !!inst && inst.disabled;
+}
+
+/** 获得技能：创建局内实例（未定义的技能名抛错；已拥有则抛错，防内容重复获得） */
+export function gainSkill(player: Player, name: string): SkillInstance {
+  const def = _skills.get(name);
+  if (!def) throw new Error(`gainSkill: skill "${name}" is not defined`);
+  if (player.skills.has(name)) throw new Error(`gainSkill: ${player.name} already has skill "${name}"`);
+  const inst: SkillInstance = { def, disabled: false };
+  player.skills.set(name, inst);
+  return inst;
+}
+
+/** 失去技能：销毁局内实例（效果归属随之失效；未拥有时为 no-op） */
+export function loseSkill(player: Player, name: string): void {
+  player.skills.delete(name);
+}
+
+// ============================================================
+// 归属与门槛（触发/常驻/响应/转化/主动共用）
 // ============================================================
 
 /** 玩家装备区是否装备了指定类型的牌 */
@@ -278,9 +325,14 @@ export function hasEquipped(player: Player, cardType: CardType): boolean {
   return false;
 }
 
-/** 效果是否归属于该玩家（技能归属 / 装备归属 / 裸效果恒真） */
+/**
+ * 效果是否归属于该玩家。
+ * - 技能归属：查局内技能实例（存在且未失效）——获得/失去技能即时生效，无需注销 handler
+ * - 装备归属：装备槽中含此类型牌
+ * - 裸效果：恒真
+ */
 export function effectOwnedBy(effect: EffectCommon, owner: Player): boolean {
-  if (effect.skill) return owner.hero.skills?.includes(effect.skill) ?? false;
+  if (effect.skill) return playerHasSkill(owner, effect.skill);
   if (effect.equipType) return hasEquipped(owner, effect.equipType);
   return true;
 }

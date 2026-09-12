@@ -10,7 +10,6 @@ import { useCard } from '../cardActions.js';
 
 import { effectRegistry } from '../persistentEffects.js';
 
-import { installEffects } from '../skills.js';
 import { skillRegistry } from '../effects.js';
 
 import { CardType } from '../types.js';
@@ -26,7 +25,6 @@ describe('马术（马超锁定技）', () => {
 describe('铁骑（马超触发技能）', () => {
   it('判定为红色 → 目标有闪也命中', async () => {
     const g = freshGame({}, ['马超', '刘备', '孙权']);
-    installEffects(g);
     const machao = g.state.players[0];
     const target = g.state.players[1];
     giveHand(machao, CardType.Sha);
@@ -42,7 +40,6 @@ describe('铁骑（马超触发技能）', () => {
 
   it('判定为黑色 → 目标可出闪抵消', async () => {
     const g = freshGame({}, ['马超', '刘备', '孙权']);
-    installEffects(g);
     const machao = g.state.players[0];
     const target = g.state.players[1];
     giveHand(machao, CardType.Sha);

@@ -9,7 +9,6 @@ import { freshGame, giveHand } from '../test-utils.js';
 import { useCard } from '../cardActions.js';
 import { drawPhase, turn } from '../gameFlow.js';
 
-import { installEffects } from '../skills.js';
 import { skillRegistry } from '../effects.js';
 
 import { CardType } from '../types.js';
@@ -21,7 +20,6 @@ describe('裸衣（许褚技能）', () => {
 
   it('摸牌阶段少摸一张', async () => {
     const g = freshGame({}, ['刘备', '许褚', '孙权']);
-    installEffects(g);
     const xuchu = g.state.players[1];
 
     await drawPhase(g, { player: xuchu });
@@ -31,7 +29,6 @@ describe('裸衣（许褚技能）', () => {
 
   it('使用杀造成伤害+1', async () => {
     const g = freshGame({}, ['刘备', '许褚', '孙权']);
-    installEffects(g);
     const xuchu = g.state.players[1];
     await drawPhase(g, { player: xuchu }); // 裸衣发动
     giveHand(xuchu, CardType.Sha);
@@ -45,7 +42,6 @@ describe('裸衣（许褚技能）', () => {
 
   it('使用决斗造成伤害+1', async () => {
     const g = freshGame({}, ['刘备', '许褚', '孙权']);
-    installEffects(g);
     const xuchu = g.state.players[1];
     await drawPhase(g, { player: xuchu });
     giveHand(xuchu, CardType.JueDou);
@@ -60,7 +56,6 @@ describe('裸衣（许褚技能）', () => {
 
   it('决斗对自己造成伤害也+1（依据使用方是自己，而非伤害来源）', async () => {
     const g = freshGame({}, ['刘备', '许褚', '孙权']);
-    installEffects(g);
     const xuchu = g.state.players[1];
     await drawPhase(g, { player: xuchu });
     giveHand(xuchu, CardType.JueDou); // 许褚用决斗但无杀
@@ -75,7 +70,6 @@ describe('裸衣（许褚技能）', () => {
 
   it('南蛮伤害不加成（仅杀/决斗）', async () => {
     const g = freshGame({}, ['刘备', '许褚', '孙权']);
-    installEffects(g);
     const xuchu = g.state.players[1];
     await drawPhase(g, { player: xuchu });
     giveHand(xuchu, CardType.NanMan);
@@ -89,7 +83,6 @@ describe('裸衣（许褚技能）', () => {
 
   it('回合结束后 buff 失效', async () => {
     const g = freshGame({}, ['刘备', '许褚', '孙权']);
-    installEffects(g);
     const xuchu = g.state.players[1];
     await turn(g, { player: xuchu }); // 裸衣发动 + 回合结束清理
     giveHand(xuchu, CardType.Sha);

@@ -4,6 +4,7 @@
 // ============================================================
 
 import type { CardArea } from './cardArea.js';
+import type { SkillInstance } from './effects.js';
 
 /** 卡牌类型 */
 export enum CardType {
@@ -105,6 +106,11 @@ export interface Player {
   judgment: CardArea;
   /** 装备区 */
   equipment: PlayerEquipment;
+  /**
+   * 局内技能实例表（权威）：开局按 hero.skills 建立；获得/失去技能 = 实例增删；
+   * 技能失效状态挂在实例上。hero.skills 仅作"初始技能清单"内容数据。
+   */
+  skills: Map<string, SkillInstance>;
   alive: boolean;
   /** 本回合是否被乐不思蜀跳过出牌阶段（回合开始重置） */
   skipPlayPhase?: boolean;
