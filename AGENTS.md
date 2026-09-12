@@ -17,12 +17,16 @@
 
 ## 东西在哪找
 
-- **代码**：`src/`（TypeScript ESM，相对导入带 `.js` 后缀）；测试与源码同目录（`src/xxx.test.ts`）
+- **代码**：`src/`（TypeScript ESM，相对导入带 `.js` 后缀）；按角色分目录：
+  `events/`（事件）· `position/`（位置与移动）· `effects/`（效果与技能）· `decision/`（选择与窗口）·
+  `flow/`（流程与结算）· `content/`（卡牌/武将/牌堆等内容定义）；根目录只留 `index.ts` / `game.ts` /
+  `types.ts` / `test-utils.ts`。**导览见 `docs/代码结构.md`**
+- **测试**：与被测模块同目录（`src/<cluster>/xxx.test.ts`；`content/heroes/*.test.ts` 随武将）
 - **需求与计划**：`docs/TODO.md`（编号分节，先列需求不做具体设计，完成一项勾选一项）
 - **演进与避坑**：`docs/演进与避坑.md`（借鉴无名杀/FreeKill 经验的决策记录，结论分级：已确认 / 方向）
 - **标包武将/卡牌定义**：`docs/标包武将.json`、`docs/标包卡牌.json`（唯一事实来源）
-- **牌堆数据**：`src/standardDeck.json`（108 张、32 种，与卡牌定义分离）
-- **测试辅助**：`src/test-utils.ts`（`freshGame` / `giveHand` / `makeUniqueCard`）
+- **牌堆数据**：`src/content/standardDeck.json`（108 张、32 种，与卡牌定义分离）
+- **测试辅助**：`src/test-utils.ts`（`freshGame` / `giveHand` / `makeUniqueCard` / `equipAt`）
 
 > 具体模块与机制约定（事件系统、移动模型、注册模式等）仍在演进，以源码和 TODO 为准；
 > 待稳定后另立专门文档，不在本文件维护。

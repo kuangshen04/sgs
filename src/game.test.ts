@@ -7,14 +7,14 @@
 
 import { describe, it, expect } from 'vitest';
 
-import './cards/index.js'; // 触发卡牌注册（side-effect import）
-import { STANDARD_DECK } from './cards/index.js';
+import './content/cards/index.js'; // 触发卡牌注册（side-effect import）
+import { STANDARD_DECK } from './content/cards/index.js';
 
 import { createGame, lastManStanding } from './game.js';
 
 import { freshGame, DEFAULT_HEROES } from './test-utils.js';
 
-import { heroRegistry } from './heroRegistry.js';
+import { heroRegistry } from './content/heroRegistry.js';
 
 // ============================================================
 // 游戏初始化

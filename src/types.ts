@@ -3,8 +3,8 @@
 // 所有类型直接写死，不做抽象
 // ============================================================
 
-import type { CardArea } from './cardArea.js';
-import type { SkillInstance } from './effects.js';
+import type { CardArea } from './position/cardArea.js';
+import type { SkillInstance } from './effects/effects.js';
 
 /** 卡牌类型 */
 export enum CardType {

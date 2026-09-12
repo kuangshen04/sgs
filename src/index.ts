@@ -2,12 +2,12 @@
 // 三国杀最小原型 — 入口
 // ============================================================
 
-import './cards/index.js';  // 触发卡牌注册（side-effect import）
-import { STANDARD_DECK } from './cards/index.js';
+import './content/cards/index.js';  // 触发卡牌注册（side-effect import）
+import { STANDARD_DECK } from './content/cards/index.js';
 import { createGame } from './game.js';
-import { printState } from './display.js';
-import { runGame } from './gameFlow.js';
-import { GameOverError } from './life.js';
+import { printState } from './flow/display.js';
+import { runGame } from './flow/gameFlow.js';
+import { GameOverError } from './flow/life.js';
 
 // ============================================================
 // 主程序

@@ -105,7 +105,7 @@
 
 - [x] 处理区：使用的牌在结算中的位置（useCard/judge 已接入 processing 区；奸雄已改为从处理区取源牌）
 - [x] 卡牌位置追踪（FreeKill 式 CardLocation / getCardArea）：统一查询任意牌所在位置（含处理区）
-- [x] 阶段 2 位置模型收口（演进 3.2/3.4 落地，`src/cardArea.ts`）：
+- [x] 阶段 2 位置模型收口（演进 3.2/3.4 落地，`src/position/cardArea.ts`）：
   - **受控容器 CardArea**：手牌/判定区/牌堆/弃牌/处理区改为容器（读 = `.cards` 视图；写只走容器方法），
     唯一性由物理结构保证（一牌一位置，重复入区运行时抛错）；
   - **API 精简（去数组伪装）**：删除 length/只读委托/迭代器/isEmpty/has/toArray 等一切"把容器当数组用"的成员，
@@ -113,7 +113,7 @@
     容器内部结构与"每区自管存储/排序"（牌堆/装备区的继承或注入机制）待后续设计（开放问题）；
   - **引擎级集中索引** `Game.cardIndex`（FreeKill card_place 等价物）：`getCardArea` 改为索引查询，由容器/装备写点同步；
   - **toPosition 剥离**：`CardMoveSpec`/`CardMoveEventData` 去掉 toPosition，牌堆顶/底收敛进 `putTop`/`putBottom`；
-  - **对账不变量**：`verifyCardState`/`assertCardState`（`src/cardAreaCheck.ts`）+ `cardArea.test.ts`；
+  - **对账不变量**：`verifyCardState`/`assertCardState`（`src/position/cardAreaCheck.ts`）+ `cardArea.test.ts`；
   - 测试/测试辅助机械更新走容器方法（freshGame/giveHand/equipAt），装备槽位写也经索引同步；
   - 遗留：createGame 初始发牌与测试置场仍绕过移动事件（局首/置场直放，属预期）
 - 注：与规则术语"区域"（玩家三区）是两回事；位置追踪是引擎的位置模型，将来与区域并行
@@ -134,7 +134,7 @@
 
 - 现状：出牌阶段用 `useWindow`（`chooseUseAction` + `UseAction`）；ask 家族（`askForCard`/`askFromAreas`/`askForTargets`/`askYesNo`）已转为异步选择原语；
   响应窗口统一走 `ResponseRequest` + `responseRuleRegistry`（`buildResponseActions`/`executeResponse`），`findResponse`/`selectCardFromAreas`/`chooseCardAndTargets` 已删除
-- 相关模块：`src/selection.ts`（选择原语）、`src/useWindow.ts`（用牌窗口）、`src/responses.ts`（响应规则注册表）、`src/choose.ts`（规则层/工厂/异步 ask）
+- 相关模块：`src/decision/selection.ts`（选择原语）、`src/decision/useWindow.ts`（用牌窗口）、`src/decision/responses.ts`（响应规则注册表）、`src/decision/choose.ts`（规则层/工厂/异步 ask）
 - 设计原则：
   - 暂不设计注入接口：compute→decide→validate 三段式与通用规则引擎目前只有默认 AI 一个实现、无生产注入方，属过度设计——先合并为直接流程；AI 决策点收敛为函数内唯一决策处并注释标明"真人/前端接入时的注入点"，接口设计等出现真实消费者再做
   - 语义分层保留：牌的 `canUse`（规则）与 `ai.shouldUse`（AI）不合并（这是真实区分）；合并的是 choose 层面的机械流程（不再导出可插拔的 compute/validate、不建规则对象）
@@ -144,7 +144,7 @@
 - 阶段计划：
   - [x] A. 合并实现（行为保持）：
     - 出牌阶段：`choose()` 简化为 `chooseCardAndTargets(game, player, shaUsed)`——可选牌 → AI 选牌（隔离）→ 该牌合法目标 → AI 选目标（隔离）；`computeCardOptions`/`computeTargetOptions`/validate 收为内部辅助，导出面缩小
-    - ask 家族（并入 `src/choose.ts`）：`askForCard({ types })`（闪/杀/桃/无懈；`findResponse` 收编为默认行为"有就出第一张"）、`askFromAreas({ areas? })`（顺手/过河/寒冰/反馈/麒麟弓）、`askForTargets(candidates, { min/max })`（技能目标）、`askYesNo(prompt)`（发动）——直接实现，AI 决策一行隔离 + 注释
+    - ask 家族（并入 `src/decision/choose.ts`）：`askForCard({ types })`（闪/杀/桃/无懈；`findResponse` 收编为默认行为"有就出第一张"）、`askFromAreas({ areas? })`（顺手/过河/寒冰/反馈/麒麟弓）、`askForTargets(candidates, { min/max })`（技能目标）、`askYesNo(prompt)`（发动）——直接实现，AI 决策一行隔离 + 注释
   - [x] B. 接入现有写死点（行为保持，逐处替换 `TODO(玩家选择)`）：
     - 响应牌：闪响应/决斗响应（逐张）、南蛮/万箭、濒死自救、无懈（简化 AI）、借刀杀人、青龙偃月刀
     - 区域选牌：过河拆桥/顺手牵羊/寒冰剑/反馈/麒麟弓/贯石斧弃牌
@@ -256,7 +256,7 @@
 > 过对应开放问题，达成一致后再动手。顺序基本即依赖序，可分批验收（每批全量测试绿）。
 
 1. [x] **effect 统一收口（地基）**——效果 = 一等公民（时点 + 条件 + 行为），技能 = 效果的命名集合 + 元数据。
-   - 落地（`src/effects.ts`）：`Effect` 五形态（triggered / persistent / activated / response / conversion），
+   - 落地（`src/effects/effects.ts`）：`Effect` 五形态（triggered / persistent / activated / response / conversion），
      共同字段 `skill?`（归属技能）/ `equipType?`（装备归属）/ `name?`；技能 = `defineSkill({name, meta, effects})`
      （元数据 `info/lord/compulsory`）；裸效果 = `registerBareEffect`；**唯一注册面**。
    - 装载：`installEffects(game)` 单分发器（回合内按座次；技能来源询问"是否发动"——`forced` 已留挂点；

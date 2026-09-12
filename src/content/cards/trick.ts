@@ -1,0 +1,470 @@
+// ============================================================
+// 三国杀最小原型 — 锦囊牌（普通锦囊 + 无懈响应）
+// ============================================================
+
+import { CardTag, CardType } from '../../types.js';
+import type { Player } from '../../types.js';
+import type { CardContentFn } from '../cardRegistry.js';
+import { cardRegistry, cardEmoji, displayNumber } from '../cardRegistry.js';
+import { drawCards, moveCards, useCard, takeTop } from '../../position/cardActions.js';
+import { damage, recover } from '../../flow/life.js';
+import { distanceTo, attackRange } from '../../flow/distance.js';
+import { hasCardsInAreas } from '../../position/areas.js';
+import { askForCard, askFromAreas, askFromCards, askForTargets, askOption } from '../../decision/choose.js';
+import type { TargetingEventData } from '../../events/index.js';
+import { EventType } from '../../events/index.js';
+import { effectRegistry } from '../../effects/persistentEffects.js';
+import { otherAlive, allAlive } from './helpers.js';
+import type { Game } from '../../game.js';
+import { resolveJueDouResponse, resolvePlayResponse, resolveUseResponse } from '../../flow/respond.js';
+
+const wuzhongContent: CardContentFn = async (game, data, _event) => {
+  const player = data.player;
+  const before = player.hand.cards.length;
+  await drawCards(game, { target: player, count: 2 });
+  console.log(
+    `  ${player.name} 使用了 📜无中生有 (${data.card.suit}${displayNumber(data.card.number)})，` +
+    `摸了 ${player.hand.cards.length - before} 张牌`,
+  );
+};
+
+const juedouContent: CardContentFn = async (game, data, _event) => {
+  const initiator = data.player;
+  const target = data.targets[0];
+  console.log(
+    `  ${initiator.name} 对 ${target.name} 使用了 ⚔️决斗 (${data.card.suit}${displayNumber(data.card.number)})`,
+  );
+
+  let current = target;
+  let opponent = initiator;
+
+  while (true) {
+    // 无双②：每次响应时看对方是否持有无双——持有则需打出两张杀（常驻查询 'juedouShaRequired'；
+    // 吕布使用决斗时目标需两张、吕布成为目标时对手需两张；双方都是吕布则双方都需两张）。
+    const required = 1 + effectRegistry.sum(opponent, 'juedouShaRequired');
+    const ok = await resolveJueDouResponse(game, current, required);
+    if (!ok) {
+      // 打不出杀 → 受伤（失败时点暂无监听者，直接结算）；card = 决斗（造成伤害的牌）
+      await damage(game, { target: current, source: opponent, amount: 1, card: data.card });
+      return;
+    }
+    [current, opponent] = [opponent, current];
+  }
+};
+
+const nanmanContent: CardContentFn = async (game, data, _event) => {
+  const user = data.player;
+  console.log(
+    `  ${user.name} 使用了 🐘南蛮入侵 (${data.card.suit}${displayNumber(data.card.number)})！` +
+    `所有其他角色必须打出杀`,
+  );
+
+  for (const target of data.targets) {
+    if (await resolvePlayResponse(game, target, CardType.Sha)) {
+      console.log(`  ${target.name} 打出了 🗡️杀`);
+    } else {
+      await damage(game, { target, source: user, amount: 1, card: data.card });
+    }
+  }
+};
+
+const wanjianContent: CardContentFn = async (game, data, _event) => {
+  const user = data.player;
+  console.log(
+    `  ${user.name} 使用了 🏹万箭齐发 (${data.card.suit}${displayNumber(data.card.number)})！` +
+    `所有其他角色必须打出闪`,
+  );
+
+  for (const target of data.targets) {
+    if (await resolvePlayResponse(game, target, CardType.Shan)) {
+      console.log(`  ${target.name} 打出了 🛡️闪`);
+    } else {
+      await damage(game, { target, source: user, amount: 1, card: data.card });
+    }
+  }
+};
+
+const taoyuanContent: CardContentFn = async (game, data, _event) => {
+  const user = data.player;
+  console.log(
+    `  ${user.name} 使用了 🌸桃园结义 (${data.card.suit}${displayNumber(data.card.number)})！` +
+    `所有角色回复 1 点体力`,
+  );
+
+  for (const target of data.targets) {
+    await recover(game, { target, amount: 1 });
+  }
+};
+
+const wuguContent: CardContentFn = async (game, data, _event) => {
+  const user = data.player;
+  const alive = game.state.players.filter((p) => p.alive).length;
+  const revealed = await takeTop(game, alive, { zone: 'processing' }, 'reveal');
+  if (revealed.length === 0) return;
+  const pool = [...revealed];
+  console.log(`  ${user.name} 使用了 🌾五谷丰登！亮出 ${pool.length} 张牌`);
+  for (const c of pool) {
+    console.log(`    ${cardEmoji(c.type)}(${c.suit}${displayNumber(c.number)})`);
+  }
+
+  // 从使用者开始按座次，每人选一张
+  const start = game.state.players.indexOf(user);
+  for (let offset = 0; offset < game.state.players.length; offset++) {
+    const player = game.state.players[(start + offset) % game.state.players.length];
+    if (!player.alive) continue;
+    if (pool.length === 0) break;
+    const card = await askFromCards(game, player, '五谷丰登：选择一张牌', pool);
+    if (!card) continue;
+    await moveCards(game, {
+      to: { player, zone: 'hand' }, cards: [card], reason: 'obtain',
+    });
+    pool.splice(pool.indexOf(card), 1);
+  }
+
+  if (pool.length > 0) {
+    await moveCards(game, {
+      to: { zone: 'discardPile' }, cards: pool, reason: 'discard',
+    });
+    console.log(`  剩余 ${pool.length} 张进弃牌堆`);
+  }
+};
+
+const guoheContent: CardContentFn = async (game, data, _event) => {
+  const user = data.player;
+  const target = data.targets[0];
+  console.log(
+    `  ${user.name} 对 ${target.name} 使用了 🌉过河拆桥，弃置其区域内的一张牌`,
+  );
+
+  // askFromAreas：弃置目标区域内哪张牌（默认 AI：随机）
+  const card = await askFromAreas(game, target, '过河拆桥：弃置目标一张牌');
+  if (!card) return;
+  await moveCards(game, {
+    to: { zone: 'discardPile' }, cards: [card], reason: 'discard',
+  });
+  console.log(
+    `  弃置了 ${cardEmoji(card.type)} (${card.suit}${displayNumber(card.number)})`,
+  );
+};
+
+const shunshouContent: CardContentFn = async (game, data, _event) => {
+  const user = data.player;
+  const target = data.targets[0];
+  console.log(
+    `  ${user.name} 对 ${target.name} 使用了 🐑顺手牵羊，获得其区域内的一张牌`,
+  );
+
+  // askFromAreas：获得目标区域内哪张牌（默认 AI：随机）
+  const card = await askFromAreas(game, target, '顺手牵羊：获得目标一张牌');
+  if (!card) return;
+  await moveCards(game, {
+    to: { player: user, zone: 'hand' }, cards: [card], reason: 'give',
+  });
+  console.log(
+    `  获得了 ${cardEmoji(card.type)} (${card.suit}${displayNumber(card.number)})`,
+  );
+};
+
+const jiedaoContent: CardContentFn = async (game, data, _event) => {
+  const user = data.player;
+  const target = data.targets[0];
+  const weapon = target.equipment.weapon;
+  if (!weapon) return;
+
+  console.log(
+    `  ${user.name} 对 ${target.name} 使用了 🗡️借刀杀人，令其对他人使用杀或交出武器`,
+  );
+
+  // ── 决策①（借刀使用者）：指定被杀的目标 ────────────────────────
+  // 规则：目标（被借刀者）攻击范围内、杀对其合法（复用杀 targetFilter），
+  // 且不含借刀使用者本人（维持现状的简化，规则文本待核）。
+  // AI 决策点（真人/前端接入时在此注入）：默认取座次第一个合法角色。
+  const shaDef = cardRegistry.get(CardType.Sha)!;
+  const candidates = shaDef.targetFilter(target, game.state.players)
+    .filter((p) => p !== user);
+  const picked = candidates.length > 0
+    ? await askForTargets(game, user, '借刀杀人：指定目标要杀的角色', candidates, 1)
+    : null;
+  const victim = picked?.[0] ?? null;
+
+  // ── 决策②（被借刀者）：对 victim 出杀，还是交出武器 ──────────────
+  // 规则：无杀或无法对 victim 使用杀 → 只能交出武器（不出选择）；
+  // 有杀且有 victim → 两者皆可选。
+  // AI 决策点（真人/前端接入时在此注入）：默认"出杀"以保住武器（与旧行为一致）。
+  const hasSha = target.hand.cards.some((c) => c.type === CardType.Sha);
+  let wantToSlay = false;
+  if (victim && hasSha) {
+    const choice = await askOption(game, target, '借刀杀人：如何响应', [
+      { value: 'sha', label: `对 ${victim.name} 使用一张杀` },
+      { value: 'give', label: '交出武器' },
+    ], (ctx) => [ctx.step.options.find((o) => o.id === 'sha')!]);
+    wantToSlay = choice === 'sha';
+  }
+
+  if (wantToSlay && victim) {
+    // 决策③（被借刀者）：出哪张杀（默认 AI：第一张）；选牌本身不再额外询问
+    const sha = await askForCard(game, target, '借刀杀人：使用哪张杀', [CardType.Sha]);
+    if (sha) {
+      await useCard(game, { player: target, card: sha, targets: [victim] });
+      console.log(
+        `  🗡️ ${target.name} 响应【借刀杀人】，对 ${victim.name} 使用了杀`,
+      );
+      return;
+    }
+  }
+
+  // 交出武器
+  await moveCards(game, {
+    to: { player: user, zone: 'hand' }, cards: [weapon], reason: 'give',
+  });
+  console.log(
+    `  🗡️ ${target.name} 选择交出武器，${cardEmoji(weapon.type)} 到了 ${user.name} 手上`,
+  );
+};
+
+/**
+ * 无懈可击的 content：沿事件栈向上找到原始锦囊的 targeting 事件并置位 cancelled。
+ *
+ * 运行时事件栈：[… useCard(锦囊) → targeting(目标) → useCard(无懈)]
+ * 无懈自己的 targeting 已出栈，getParent('targeting') 命中锦囊的 targeting。
+ */
+const wuxieContent: CardContentFn = async (_game, _data, event) => {
+  const targetEvent = event.getParent(EventType.Targeting);
+  if (targetEvent) {
+    targetEvent.data.cancelled = true;
+  }
+};
+
+/**
+ * 默认无懈 AI 决策（写死，行为保持）：某玩家是否对本次锦囊 targeting 出无懈。
+ * 策略：只保护自己——仅当自己是锦囊目标时响应；不反无懈——普通窗口下
+ * 不对别人（含自己刚出的）无懈出反无懈。
+ * （judging = 判定阶段的延时锦囊窗口：允许被判定者抵消自己的延时锦囊。）
+ * AI 决策点（真人/前端接入时在此注入）：换更强策略（保护他人 / 反无懈 / 按锦囊利害取舍）时改此处。
+ */
+function wuxieGuardPolicy(
+  player: Player,
+  target: Player,
+  user: Player,
+  judging: boolean | undefined,
+): boolean {
+  if (target !== player) return false;            // 只保护自己
+  if (!judging && user === player) return false;  // 不反自己的无懈
+  return true;
+}
+
+/**
+ * 注册无懈可击 trigger handler（挂到指定对局的触发器注册表）。
+ * 响应链无需显式实现：每个无懈使用都会生成自身 targeting 事件 → 递归触发本 handler，
+ * 后出的无懈在 content 中给前一个的 targeting 置位 cancelled（last-wins），
+ * 前一个的 content 便不会执行。
+ * 本循环只剩 AI 策略：从当前回合角色起按座次询问（谁响应由 wuxieGuardPolicy 决定）。
+ */
+export function installWuxieTrigger(game: Game): void {
+  game.triggerSystem.on(`${EventType.Targeting}.before`, async (targetingEvent) => {
+    const { user, card, target, judging } = targetingEvent.data as TargetingEventData;
+    const def = cardRegistry.get(card.type);
+    if (!def?.tags.includes(CardTag.Trick)) return;
+
+    const game = targetingEvent.game;
+    const state = game.state;
+    const startIndex = state.currentIndex;
+
+    for (let offset = 0; offset < state.players.length; offset++) {
+      const idx = (startIndex + offset) % state.players.length;
+      const player = state.players[idx];
+      if (!player.alive) continue;
+      if (!wuxieGuardPolicy(player, target, user, judging)) continue;
+
+      // 使用型响应窗口：真无懈 + 放弃
+      const ok = await resolveUseResponse(game, player, {
+        type: 'use',
+        cardType: CardType.WuXie,
+      });
+      if (!ok) continue;
+      console.log(`  ✨${player.name} 使用 🛡️无懈可击 抵消对 ${target.name} 的效果`);
+
+      // 无论无懈成功或被反无懈，只尝试一次就停止
+      break;
+    }
+  });
+}
+
+// ============================================================
+// 注册
+// ============================================================
+
+cardRegistry.register({
+  type: CardType.WuZhong,
+  name: '无中生有',
+  emoji: '📜',
+  content: wuzhongContent,
+  tags: [CardTag.Trick],
+  canUse: () => true,
+  targetFilter: (user) => [user],
+  targetCount: 1,
+  ai: {
+    shouldUse: () => true,
+    usePriority: 80,
+    discardPriority: 2,
+  },
+});
+
+cardRegistry.register({
+  type: CardType.JueDou,
+  name: '决斗',
+  emoji: '⚔️',
+  content: juedouContent,
+  tags: [CardTag.Trick],
+  canUse: (player, allPlayers) =>
+    allPlayers.some((p) => p !== player && p.alive && !effectRegistry.has(p, 'immuneJueDou')),
+  targetFilter: (user, allPlayers) =>
+    allPlayers.filter((p) => p !== user && p.alive && !effectRegistry.has(p, 'immuneJueDou')),
+  targetCount: 1,
+  ai: {
+    shouldUse: (player) => player.hand.cards.some((c) => c.type === CardType.Sha), // AI：有杀垫底才决斗
+    usePriority: 70,
+    discardPriority: 0,
+  },
+});
+
+cardRegistry.register({
+  type: CardType.NanMan,
+  name: '南蛮入侵',
+  emoji: '🐘',
+  content: nanmanContent,
+  tags: [CardTag.Trick],
+  canUse: () => true,
+  targetFilter: otherAlive,
+  targetCount: 'all',
+  ai: {
+    shouldUse: () => true,
+    usePriority: 75,
+    discardPriority: 0,
+  },
+});
+
+cardRegistry.register({
+  type: CardType.WanJian,
+  name: '万箭齐发',
+  emoji: '🏹',
+  content: wanjianContent,
+  tags: [CardTag.Trick],
+  canUse: () => true,
+  targetFilter: otherAlive,
+  targetCount: 'all',
+  ai: {
+    shouldUse: () => true,
+    usePriority: 75,
+    discardPriority: 0,
+  },
+});
+
+cardRegistry.register({
+  type: CardType.TaoYuan,
+  name: '桃园结义',
+  emoji: '🌸',
+  content: taoyuanContent,
+  tags: [CardTag.Trick],
+  canUse: () => true,
+  targetFilter: allAlive,
+  targetCount: 'all',
+  ai: {
+    // AI：自己受伤才值得放（也会回敌人的血）
+    shouldUse: (player) => player.hp < player.maxHp,
+    usePriority: 85,
+    discardPriority: 3,
+  },
+});
+
+cardRegistry.register({
+  type: CardType.WuGu,
+  name: '五谷丰登',
+  emoji: '🌾',
+  content: wuguContent,
+  tags: [CardTag.Trick],
+  canUse: () => true,
+  targetFilter: allAlive,
+  targetCount: 'all',
+  ai: {
+    shouldUse: () => true,
+    usePriority: 75,
+    discardPriority: 2,
+  },
+});
+
+cardRegistry.register({
+  type: CardType.JieDao,
+  name: '借刀杀人',
+  emoji: '🗡️',
+  content: jiedaoContent,
+  tags: [CardTag.Trick],
+  canUse: (player, allPlayers) =>
+    allPlayers.some((p) => p !== player && p.alive && !!p.equipment.weapon),
+  targetFilter: (user, allPlayers) =>
+    allPlayers.filter((p) => p !== user && p.alive && !!p.equipment.weapon),
+  targetCount: 1,
+  ai: {
+    shouldUse: () => true,
+    usePriority: 55,
+    discardPriority: 2,
+  },
+});
+
+cardRegistry.register({
+  type: CardType.GuoHe,
+  name: '过河拆桥',
+  emoji: '🌉',
+  content: guoheContent,
+  tags: [CardTag.Trick],
+  canUse: (player, allPlayers) =>
+    // 规则：存在区域内有牌的目标（无距离限制）
+    allPlayers.some((p) => p !== player && p.alive && hasCardsInAreas(p)),
+  targetFilter: (user, allPlayers) =>
+    allPlayers.filter((p) => p !== user && p.alive && hasCardsInAreas(p)),
+  targetCount: 1,
+  ai: {
+    shouldUse: () => true,
+    usePriority: 65,
+    discardPriority: 2,
+  },
+});
+
+cardRegistry.register({
+  type: CardType.ShunShou,
+  name: '顺手牵羊',
+  emoji: '🐑',
+  content: shunshouContent,
+  tags: [CardTag.Trick],
+  canUse: (player, allPlayers) =>
+    // 规则：存在距离为 1（或奇才无视距离）且区域内有牌的目标
+    allPlayers.some((p) => p !== player && p.alive && hasCardsInAreas(p)
+      && (effectRegistry.has(player, 'noTrickDistance') || distanceTo(allPlayers, player, p) <= 1)
+      && !effectRegistry.has(p, 'immuneShunShou')),
+  targetFilter: (user, allPlayers) =>
+    allPlayers.filter((p) => p !== user && p.alive && hasCardsInAreas(p)
+      && (effectRegistry.has(user, 'noTrickDistance') || distanceTo(allPlayers, user, p) <= 1)
+      && !effectRegistry.has(p, 'immuneShunShou')),
+  targetCount: 1,
+  ai: {
+    shouldUse: () => true,
+    usePriority: 65,
+    discardPriority: 2,
+  },
+});
+
+cardRegistry.register({
+  type: CardType.WuXie,
+  name: '无懈可击',
+  emoji: '🛡️',
+  content: wuxieContent,
+  tags: [CardTag.Trick],
+  canUse: () => false, // 规则：无懈不可在出牌阶段主动使用（由响应 trigger 调用）
+  targetFilter: () => [],
+  targetCount: 0,
+  ai: {
+    shouldUse: () => false,
+    usePriority: 0,
+    discardPriority: 100, // 尽量保留在手牌中
+  },
+});

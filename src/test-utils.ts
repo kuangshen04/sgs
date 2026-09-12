@@ -4,14 +4,14 @@
 // （不保留测试专用直写 API——容器方法即唯一写通道，索引由容器同步）。
 // ============================================================
 
-import './cards/index.js'; // 触发卡牌注册（side-effect import）
-import { STANDARD_DECK } from './cards/index.js';
-import { cardRegistry } from './cardRegistry.js';
+import './content/cards/index.js'; // 触发卡牌注册（side-effect import）
+import { STANDARD_DECK } from './content/cards/index.js';
+import { cardRegistry } from './content/cardRegistry.js';
 import { createGame } from './game.js';
 import type { Game } from './game.js';
 import { CardType, CardTag } from './types.js';
 import type { Card, GameState, Player } from './types.js';
-import type { CardArea } from './cardArea.js';
+import type { CardArea } from './position/cardArea.js';
 
 export function makeCard(
   id: number, type: CardType, suit = '♠', number = 1,

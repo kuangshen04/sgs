@@ -9,16 +9,16 @@
 // ============================================================
 
 import { Card, GameState, Player, VictoryCondition } from './types.js';
-import { CardArea, createCardIndex } from './cardArea.js';
-import type { CardIndex } from './cardArea.js';
+import { CardArea, createCardIndex } from './position/cardArea.js';
+import type { CardIndex } from './position/cardArea.js';
 import { TriggerSystem, createEventStack } from './events/index.js';
 import type { EventStack, GameEvent } from './events/index.js';
-import { shuffle } from './cardRegistry.js';
-import { gainSkill } from './effects.js';
-import { installEffects } from './skills.js';
-import { heroRegistry } from './heroRegistry.js';
-import './cards/index.js';  // 副作用：触发全部卡牌/装备效果注册
-import './heroes/index.js'; // 副作用：触发全部武将/技能注册
+import { shuffle } from './content/cardRegistry.js';
+import { gainSkill } from './effects/effects.js';
+import { installEffects } from './effects/skills.js';
+import { heroRegistry } from './content/heroRegistry.js';
+import './content/cards/index.js';  // 副作用：触发全部卡牌/装备效果注册
+import './content/heroes/index.js'; // 副作用：触发全部武将/技能注册
 
 // ============================================================
 // Game — 一局游戏的容器
