@@ -37,6 +37,11 @@ export interface EffectCommon {
   equipType?: CardType;
   /** 调试/身份用名称（响应规则名等；未填时回退到 skill） */
   name?: string;
+  /**
+   * 自动发动（frequency.auto）：前端据此多一个"自动发动"按钮。
+   * **现在不做**（无前端）；引擎侧不消费，仅占位词汇。默认 = 手动。
+   */
+  auto?: boolean;
 }
 
 /** 触发型效果：某时点响应事件（技能触发技 / 装备触发 / 裸效果） */
@@ -50,7 +55,11 @@ export interface TriggeredEffect extends EffectCommon {
   ) => boolean;
   /** 发动效果（owner = 归属通过且（如非强制）已确认发动的角色） */
   run: (game: Game, event: GameEvent<any>, owner: Player) => Promise<void>;
-  /** 强制发动：不进行"是否发动"的询问（锁定技组合的一半；阶段 3 第 2 项落地） */
+  /**
+   * 强制发动（forced）：不进行"是否发动"的询问（installEffects 据此跳过 askYesNo）。
+   * 规则文本的"锁定技" = 内容层组合：技能打 `meta.compulsory`（抗性标签）
+   * + 其触发效果打 `forced`；引擎不根据效果形态推导技能类型。
+   */
   forced?: boolean;
 }
 
@@ -145,7 +154,11 @@ export interface SkillMeta {
   info?: string;
   /** 主公技：身份场开启（state.lord 已设）且自己不是主公时不发动 */
   lord?: boolean;
-  /** 锁定技抗性标签：供"令其他武将技能失效"类效果在失效判断前查询 */
+  /**
+   * 锁定技抗性标签（Compulsory）：绑技能；供"令其他武将技能失效"类效果
+   * 在失效判断**之前**检查抗性（消费者 = 阶段 3 第 3 项"技能失效/复原"）。
+   * 与 effect 级 `auto`（自动发动）/`forced`（强制发动）是三件不同的事。
+   */
   compulsory?: boolean;
 }
 
