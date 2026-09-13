@@ -142,6 +142,7 @@ export type CardMoveReason =
   | 'transfer'    // 判定区转移（闪电）
   | 'resolve'     // 延时牌结算
   | 'reveal'      // 亮出（五谷丰登等）
+  | 'virtualBroken' // 驻留 UsedCard 被破坏：其剩余实体牌置入弃牌堆
   | 'reshuffle';  // 洗牌（弃牌堆 → 牌堆）
 
 /**

@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { freshGame, giveHand, makeUniqueCard } from '../test-utils.js';
+import { freshGame, giveHand, makeUniqueCard, placeJudgment } from '../test-utils.js';
 
 import { judgePhase, playPhase } from './gameFlow.js';
 
@@ -64,7 +64,7 @@ describe('judgePhase', () => {
     const g = freshGame();
     const player = g.state.players[0];
     const lebu = makeUniqueCard(CardType.LeBu);
-    player.judgment.add(lebu);
+    placeJudgment(g, player, lebu);
     g.state.deck.replaceAll([makeUniqueCard(CardType.Tao, '♥', 2)]); // 判定：红桃
 
     await judgePhase(g, { player });
@@ -78,7 +78,7 @@ describe('judgePhase', () => {
     const g = freshGame();
     const player = g.state.players[0];
     const lebu = makeUniqueCard(CardType.LeBu);
-    player.judgment.add(lebu);
+    placeJudgment(g, player, lebu);
     g.state.deck.replaceAll([makeUniqueCard(CardType.JueDou, '♠', 5)]); // 判定：非红桃
 
     await judgePhase(g, { player });
@@ -91,7 +91,7 @@ describe('judgePhase', () => {
     const g = freshGame();
     const player = g.state.players[0];
     const lebu = makeUniqueCard(CardType.LeBu);
-    player.judgment.add(lebu);
+    placeJudgment(g, player, lebu);
     giveHand(player, CardType.WuXie); // 被判定者出无懈保护自己
     const deckCard = makeUniqueCard(CardType.Sha, '♠', 5);
     g.state.deck.replaceAll([deckCard]);
@@ -120,7 +120,7 @@ describe('judgePhase', () => {
     const g = freshGame();
     const player = g.state.players[0];
     const shandian = makeUniqueCard(CardType.ShanDian);
-    player.judgment.add(shandian);
+    placeJudgment(g, player, shandian);
     g.state.deck.replaceAll([makeUniqueCard(CardType.JueDou, '♠', 5)]); // 黑桃5
     const hpBefore = player.hp;
 
@@ -136,7 +136,7 @@ describe('judgePhase', () => {
     const player = g.state.players[0];
     const next = g.state.players[1];
     const shandian = makeUniqueCard(CardType.ShanDian);
-    player.judgment.add(shandian);
+    placeJudgment(g, player, shandian);
     g.state.deck.replaceAll([makeUniqueCard(CardType.Tao, '♥', 5)]); // 红桃 → 不爆
 
     await judgePhase(g, { player });

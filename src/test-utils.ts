@@ -12,6 +12,8 @@ import type { Game } from './game.js';
 import { CardType, CardTag } from './types.js';
 import type { Card, GameState, Player } from './types.js';
 import type { CardArea } from './position/cardArea.js';
+import { residentUsedCardOf } from './position/usedCards.js';
+import type { ResidentSlot } from './position/usedCards.js';
 
 export function makeCard(
   id: number, type: CardType, suit = '♠', number = 1,
@@ -62,21 +64,44 @@ export function giveHand(player: Player, ...types: CardType[]): void {
   player.hand.replaceAll(types.map((t) => makeUniqueCard(t)));
 }
 
-/** 直接在某区域放置一组牌（测试置场用；跳过移动事件） */
+/** 直接在某区域放置一组牌（测试置场用；跳过移动事件；非身份区） */
 export function placeIn(area: CardArea, ...cards: Card[]): void {
   area.addAll(cards);
 }
 
-/** 直接把牌放进玩家装备槽位（测试置场用；同步引擎索引，槽位按牌类型决定） */
+/** 直接把牌放进玩家判定区（测试置场用；同步索引与驻留 UsedCard） */
+export function placeJudgment(game: Game, player: Player, ...cards: Card[]): void {
+  player.judgment.addAll(cards);
+  for (const card of cards) {
+    game.usedCards.register(residentUsedCardOf(card, 'judgment'));
+  }
+}
+
+/** 清空玩家判定区（测试置场用；同步索引与驻留 UsedCard） */
+export function clearJudgment(game: Game, player: Player): void {
+  for (const card of [...player.judgment.cards]) {
+    const uc = game.usedCards.ofPhysical(card);
+    if (uc) game.usedCards.remove(uc);
+  }
+  player.judgment.clear();
+}
+
+/** 直接把牌放进玩家装备槽位（测试置场用；同步索引与驻留 UsedCard，槽位按牌类型决定） */
 export function equipAt(game: Game, player: Player, card: Card): void {
   const def = cardRegistry.get(card.type);
-  let slot: keyof typeof player.equipment;
+  let slot: Exclude<ResidentSlot, 'judgment'>;
   if (def?.tags.includes(CardTag.Weapon)) slot = 'weapon';
   else if (def?.tags.includes(CardTag.Armor)) slot = 'armor';
   else if (def?.tags.includes(CardTag.DefensiveHorse)) slot = 'defensiveHorse';
   else slot = 'offensiveHorse';
   const old = player.equipment[slot];
-  if (old) game.cardIndex.delete(old.id); // 顶掉旧装备（测试置场不触发移动事件）
+  if (old) {
+    // 顶掉旧装备（测试置场不触发移动事件）：同步索引与驻留 UC
+    game.cardIndex.delete(old.id);
+    const oldUc = game.usedCards.ofPhysical(old);
+    if (oldUc) game.usedCards.remove(oldUc);
+  }
   player.equipment[slot] = card;
   game.cardIndex.set(card.id, { player, zone: 'equipment' });
+  game.usedCards.register(residentUsedCardOf(card, slot));
 }

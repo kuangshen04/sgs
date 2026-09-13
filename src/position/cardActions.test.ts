@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { freshGame, giveHand, makeUniqueCard, equipAt } from '../test-utils.js';
+import { freshGame, giveHand, makeUniqueCard, equipAt, placeJudgment } from '../test-utils.js';
 
 import {
   discardCards, drawCards, getCardArea, giveCards, moveCards, peekTop, playFromHand, reshuffle,
@@ -346,7 +346,7 @@ describe('moveCards（统一移动）', () => {
     const player = g.state.players[0];
     const other = g.state.players[1];
     const card = makeUniqueCard(CardType.ShanDian);
-    player.judgment.replaceAll([card]);
+    placeJudgment(g, player, card);
     // 模拟闪电把牌转移到下家判定区
     await moveCards(g, {
       to: { player: other, zone: 'judgment' },

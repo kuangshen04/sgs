@@ -10,6 +10,7 @@ import { Card, CardTag, Player } from '../types.js';
 import type { CardLocation, CardMoveReason, UsedCard } from '../types.js';
 import type { PlayerEquipment } from '../types.js';
 import { CardArea } from './cardArea.js';
+import { residentUsedCardOf } from './usedCards.js';
 import { EventType, GameEvent } from '../events/index.js';
 import type { CardMoveEventData, DrawEventData, JudgeEventData, TargetingEventData, UseCardEventData } from '../events/index.js';
 import { cardRegistry, cardEmoji, displayNumber, shuffle, asUsedCard } from '../content/cardRegistry.js';
@@ -195,12 +196,18 @@ function putCardToLocation(
     }
     eq[slot] = card;
     game.cardIndex.set(card.id, loc);
+    // 身份区进入钩子：登记驻留 UsedCard（分类 = 槽位）
+    game.usedCards.register(residentUsedCardOf(card, slot));
     return;
   }
   const area = listAreaAt(game, loc);
   if (!area) throw new Error(`CardArea: 未知放置位置 ${JSON.stringify(loc)}`);
   if (atBottom && loc.zone === 'deck') area.insertAt(0, card);
   else area.add(card); // add 内部做唯一性校验 + 索引写入
+  // 身份区进入钩子：判定区的延时牌登记驻留 UsedCard（分类 = judgment）
+  if ('player' in loc && loc.zone === 'judgment') {
+    game.usedCards.register(residentUsedCardOf(card, 'judgment'));
+  }
 }
 
 /** 一次移动的规格：调用方只给终点 + 已知牌 + reason，来源由引擎派生（索引）。 */
@@ -255,13 +262,46 @@ async function moveCardsImpl(
       moved = [];
       for (let i = 0; i < event.data.cards.length; i++) {
         const card = event.data.cards[i];
-        const removed = takeCardFromLocation(game, event.data.fromAreas[i], card.id);
+        const from = event.data.fromAreas[i];
+        const removed = takeCardFromLocation(game, from, card.id);
         if (!removed) continue;
+        // 离开身份区 → 倒查驻留 UC：除显式"UC 迁移"（暂未引入）外一律视为破坏
+        await handleIdentityLeave(game, from, removed);
         putCardToLocation(game, event.data.to, removed, atBottom);
         moved.push(removed);
       }
     });
   return moved;
+}
+
+/**
+ * 身份区离开钩子（倒查）：
+ * 实体牌被移出装备槽/判定区时，销毁其所属驻留 UC；若该 UC 还有其他实体牌仍留在原区
+ * （多牌转化的情形），把这些剩余实体牌置入弃牌堆（一次 virtualBroken 移动）。
+ * 先解除绑定再移动剩余牌，避免自触发递归。
+ */
+async function handleIdentityLeave(
+  game: Game,
+  from: CardLocation,
+  card: Card,
+): Promise<void> {
+  if (!('player' in from)) return;
+  if (from.zone !== 'equipment' && from.zone !== 'judgment') return;
+  const uc = game.usedCards.ofPhysical(card);
+  if (!uc) return;
+
+  game.usedCards.remove(uc); // ① 先解除绑定（防递归）
+  const remaining = uc.physicalCards.filter((c) => {
+    if (c.id === card.id) return false;
+    const loc = game.cardIndex.get(c.id);
+    return !!loc && 'player' in loc && loc.player === from.player && loc.zone === from.zone;
+  });
+  if (remaining.length > 0) {
+    // ② 剩余实体牌置入弃牌堆
+    await moveCards(game, {
+      to: { zone: 'discardPile' }, cards: remaining, reason: 'virtualBroken',
+    });
+  }
 }
 
 // ============================================================

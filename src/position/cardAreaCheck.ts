@@ -41,7 +41,9 @@ export function verifyCardState(game: Game): string[] {
     scanArea(p.judgment, `${p.name}:judgment`);
     const eq = p.equipment;
     for (const slot of ['weapon', 'armor', 'defensiveHorse', 'offensiveHorse'] as const) {
-      if (eq[slot]) scanSlot(eq[slot], `${p.name}:equipment:${slot}`);
+      // 装备区在位置模型里是一个位置（槽位是语义分类，见 usedCards.slot），故键不带槽位；
+      // 槽位与 UC 分类的一致性由 verifyUsedCardBindings 负责。
+      if (eq[slot]) scanSlot(eq[slot], `${p.name}:equipment`);
     }
   }
   function scanSlot(card: { id: number }, key: string): void {
@@ -65,7 +67,74 @@ export function verifyCardState(game: Game): string[] {
       issues.push(`索引与物理不一致：card #${id} 索引=${want} 物理=${have}`);
     }
   }
+
+  issues.push(...verifyUsedCardBindings(game));
   return issues;
+}
+
+/**
+ * 驻留 UsedCard 与实体牌的对账：
+ * 1) UC 的每张实体牌都必须仍在该 UC 的身份区内，且分类（slot）与所在槽位一致；
+ * 2) 一张实体牌至多属于一个 UC；
+ * 3) 身份区（装备槽 / 判定区）里的每张实体牌都必须有归属 UC（防止漏建绑定）。
+ */
+function verifyUsedCardBindings(game: Game): string[] {
+  const issues: string[] = [];
+  const claimed = new Map<number, string>();
+
+  for (const uc of game.usedCards.all()) {
+    for (const c of uc.physicalCards) {
+      const pos = identityPositionOf(game, c.id);
+      if (!pos) {
+        issues.push(`UC 悬空绑定：${uc.name} 的实体牌 #${c.id} 不在身份区`);
+        continue;
+      }
+      const owner = game.usedCards.ofPhysical(c.id);
+      if (owner !== uc) {
+        issues.push(`UC 绑定错位：card #${c.id} 归属 ${owner?.name ?? '无'}，但被 ${uc.name} 声明`);
+      }
+      const prior = claimed.get(c.id);
+      if (prior) issues.push(`实体牌重复绑定：card #${c.id} 同时属于 ${prior} 与 ${uc.name}`);
+      claimed.set(c.id, uc.name);
+      if (pos.slot !== uc.slot) {
+        issues.push(`UC 分类不符：card #${c.id} 位于 ${pos.slot}，UC "${uc.name}" 声明 ${uc.slot}`);
+      }
+    }
+  }
+
+  // 反向：身份区里的牌必须有 UC
+  for (const p of game.state.players) {
+    const eq = p.equipment;
+    for (const slot of ['weapon', 'armor', 'defensiveHorse', 'offensiveHorse'] as const) {
+      const card = eq[slot];
+      if (card && !game.usedCards.ofPhysical(card)) {
+        issues.push(`身份区缺 UC：${p.name} 的 ${slot} 上 #${card.id} 没有驻留 UsedCard`);
+      }
+    }
+    for (const card of p.judgment.cards) {
+      if (!game.usedCards.ofPhysical(card)) {
+        issues.push(`身份区缺 UC：${p.name} 判定区 #${card.id} 没有驻留 UsedCard`);
+      }
+    }
+  }
+
+  return issues;
+}
+
+/** 实体牌当前所处的身份区（含分类）；不在身份区返回 null */
+function identityPositionOf(
+  game: Game,
+  cardId: number,
+): { player: Player; zone: 'equipment' | 'judgment'; slot: string } | null {
+  const loc = game.cardIndex.get(cardId);
+  if (!loc || !('player' in loc)) return null;
+  if (loc.zone === 'judgment') return { player: loc.player, zone: 'judgment', slot: 'judgment' };
+  if (loc.zone !== 'equipment') return null;
+  const eq = loc.player.equipment;
+  for (const slot of ['weapon', 'armor', 'defensiveHorse', 'offensiveHorse'] as const) {
+    if (eq[slot]?.id === cardId) return { player: loc.player, zone: 'equipment', slot };
+  }
+  return null;
 }
 
 /** 断言式封装：不一致即抛错（测试/调试断言用） */

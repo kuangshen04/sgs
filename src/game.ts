@@ -13,6 +13,8 @@ import { CardArea, createCardIndex } from './position/cardArea.js';
 import type { CardIndex } from './position/cardArea.js';
 import { TriggerSystem, createEventStack } from './events/index.js';
 import type { EventStack, GameEvent } from './events/index.js';
+import { createUsedCardRegistry } from './position/usedCards.js';
+import type { UsedCardRegistry } from './position/usedCards.js';
 import { shuffle } from './content/cardRegistry.js';
 import { gainSkill } from './effects/effects.js';
 import { installEffects } from './effects/skills.js';
@@ -42,6 +44,11 @@ export interface Game {
    * 派生态：只由 CardArea 容器方法 / 装备槽位写点维护，不参与序列化（数组权威，加载重建）。
    */
   cardIndex: CardIndex;
+  /**
+   * 驻留 UsedCard 注册表（装备槽 / 判定区停留期间的效果牌；完全不守恒，离开即销毁）。
+   * 派生态：随身份区进出维护（见 position/usedCards.ts 与 cardActions 的进出钩子）。
+   */
+  usedCards: UsedCardRegistry;
 }
 
 // ============================================================
@@ -72,6 +79,7 @@ export function createGame(
 ): Game {
   // ── 步骤 1：建容器与集中索引（内容无关的基础设施）────────────────
   const cardIndex = createCardIndex();
+  const usedCards = createUsedCardRegistry();
 
   // ── 步骤 2：建玩家（hero 副本 + 空区域 + 局内技能实例表）──────────
   const players: Player[] = heroNames.map((name) => {
@@ -124,6 +132,7 @@ export function createGame(
     triggerSystem: new TriggerSystem(),
     history: [],
     cardIndex,
+    usedCards,
   };
 
   // ── 步骤 6：装载效果（本局分发器；幂等，重复调用无副作用）──────────
