@@ -14,8 +14,10 @@ import type {
   DrawPhaseEventData,
   TargetingEventData,
 } from '../events/index.js';
-import { drawCards, useCard, discardCards, judge, moveCards, settleProcessingCards } from '../position/cardActions.js';
-import { cardRegistry, cardEmoji, displayNumber, asUsedCard } from '../content/cardRegistry.js';
+import { drawCards, discardCards, judge } from '../position/cardActions.js';
+import { moveUsedCard, settleUsedCard } from '../position/usedCardActions.js';
+import { useCard } from './useCard.js';
+import { cardRegistry, cardEmoji, displayNumber } from '../content/cardRegistry.js';
 import { printState } from './display.js';
 import type { Game } from '../game.js';
 import { choosePlayAction } from '../decision/playChoices.js';
@@ -86,24 +88,20 @@ export async function judgePhase(
       const player = event.data.player;
       console.log(`[判定阶段]`);
 
-      // 快照：结算过程中判定区会变化
-      const cards = [...player.judgment.cards];
-      for (const card of cards) {
-        const def = cardRegistry.get(card.type);
+      // 快照：判定区里的 UC 按**进入顺序**结算（结算过程中判定区会变化）
+      const ucs = game.usedCards.at({ kind: 'judgment', player });
+      for (const uc of ucs) {
+        const def = cardRegistry.get(uc.type);
         if (!def?.tags.includes(CardTag.Delay)) continue; // 非延时牌（理论上不会出现）
 
-        // 延时牌进入处理区（判定区 → 处理区）
-        await moveCards(game, {
-          to: { zone: 'processing' },
-          cards: [card],
-          reason: 'resolve',
-        });
+        // 延时牌（UC 迁移）：判定区 → 处理区
+        await moveUsedCard(game, uc, { kind: 'processing' }, { reason: 'resolve' });
 
         try {
           // 判定前无懈窗口：可令此判定牌无效（复用 targeting 事件 + 无懈触发器）
           const windowEvent = await new GameEvent<TargetingEventData>(
             EventType.Targeting,
-            { user: player, card: asUsedCard(card), target: player, judging: true },
+            { user: player, card: uc, target: player, judging: true },
             game,
           ).execute(async (evt) => {
             await game.triggerSystem.trigger(`${EventType.Targeting}.before`, evt);
@@ -112,15 +110,15 @@ export async function judgePhase(
           }, { triggers: false });
 
           if (windowEvent.data.cancelled) {
-            console.log(`  🚫${player.name} 判定区的 ${cardEmoji(card.type)} 被无懈可击抵消`);
+            console.log(`  🚫${player.name} 判定区的 ${cardEmoji(uc.type)} 被无懈可击抵消`);
             continue;
           }
 
           const judgeCard = await judge(game, player);
-          await def.delayContent?.(game, player, judgeCard, card);
+          await def.delayContent?.(game, player, judgeCard, uc);
         } finally {
-          // 结算结束：仍在处理区则进入弃牌堆；闪电转移等已移走的牌自动跳过
-          await settleProcessingCards(game, [card], 'resolve');
+          // 结算结束：仍在处理区的 UC 退出（实体牌回弃牌堆）；闪电转移等已迁走的自动跳过
+          await settleUsedCard(game, uc, 'resolve');
         }
       }
     });

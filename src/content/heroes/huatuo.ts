@@ -2,7 +2,8 @@
 // 华佗 — 青囊 / 急救
 // ============================================================
 
-import { discardCards, useCard } from '../../position/cardActions.js';
+import { discardCards } from '../../position/cardActions.js';
+import { useCard } from '../../flow/useCard.js';
 import { recover } from '../../flow/life.js';
 import { handCardsStep, targetsStep, selectedCards, selectedPlayers } from '../../decision/choose.js';
 import { defineSkill } from '../../effects/effects.js';

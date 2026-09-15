@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 
 import { freshGame, giveHand } from '../../test-utils.js';
 
-import { useCard } from '../../position/cardActions.js';
+import { useCard } from '../../flow/useCard.js';
 import { drawPhase, turn } from '../../flow/gameFlow.js';
 
 import { skillRegistry } from '../../effects/effects.js';

@@ -13,8 +13,9 @@ import { CardArea, createCardIndex } from './position/cardArea.js';
 import type { CardIndex } from './position/cardArea.js';
 import { TriggerSystem, createEventStack } from './events/index.js';
 import type { EventStack, GameEvent } from './events/index.js';
-import { createUsedCardRegistry } from './position/usedCards.js';
-import type { UsedCardRegistry } from './position/usedCards.js';
+import { createUsedCardStore } from './position/usedCards.js';
+import type { UsedCardHooks, UsedCardStore } from './position/usedCards.js';
+import { installUsedCardHooks } from './position/usedCardActions.js';
 import { shuffle } from './content/cardRegistry.js';
 import { gainSkill } from './effects/effects.js';
 import { installEffects } from './effects/skills.js';
@@ -45,10 +46,12 @@ export interface Game {
    */
   cardIndex: CardIndex;
   /**
-   * 驻留 UsedCard 注册表（装备槽 / 判定区停留期间的效果牌；完全不守恒，离开即销毁）。
-   * 派生态：随身份区进出维护（见 position/usedCards.ts 与 cardActions 的进出钩子）。
+   * UsedCard 层存储（UC = 一次使用/打出/驻留的"效果牌"，位置与顺序是 UC 的状态）。
+   * 与实体牌层的关系见演进 3.5：装备槽/判定区双向约束，处理区单向约束。
    */
-  usedCards: UsedCardRegistry;
+  usedCards: UsedCardStore;
+  /** 物理层 → UC 层的唯一钩子（实体牌离开驻留区时通知；installUsedCardHooks 装载） */
+  usedCardHooks?: UsedCardHooks;
 }
 
 // ============================================================
@@ -79,7 +82,7 @@ export function createGame(
 ): Game {
   // ── 步骤 1：建容器与集中索引（内容无关的基础设施）────────────────
   const cardIndex = createCardIndex();
-  const usedCards = createUsedCardRegistry();
+  const usedCards = createUsedCardStore();
 
   // ── 步骤 2：建玩家（hero 副本 + 空区域 + 局内技能实例表）──────────
   const players: Player[] = heroNames.map((name) => {
@@ -135,8 +138,9 @@ export function createGame(
     usedCards,
   };
 
-  // ── 步骤 6：装载效果（本局分发器；幂等，重复调用无副作用）──────────
+  // ── 步骤 6：装载效果与 UC 层钩子（本局分发器；幂等，重复调用无副作用）──
   installEffects(game);
+  installUsedCardHooks(game);
 
   return game;
 }

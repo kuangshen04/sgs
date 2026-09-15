@@ -4,6 +4,7 @@
 
 import { Card, CardTag, CardType, Player } from '../types.js';
 import type { UsedCard } from '../types.js';
+import type { UsedCardInstance } from '../position/usedCards.js';
 import type { Game } from '../game.js';
 import type { GameEvent, UseCardEventData } from '../events/index.js';
 
@@ -24,8 +25,11 @@ export interface CardDef {
   name: string;
   emoji: string;
   content: CardContentFn;
-  /** 延时锦囊在判定阶段的结算效果（收到判定结果与延时牌本身；可自行移动延时牌，如闪电移给下家） */
-  delayContent?: (game: Game, target: Player, judgeCard: Card, card: Card) => Promise<void>;
+  /**
+   * 延时锦囊在判定阶段的结算效果（收到判定结果与该延时牌的 UC；可自行**迁移 UC**，如闪电移给下家）。
+   * 读规则读 UC（演进 3.5）：类型/名称/花色取 UC 自身的规则身份。
+   */
+  delayContent?: (game: Game, target: Player, judgeCard: Card, uc: UsedCardInstance) => Promise<void>;
   /** 攻击范围（装备牌中的武器） */
   range?: number;
   /** 卡牌标签（基本牌/锦囊牌等） */

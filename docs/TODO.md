@@ -296,20 +296,34 @@
      注释已标接入点：阶段 4 身份场/模式在此分配、阶段 5 rng service 在此替换洗牌。
 4. **驻留 UsedCard（UC）建模**（合并原"技能失效/复原"、"判定区转化身份/国色"、"装备技能建模"三项）：
    装备效果建模为**装备赋予的技能**（演进 9.5 两项目先例）；其生命周期 = 牌的驻留，因此与判定区转化
-   同属一套"长生命周期 UsedCard"。UC 与实体牌关系：实体牌（存在/位置）→ UC（驻留期间的效果牌，
-   `as` = 视为什么 + `physicalCards` 多对一）→ 瞬时 UsedCard（一次结算用）。UC **完全不守恒**：离开身份区即销毁。
-   - **4.1 [x] 模型落地（本批完成）**：`position/usedCards.ts` —— `ResidentUsedCard`（`as`+`physicalCards`+`slot`）、
-     每局注册表（`game.usedCards`：`ofPhysical` 倒查 / `inZone` / `inSlot` / `register`（重复绑定抛错）/ `remove`）、
-     实体牌 ↔ UC 互绑、**进出钩子挂在 moveCards 唯一写点**（装备槽 / 判定区；测试置场用 `equipAt`/`placeJudgment`）、
-     **破坏倒查**（离开身份区 → 销毁 UC；多牌 UC 的剩余实体牌走一次 `virtualBroken` 移动进弃牌堆）、
-     对账不变量扩展（UC 悬空/错位/重复绑定/身份区缺 UC）；测试 `usedCards.test.ts` 9 例。
-     **本轮不挂任何技能/效果**（grants/disabled/storage 留 4.2/4.3，等青釭剑、木牛流马定）。
-   - **4.2 [ ] 装备技能 + 失效/复原（青釭剑）**：UC 上挂"授予技能"与失效标记；`playerHasSkill` 合并
-     武将实例与 UC 授予；青釭剑 = 禁用目标 `slot === 'armor'` 的 UC（先查技能 `meta.compulsory` 抗性）。
-   - **4.3 [ ] 判定区转化身份（国色）**：转化来源接线（`as` ≠ 自身）+ `judgePhase` 读 `UC.as` 而非 `card.type`。
-   - 延后（记录在案）：**UC 整体迁移语义**（仅显式标记的 UC 移动可迁移；storage 随牌 / grants 按新持有者
-     重新归属要等木牛流马——例如闪电转移当前按"销毁 + 目的地重建"处理，行为等价）；通用"区域进入/离开钩子"
-     抽象（等第二、第三处需要）；多牌驻留 UC 的真实内容用例（机制已按多牌实现 + 合成测试）。
+   同属一套"长生命周期 UsedCard"。**两层边界契约（判据 + 六条契约 + 推论）见演进 3.5**，落地拆 R1–R4。
+   - **4.1 [x] 模型落地**：`position/usedCards.ts` 注册表 + 实体牌互绑 + 破坏倒查 + 对账不变量
+     + `usedCards.test.ts` 9 例。（回顾：登记塞在物理写点、UC 无身份、位置从"首张实体牌"派生
+     —— 正是 3.5 要修的三处边界模糊。）
+   - **R1 [x] 边界重构（行为保持）**：UC 表换 `ucId` 主键 + `loc`/`seq` 状态；UC 层四动作
+     `create/enter/move/exit`（+ `settle` = 清理处理区）；公开 `moveCards` 到装备槽/判定区**硬报错**
+     （内部通道 `movePhysical`）；物理层只留"离开驻留区"钩子（`installUsedCardHooks`），
+     删除 `handleIdentityLeave` 与 `putCardToLocation` 里的 UC 登记；`useCard` 移入 `flow/useCard.ts`、
+     装备操作移入 `position/usedCardActions.ts`；对账改"装备/判定双向、处理区单向"；
+     测试置场 `equipAt`/`placeJudgment` 走 UC 层。
+     - 新增/重写：`position/move.ts`（低层物理移动 + 钩子）、`position/usedCardActions.ts`（UC 层业务）、
+       `flow/useCard.ts`（使用牌流程）；`usedCards.test.ts` 重写为 14 例（含 UC 迁移同一条 UC、
+       处理区单向约束、驻留区终点硬报错）。
+     - **不兼容（显式声明）**：UC 存储 API（`register/remove/ofPhysical/inZone/inSlot` →
+       `create/bind/unbind/ofCard/at`）、`ResidentUsedCard`/`residentUsedCardOf` 删除、
+       `moveCards` 到驻留区终点抛错、`CardDef.delayContent` 第 4 参数由 `Card` 改为 `UsedCardInstance`、
+       `useCard`/`equipCard` 的导入路径变更（无兼容壳）。
+     - 行为保持：全量 428 例绿（原 422 + 净增 6），`tsc` 干净，整局冒烟跑通。
+   - **R2 [ ] 使用流程统一（行为变化，需显式声明）**：`useCard` = 入 UC 处理区 → 窗口 → 效果 → 清理；
+     延时锦囊/装备的"效果"就是 `moveUsedCard`（延时锦囊因此获得**使用时**无懈窗口；无懈机制同时冻结待重设计）；
+     响应窗口的**打出**改为"生成 UC → 处理区 → 清理"（含转化与零牌虚拟）；判定牌/鬼才/观星**不走** UC；
+     奸雄改"读 UC → `exit(uc, {to: 手牌})`"（多牌杀的剩余实体牌随之正确）。
+   - **R3 [ ] 装备技能 + 失效/复原（青釭剑）**：UC 上挂"授予技能"与失效标记；`playerHasSkill` 合并
+     武将实例与 UC 授予；青釭剑 = 禁用目标装备 UC（先查 `meta.compulsory` 抗性）。
+   - **R4 [ ] 判定区转化身份（国色）**：转化规则产出 `as ≠ 自身` 的 UC（`store.create` 已支持）；
+     读出点改读 UC（`judgePhase` 的延时牌类型判定、`askFromAreas` 的身份区选择）。
+   - 延后（记录在案）：UC storage（木牛流马）与"迁移时 grants 重新归属"；通用"区域进入/离开钩子"抽象
+     （等第二、第三处需要）；多牌驻留 UC 的真实内容用例（机制已按多牌实现 + 合成测试）。
    - 依赖 1、2、3（技能实例化与 Compulsory 已就位）。验收：各子项完成时全量测试绿。
 5. **0 牌转化 + 不可被无懈（离间）**——依赖转化系统与无懈窗口；标包收尾内容。
 6. **排序显式化**（演进 5.2 红线）——座次主排序 + 同优先级玩家手选（ask 原语已有）+

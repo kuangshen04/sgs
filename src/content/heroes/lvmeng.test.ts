@@ -9,7 +9,7 @@ import { describe, it, expect } from 'vitest';
 import { freshGame, giveHand } from '../../test-utils.js';
 
 import { discardPhase } from '../../flow/gameFlow.js';
-import { useCard } from '../../position/cardActions.js';
+import { useCard } from '../../flow/useCard.js';
 import { GameEvent } from '../../events/index.js';
 import { skillRegistry } from '../../effects/effects.js';
 import { heroRegistry } from '../heroRegistry.js';

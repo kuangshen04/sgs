@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest';
 import { freshGame, giveHand } from '../../test-utils.js';
 
 import { computeTargetOptions } from '../../decision/choose.js';
-import { useCard } from '../../position/cardActions.js';
+import { useCard } from '../../flow/useCard.js';
 import { asUsedCard } from '../cardRegistry.js';
 
 import { effectRegistry } from '../../effects/persistentEffects.js';

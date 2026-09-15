@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest';
 
 import { freshGame } from '../test-utils.js';
-import { useCard } from '../position/cardActions.js';
+import { useCard } from '../flow/useCard.js';
 import { CardType } from '../types.js';
 import type { Card, UsedCard } from '../types.js';
 

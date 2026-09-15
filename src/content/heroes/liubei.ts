@@ -2,7 +2,8 @@
 // 刘备 — 仁德 / 激将（主公技）
 // ============================================================
 
-import { giveCards, useCard } from '../../position/cardActions.js';
+import { giveCards } from '../../position/cardActions.js';
+import { useCard } from '../../flow/useCard.js';
 import { recover } from '../../flow/life.js';
 import {
   cardsStep, handCardsStep, targetsStep, computeTargetOptions, selectedCards, selectedPlayers,

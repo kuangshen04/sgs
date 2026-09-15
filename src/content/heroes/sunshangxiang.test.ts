@@ -8,7 +8,8 @@ import { freshGame, giveHand, makeUniqueCard, equipAt } from '../../test-utils.j
 
 import { playPhase } from '../../flow/gameFlow.js';
 
-import { discardCards, equipCard, moveCards } from '../../position/cardActions.js';
+import { discardCards, moveCards } from '../../position/cardActions.js';
+import { equipCard } from '../../position/usedCardActions.js';
 
 import { skillRegistry } from '../../effects/effects.js';
 import type { ActivatedEffect } from '../../effects/effects.js';

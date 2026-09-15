@@ -4,7 +4,7 @@
 
 import { CardTag, CardType } from '../../types.js';
 import { cardRegistry, displayNumber } from '../cardRegistry.js';
-import { moveCards } from '../../position/cardActions.js';
+import { moveUsedCard } from '../../position/usedCardActions.js';
 import { damage } from '../../flow/life.js';
 import { effectRegistry } from '../../effects/persistentEffects.js';
 
@@ -39,7 +39,7 @@ cardRegistry.register({
   name: '闪电',
   emoji: '⚡',
   content: async () => {}, // 使用时无效果（置入判定区由 useCard 处理）
-  delayContent: async (game, target, judgeCard, card) => {
+  delayContent: async (game, target, judgeCard, uc) => {
     const explode = judgeCard.suit === '♠' && judgeCard.number >= 2 && judgeCard.number <= 9;
     if (explode) {
       console.log(
@@ -47,17 +47,13 @@ cardRegistry.register({
       );
       await damage(game, { target, amount: 3 }); // 雷电伤害无来源
     } else {
-      // 判定非黑桃2~9 → 移动到下家（座位顺序中下一名存活角色）的判定区
+      // 判定非黑桃2~9 → UC 迁移到下家（座位顺序中下一名存活角色）的判定区
       const players = game.state.players;
       const start = players.indexOf(target);
       for (let i = 1; i <= players.length; i++) {
         const next = players[(start + i) % players.length];
         if (!next.alive) continue;
-        await moveCards(game, {
-          to: { player: next, zone: 'judgment' },
-          cards: [card],
-          reason: 'transfer',
-        });
+        await moveUsedCard(game, uc, { kind: 'judgment', player: next }, { reason: 'transfer' });
         console.log(`  ${target.name} 的闪电判定非黑桃2~9，移到 ${next.name} 的判定区`);
         break;
       }

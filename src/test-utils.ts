@@ -9,11 +9,10 @@ import { STANDARD_DECK } from './content/cards/index.js';
 import { cardRegistry } from './content/cardRegistry.js';
 import { createGame } from './game.js';
 import type { Game } from './game.js';
-import { CardType, CardTag } from './types.js';
+import { CardType } from './types.js';
 import type { Card, GameState, Player } from './types.js';
 import type { CardArea } from './position/cardArea.js';
-import { residentUsedCardOf } from './position/usedCards.js';
-import type { ResidentSlot } from './position/usedCards.js';
+import { equipSlotOf } from './position/usedCardActions.js';
 
 export function makeCard(
   id: number, type: CardType, suit = '♠', number = 1,
@@ -69,39 +68,35 @@ export function placeIn(area: CardArea, ...cards: Card[]): void {
   area.addAll(cards);
 }
 
-/** 直接把牌放进玩家判定区（测试置场用；同步索引与驻留 UsedCard） */
+/** 直接把牌放进玩家判定区（测试置场用；同步索引与 UC 登记，不走移动事件） */
 export function placeJudgment(game: Game, player: Player, ...cards: Card[]): void {
   player.judgment.addAll(cards);
   for (const card of cards) {
-    game.usedCards.register(residentUsedCardOf(card, 'judgment'));
+    game.usedCards.bind(game.usedCards.create(card, [card]), { kind: 'judgment', player });
   }
 }
 
-/** 清空玩家判定区（测试置场用；同步索引与驻留 UsedCard） */
+/** 清空玩家判定区（测试置场用；同步索引与 UC 登记） */
 export function clearJudgment(game: Game, player: Player): void {
   for (const card of [...player.judgment.cards]) {
-    const uc = game.usedCards.ofPhysical(card);
-    if (uc) game.usedCards.remove(uc);
+    const uc = game.usedCards.ofCard(card);
+    if (uc) game.usedCards.unbind(uc);
   }
   player.judgment.clear();
 }
 
-/** 直接把牌放进玩家装备槽位（测试置场用；同步索引与驻留 UsedCard，槽位按牌类型决定） */
+/** 直接把牌放进玩家装备槽位（测试置场用；同步索引与 UC 登记，槽位按牌类型决定） */
 export function equipAt(game: Game, player: Player, card: Card): void {
-  const def = cardRegistry.get(card.type);
-  let slot: Exclude<ResidentSlot, 'judgment'>;
-  if (def?.tags.includes(CardTag.Weapon)) slot = 'weapon';
-  else if (def?.tags.includes(CardTag.Armor)) slot = 'armor';
-  else if (def?.tags.includes(CardTag.DefensiveHorse)) slot = 'defensiveHorse';
-  else slot = 'offensiveHorse';
+  const uc = game.usedCards.create(card, [card]);
+  const slot = equipSlotOf(uc);
   const old = player.equipment[slot];
   if (old) {
-    // 顶掉旧装备（测试置场不触发移动事件）：同步索引与驻留 UC
+    // 顶掉旧装备（测试置场不触发移动事件）：同步索引与 UC 登记
     game.cardIndex.delete(old.id);
-    const oldUc = game.usedCards.ofPhysical(old);
-    if (oldUc) game.usedCards.remove(oldUc);
+    const oldUc = game.usedCards.ofCard(old);
+    if (oldUc) game.usedCards.unbind(oldUc);
   }
   player.equipment[slot] = card;
   game.cardIndex.set(card.id, { player, zone: 'equipment' });
-  game.usedCards.register(residentUsedCardOf(card, slot));
+  game.usedCards.bind(uc, { kind: 'equipment', player, slot });
 }

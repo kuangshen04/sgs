@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest';
 import { freshGame, giveHand, makeUniqueCard } from '../../test-utils.js';
 
 import { damage } from '../../flow/life.js';
-import { useCard } from '../../position/cardActions.js';
+import { useCard } from '../../flow/useCard.js';
 
 import { skillRegistry } from '../../effects/effects.js';
 

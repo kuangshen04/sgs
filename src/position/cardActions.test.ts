@@ -11,6 +11,7 @@ import {
   discardCards, drawCards, getCardArea, giveCards, moveCards, peekTop, playFromHand, reshuffle,
   takeTop, takeBottom, putTop, putBottom, findInDeck, findInDeckAndDiscard,
 } from './cardActions.js';
+import { moveUsedCard } from './usedCardActions.js';
 
 import type { CardMoveEventData } from '../events/index.js';
 import { CardType } from '../types.js';
@@ -347,12 +348,10 @@ describe('moveCards（统一移动）', () => {
     const other = g.state.players[1];
     const card = makeUniqueCard(CardType.ShanDian);
     placeJudgment(g, player, card);
-    // 模拟闪电把牌转移到下家判定区
-    await moveCards(g, {
-      to: { player: other, zone: 'judgment' },
-      cards: [card],
-      reason: 'transfer',
-    });
+    // 模拟闪电把牌转移到下家判定区（UC 迁移；判定区只能经 UC 层进入）
+    await moveUsedCard(
+      g, g.usedCards.ofCard(card)!, { kind: 'judgment', player: other }, { reason: 'transfer' },
+    );
 
     // 调用方先确认牌仍在自己判定区，再结算；不在则跳过（替代 from 约束）
     const area = getCardArea(g, card);

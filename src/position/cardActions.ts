@@ -1,23 +1,27 @@
 // ============================================================
-// 三国杀最小原型 — 牌的操作（摸牌/出牌/弃置/交给）
+// 实体牌层 — 牌的操作（摸牌/判定/弃置/交给/取回）
 //
-// 阶段 2 位置模型收口：所有区域为受控容器 CardArea，引擎级集中索引 game.cardIndex
-// 由容器方法/装备槽位写点维护；getCardArea 改为索引查询。toPosition 已从 moveCards
-// 签名剥离——牌堆顶/底是取放策略，收敛进 putTop/putBottom（内部移动方向参数）。
+// 本层只做**选择 + 移动**：不认识 UsedCard（两层边界见演进 3.5）。
+//   - 统一移动原语：公开入口 moveCards（带终点守卫）+ 内部通道 movePhysical（见 move.ts）；
+//   - **装备槽 / 判定区是驻留区**：公开 moveCards 到这两个终点硬报错，只能经 UC 层进入；
+//   - **处理区允许无 UC 的实体牌**（判定牌 / 观星亮出 / 鬼才替换牌），仍是合法物理终点；
+//   - 实体牌离开驻留区时由 move.ts 通知 UC 层钩子（破坏倒查在 position/usedCardActions.ts）。
+//
+// 使用牌流程 useCard 属 UC 层业务（flow/useCard.ts）；装备操作 equipCard 在 usedCardActions.ts。
 // ============================================================
 
-import { Card, CardTag, Player } from '../types.js';
+import { Card, Player } from '../types.js';
 import type { CardLocation, CardMoveReason, UsedCard } from '../types.js';
-import type { PlayerEquipment } from '../types.js';
-import { CardArea } from './cardArea.js';
-import { residentUsedCardOf } from './usedCards.js';
+import { cardEmoji, displayNumber, shuffle } from '../content/cardRegistry.js';
 import { EventType, GameEvent } from '../events/index.js';
-import type { CardMoveEventData, DrawEventData, JudgeEventData, TargetingEventData, UseCardEventData } from '../events/index.js';
-import { cardRegistry, cardEmoji, displayNumber, shuffle, asUsedCard } from '../content/cardRegistry.js';
+import type { DrawEventData, JudgeEventData } from '../events/index.js';
+import { movePhysical } from './move.js';
 import type { Game } from '../game.js';
 
+export { getCardArea } from './move.js';
+
 // ============================================================
-// 牌堆操作（查询层 + 洗牌；摸牌/判定走统一 moveCards）
+// 牌堆操作（查询层 + 洗牌；摸牌/判定走统一移动）
 // ============================================================
 
 /** 查看牌堆顶 n 张（不移动）；不足 n 张返回全部（顶 = 数组尾） */
@@ -61,7 +65,9 @@ export async function putTop(
   cards: Card[],
   reason: CardMoveReason = 'reshuffle',
 ): Promise<Card[]> {
-  return moveCardsImpl(game, [...cards].reverse(), reason, false, undefined, { zone: 'deck' });
+  return movePhysical(game, {
+    cards: [...cards].reverse(), to: { zone: 'deck' }, reason,
+  });
 }
 
 /**
@@ -72,7 +78,9 @@ export async function putBottom(
   cards: Card[],
   reason: CardMoveReason = 'reshuffle',
 ): Promise<Card[]> {
-  return moveCardsImpl(game, cards, reason, true, undefined, { zone: 'deck' });
+  return movePhysical(game, {
+    cards, to: { zone: 'deck' }, reason, atBottom: true,
+  });
 }
 
 /** 从牌堆顶往下找第一张符合条件；没有返回 null */
@@ -97,13 +105,14 @@ export function findInDeckAndDiscard(game: Game, predicate: (card: Card) => bool
 export async function reshuffle(game: Game): Promise<void> {
   const cards = shuffle([...game.state.discardPile.cards]);
   if (cards.length === 0) return;
-  await moveCardsImpl(game, cards, 'reshuffle', false, undefined, { zone: 'deck' });
+  await movePhysical(game, { cards, to: { zone: 'deck' }, reason: 'reshuffle' });
   console.log(`  🔄 弃牌堆 ${cards.length} 张重新洗入牌堆`);
 }
 
 /**
  * 判定：亮出牌堆顶一张牌（牌堆空则洗回弃牌堆）作为判定事件。
- * 判定牌生效后进入弃牌堆（天妒从这里拿），返回最终判定牌供检查条件。
+ * **判定牌不是 UC**（不可转化）：它只是被亮出的实体牌，经实体牌处理区流转
+ * （天妒从这里拿；鬼才替换牌同理）。
  */
 export async function judge(game: Game, player: Player): Promise<Card> {
   const event = await new GameEvent<JudgeEventData>(EventType.Judge, { player }, game)
@@ -140,75 +149,8 @@ export async function drawCards(
 }
 
 // ============================================================
-// 统一移动模型（位置查询 + moveCards）
+// 统一移动模型（公开入口 + 驻留区终点守卫）
 // ============================================================
-
-/** 查询一张牌当前所在位置；不在任何位置返回 null。集中索引查询（阶段 2）。 */
-export function getCardArea(game: Game, card: Card): CardLocation | null {
-  return game.cardIndex.get(card.id) ?? null;
-}
-
-/** 定位某个 CardLocation 对应的列表式容器（装备区非列表，返回 null） */
-function listAreaAt(game: Game, loc: CardLocation): CardArea | null {
-  if ('player' in loc) {
-    if (loc.zone === 'hand') return loc.player.hand;
-    if (loc.zone === 'judgment') return loc.player.judgment;
-    return null; // equipment
-  }
-  return game.state[loc.zone] as CardArea;
-}
-
-/** 从位置移除一张牌（按 id；同步索引）。不在该位置返回 null。 */
-function takeCardFromLocation(game: Game, loc: CardLocation, cardId: number): Card | null {
-  if ('player' in loc && loc.zone === 'equipment') {
-    const eq = loc.player.equipment;
-    for (const slot of ['weapon', 'armor', 'defensiveHorse', 'offensiveHorse'] as const) {
-      if (eq[slot]?.id === cardId) {
-        const card = eq[slot]!;
-        eq[slot] = undefined;
-        game.cardIndex.delete(cardId);
-        return card;
-      }
-    }
-    return null;
-  }
-  const area = listAreaAt(game, loc);
-  if (!area) return null;
-  // removeById 内部同步索引
-  return area.removeById(cardId);
-}
-
-/** 把一张牌放入位置（牌堆按 atBottom 决定放底/放顶，默认顶；同步索引） */
-function putCardToLocation(
-  game: Game,
-  loc: CardLocation,
-  card: Card,
-  atBottom: boolean,
-): void {
-  if ('player' in loc && loc.zone === 'equipment') {
-    const slot = equipSlotOf(card);
-    const eq = loc.player.equipment;
-    const occupied = eq[slot];
-    if (occupied && occupied.id !== card.id) {
-      throw new Error(
-        `CardArea: ${loc.player.name} 的装备槽 ${slot} 已被 #${occupied.id} 占用，无法放入 #${card.id}`,
-      );
-    }
-    eq[slot] = card;
-    game.cardIndex.set(card.id, loc);
-    // 身份区进入钩子：登记驻留 UsedCard（分类 = 槽位）
-    game.usedCards.register(residentUsedCardOf(card, slot));
-    return;
-  }
-  const area = listAreaAt(game, loc);
-  if (!area) throw new Error(`CardArea: 未知放置位置 ${JSON.stringify(loc)}`);
-  if (atBottom && loc.zone === 'deck') area.insertAt(0, card);
-  else area.add(card); // add 内部做唯一性校验 + 索引写入
-  // 身份区进入钩子：判定区的延时牌登记驻留 UsedCard（分类 = judgment）
-  if ('player' in loc && loc.zone === 'judgment') {
-    game.usedCards.register(residentUsedCardOf(card, 'judgment'));
-  }
-}
 
 /** 一次移动的规格：调用方只给终点 + 已知牌 + reason，来源由引擎派生（索引）。 */
 export interface CardMoveSpec {
@@ -219,103 +161,33 @@ export interface CardMoveSpec {
 }
 
 /**
- * 统一移动原语：把一组已知牌移到终点位置，产生一次 CardMove 事件。
+ * 统一移动原语（实体牌层唯一公开入口）：把一组已知牌移到终点位置，产生一次 CardMove 事件。
  * - 来源区域由引擎对每张牌经集中索引派生（from 派生）
- * - 不在任何位置的牌自动跳过（部分成功语义）
- * - 空移动不发事件；物理移动在事件 content 中完成；返回实际移动的牌
- * - 牌堆顶/底不是位置：放底由 putTop/putBottom 表达，不进本签名
+ * - 不在任何位置的牌自动跳过（部分成功语义）；空移动不发事件
+ * - **装备槽 / 判定区是驻留区**：实体牌不能直接进入（只能经 UC 层），此处硬报错
  */
 export async function moveCards(game: Game, spec: CardMoveSpec): Promise<Card[]> {
-  return moveCardsImpl(game, spec.cards, spec.reason, false, spec.mover, spec.to);
-}
-
-/** 内部实现：atBottom 仅对 deck 终点有意义（putBottom/观星放回使用） */
-async function moveCardsImpl(
-  game: Game,
-  cards: Card[],
-  reason: CardMoveReason,
-  atBottom: boolean,
-  mover: Player | undefined,
-  to: CardLocation,
-): Promise<Card[]> {
-  if (cards.length === 0) return [];
-
-  // from 派生：集中索引查询每张牌的位置
-  const entries: { card: Card; from: CardLocation }[] = [];
-  for (const card of cards) {
-    const from = getCardArea(game, card);
-    if (from) entries.push({ card, from });
+  if ('player' in spec.to && (spec.to.zone === 'equipment' || spec.to.zone === 'judgment')) {
+    throw new Error(
+      `moveCards: ${spec.to.zone === 'equipment' ? '装备槽' : '判定区'}是驻留区，` +
+      '实体牌只能经 UC 层进入（usedCardActions.enterUsedCard / moveUsedCard）',
+    );
   }
-  if (entries.length === 0) return [];
-
-  const data: CardMoveEventData = {
-    cards: entries.map((e) => e.card),
-    fromAreas: entries.map((e) => e.from),
-    to,
-    reason,
-    mover,
-  };
-
-  let moved: Card[] = [];
-  await new GameEvent<CardMoveEventData>(EventType.CardMove, data, game)
-    .execute(async (event) => {
-      moved = [];
-      for (let i = 0; i < event.data.cards.length; i++) {
-        const card = event.data.cards[i];
-        const from = event.data.fromAreas[i];
-        const removed = takeCardFromLocation(game, from, card.id);
-        if (!removed) continue;
-        // 离开身份区 → 倒查驻留 UC：除显式"UC 迁移"（暂未引入）外一律视为破坏
-        await handleIdentityLeave(game, from, removed);
-        putCardToLocation(game, event.data.to, removed, atBottom);
-        moved.push(removed);
-      }
-    });
-  return moved;
-}
-
-/**
- * 身份区离开钩子（倒查）：
- * 实体牌被移出装备槽/判定区时，销毁其所属驻留 UC；若该 UC 还有其他实体牌仍留在原区
- * （多牌转化的情形），把这些剩余实体牌置入弃牌堆（一次 virtualBroken 移动）。
- * 先解除绑定再移动剩余牌，避免自触发递归。
- */
-async function handleIdentityLeave(
-  game: Game,
-  from: CardLocation,
-  card: Card,
-): Promise<void> {
-  if (!('player' in from)) return;
-  if (from.zone !== 'equipment' && from.zone !== 'judgment') return;
-  const uc = game.usedCards.ofPhysical(card);
-  if (!uc) return;
-
-  game.usedCards.remove(uc); // ① 先解除绑定（防递归）
-  const remaining = uc.physicalCards.filter((c) => {
-    if (c.id === card.id) return false;
-    const loc = game.cardIndex.get(c.id);
-    return !!loc && 'player' in loc && loc.player === from.player && loc.zone === from.zone;
-  });
-  if (remaining.length > 0) {
-    // ② 剩余实体牌置入弃牌堆
-    await moveCards(game, {
-      to: { zone: 'discardPile' }, cards: remaining, reason: 'virtualBroken',
-    });
-  }
+  return movePhysical(game, spec);
 }
 
 // ============================================================
-// 语义化移动封装（建立在统一 moveCards 之上）
+// 语义化移动封装（建立在统一移动原语之上）
 // ============================================================
 
 /**
  * 弃置：把一组牌从手牌移入弃牌堆，返回实际移除的牌（供调用方记录）。
- * 打出（playFromHand）/使用消耗（useCard）/弃牌阶段（doDiscard）/制衡
+ * 打出（playFromHand）/使用消耗（playUsedCard）/弃牌阶段（doDiscard）/制衡
  * 共用这一个移动原语；不在该玩家手牌的牌自动跳过。
  */
 export async function discardCards(game: Game, player: Player, cards: Card[]): Promise<Card[]> {
   const inHand = cards.filter((c) => {
-    const area = getCardArea(game, c);
+    const area = game.cardIndex.get(c.id);
     return !!area && 'player' in area && area.player === player && area.zone === 'hand';
   });
   return moveCards(game, {
@@ -325,7 +197,7 @@ export async function discardCards(game: Game, player: Player, cards: Card[]): P
 
 /** 打出：把一张牌从手牌移入弃牌堆（不产生使用事件） */
 export async function playFromHand(game: Game, player: Player, card: Card): Promise<Card[]> {
-  const area = getCardArea(game, card);
+  const area = game.cardIndex.get(card.id);
   if (!area || !('player' in area) || area.player !== player || area.zone !== 'hand') {
     return [];
   }
@@ -337,7 +209,7 @@ export async function playFromHand(game: Game, player: Player, card: Card): Prom
 /** 打出：消费 UsedCard 的全部实体源牌（支持多源，如丈八蛇矛响应） */
 export async function playUsedCard(game: Game, player: Player, used: UsedCard): Promise<Card[]> {
   const inHand = used.physicalCards.filter((c) => {
-    const area = getCardArea(game, c);
+    const area = game.cardIndex.get(c.id);
     return !!area && 'player' in area && area.player === player && area.zone === 'hand';
   });
   return moveCards(game, {
@@ -353,7 +225,7 @@ export async function giveCards(
   game: Game, from: Player, to: Player, cards: Card[],
 ): Promise<Card[]> {
   const inHand = cards.filter((c) => {
-    const area = getCardArea(game, c);
+    const area = game.cardIndex.get(c.id);
     return !!area && 'player' in area && area.player === from && area.zone === 'hand';
   });
   return moveCards(game, {
@@ -365,7 +237,7 @@ export async function giveCards(
 export async function takeFromDiscard(
   game: Game, player: Player, card: Card,
 ): Promise<Card | null> {
-  const area = getCardArea(game, card);
+  const area = game.cardIndex.get(card.id);
   if (!area || area.zone !== 'discardPile') return null;
   const moved = await moveCards(game, {
     to: { player, zone: 'hand' }, cards: [card], reason: 'obtain',
@@ -377,7 +249,7 @@ export async function takeFromDiscard(
 export async function takeFromProcessing(
   game: Game, player: Player, card: Card,
 ): Promise<Card | null> {
-  const area = getCardArea(game, card);
+  const area = game.cardIndex.get(card.id);
   if (!area || area.zone !== 'processing') return null;
   const moved = await moveCards(game, {
     to: { player, zone: 'hand' }, cards: [card], reason: 'obtain',
@@ -390,156 +262,9 @@ export async function settleProcessingCards(
   game: Game, cards: Card[], reason: CardMoveReason = 'discard',
 ): Promise<Card[]> {
   const stillProcessing = cards.filter(
-    (c) => getCardArea(game, c)?.zone === 'processing',
+    (c) => game.cardIndex.get(c.id)?.zone === 'processing',
   );
   return moveCards(game, {
     to: { zone: 'discardPile' }, cards: stillProcessing, reason,
   });
-}
-
-/** 卡牌 tag → 装备槽位 */
-function equipSlotOf(card: Card): keyof PlayerEquipment {
-  const def = cardRegistry.get(card.type);
-  if (def?.tags.includes(CardTag.Weapon)) return 'weapon';
-  if (def?.tags.includes(CardTag.Armor)) return 'armor';
-  if (def?.tags.includes(CardTag.DefensiveHorse)) return 'defensiveHorse';
-  return 'offensiveHorse';
-}
-
-/**
- * 装备：把牌置入对应栏位，旧装备顶掉进弃牌堆；返回被顶掉的旧装备。
- * 拆为两次独立移动（两个事件）：旧装备 equipment → discardPile（replace），
- * 新牌 hand → equipment（equip）。
- */
-export async function equipCard(
-  game: Game, player: Player, card: Card,
-): Promise<Card | undefined> {
-  const slot = equipSlotOf(card);
-  const old = player.equipment[slot];
-  if (old) {
-    await moveCards(game, {
-      to: { zone: 'discardPile' }, cards: [old], reason: 'replace',
-    });
-  }
-  await moveCards(game, {
-    to: { player, zone: 'equipment' }, cards: [card], reason: 'equip',
-  });
-  return old;
-}
-
-// ============================================================
-// useCard — 通过 cardRegistry 分发
-// ============================================================
-
-export async function useCard(
-  game: Game,
-  data: Omit<UseCardEventData, 'card'> & { card: Card | UsedCard },
-): Promise<GameEvent<UseCardEventData>> {
-  const usedData: UseCardEventData = {
-    player: data.player,
-    targets: data.targets,
-    marks: data.marks,
-    card: asUsedCard(data.card),
-  };
-  return new GameEvent<UseCardEventData>(EventType.UseCard, usedData, game)
-    .execute(async (event) => {
-      event.data.marks = event.data.marks ?? {}; // 杀响应过程状态（无双/铁骑写入）
-      const def = cardRegistry.get(event.data.card.type);
-      const isDelayed = !!def?.tags.includes(CardTag.Delay);
-
-      if (isDelayed) {
-        // 延时锦囊：使用时直接置入目标判定区（无无懈窗口）
-        const target = event.data.targets[0];
-        if (target) {
-          await moveCards(game, {
-            to: { player: target, zone: 'judgment' },
-            cards: event.data.card.physicalCards,
-            reason: 'use',
-          });
-          console.log(
-            `  ${event.data.player.name} 使用了 ${cardEmoji(event.data.card.type)}` +
-            `(${event.data.card.suit}${displayNumber(event.data.card.number)})，` +
-            `置入 ${target.name} 的判定区`,
-          );
-        }
-        return;
-      }
-
-      const isEquip = !!def?.tags.includes(CardTag.Equip);
-
-      if (isEquip) {
-        // 装备：置入对应栏位（顶掉旧装备），无响应窗口
-        const target = event.data.targets[0] ?? event.data.player;
-        const replaced = await equipCard(game, target, event.data.card.physicalCards[0]);
-        console.log(
-          `  ${event.data.player.name} 装备了 ${cardEmoji(event.data.card.type)}` +
-          `(${event.data.card.suit}${displayNumber(event.data.card.number)})` +
-          (replaced ? `，顶掉 ${cardEmoji(replaced.type)}` : ''),
-        );
-        return;
-      }
-
-      // 使用的牌进入处理区（结算中位置），结算完成后统一回弃牌堆
-      await moveCards(game, {
-        to: { zone: 'processing' },
-        cards: event.data.card.physicalCards,
-        reason: 'use',
-      });
-
-      try {
-        // 逐 target 判定（无懈可击等响应在这里）
-        let shouldExecute = true;
-
-        if (event.data.targets.length > 0) {
-          const remaining: Player[] = [];
-          for (const target of event.data.targets) {
-            const targetingEvent = await new GameEvent<TargetingEventData>(
-              EventType.Targeting,
-              { user: event.data.player, card: event.data.card, target },
-              game,
-            ).execute(async (evt) => {
-              // targeting 是 trigger 检查点：自行编排 before / after，便于在 cancelled 时跳过
-              await game.triggerSystem.trigger(`${EventType.Targeting}.before`, evt);
-              if (evt.data.cancelled) return;
-              await game.triggerSystem.trigger(`${EventType.Targeting}.after`, evt);
-            }, { triggers: false });
-
-            if (!targetingEvent.data.cancelled) {
-              // 读事件内的 target：流离等技能可在 targeting.before 中转移目标
-              remaining.push(targetingEvent.data.target);
-            } else {
-              console.log(`  🚫${target.name} 被指定为目标的效果已被抵消`);
-            }
-          }
-          if (remaining.length === 0) {
-            shouldExecute = false;
-          } else {
-            event.data.targets = remaining;
-          }
-        } else {
-          // 无目标牌（如无懈可击）：单次 targeting，target = 使用者自己
-          // 这是唯一的响应窗口，无懈可击可以被反无懈
-          const targetingEvent = await new GameEvent<TargetingEventData>(
-            EventType.Targeting,
-            { user: event.data.player, card: event.data.card, target: event.data.player },
-            game,
-          ).execute(async (evt) => {
-            await game.triggerSystem.trigger(`${EventType.Targeting}.before`, evt);
-            if (evt.data.cancelled) return;
-            await game.triggerSystem.trigger(`${EventType.Targeting}.after`, evt);
-          }, { triggers: false });
-
-          if (targetingEvent.data.cancelled) {
-            console.log(`  🚫${event.data.player.name} 的 ${cardRegistry.get(event.data.card.type)?.name ?? '牌'} 效果已被抵消`);
-            shouldExecute = false;
-          }
-        }
-
-        if (shouldExecute && def) {
-          await def.content(game, event.data, event);
-        }
-      } finally {
-        await settleProcessingCards(game, event.data.card.physicalCards);
-      }
-    });
 }

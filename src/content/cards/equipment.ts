@@ -5,7 +5,8 @@
 import { CardTag, CardType } from '../../types.js';
 import type { Card, UsedCard } from '../../types.js';
 import { cardRegistry, cardEmoji } from '../cardRegistry.js';
-import { discardCards, drawCards, moveCards, useCard, judge } from '../../position/cardActions.js';
+import { discardCards, drawCards, moveCards, judge } from '../../position/cardActions.js';
+import { useCard } from '../../flow/useCard.js';
 import type { DamageEventData, ShaCancelledEventData, TargetingEventData } from '../../events/index.js';
 import { EventType } from '../../events/index.js';
 import {
