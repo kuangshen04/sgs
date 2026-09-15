@@ -2,7 +2,7 @@
 // 曹操 — 奸雄
 // ============================================================
 
-import { takeFromProcessing } from '../../position/cardActions.js';
+import { exitUsedCard, materializeUsedCard } from '../../position/usedCardActions.js';
 import { cardEmoji, displayNumber } from '../cardRegistry.js';
 import { resolvePlayResponse } from '../../flow/respond.js';
 import { defineSkill } from '../../effects/effects.js';
@@ -18,20 +18,25 @@ import type { Player } from '../../types.js';
  * 因果判定走 DamageEventData.card（规则层在"牌直接造成伤害"处显式赋值，演进 2.3）——
  * 不再经 getParent('useCard') 推断：刚烈等在 damage.after 内发起的反击伤害
  * 嵌套于原伤害之下，栈查询会把反击伤害误归给原杀/决斗（已知问题，本修复针对它）。
+ *
+ * **读 UC 拿实体牌**（演进 3.5）：造成伤害的牌此刻是一条停在处理区的 UC，
+ * 获得 = 这条 UC 退出处理区（`exit` 把全部实体牌交给曹操，UC 随之销毁）——
+ * 多牌源（丈八蛇矛的两张牌当杀）因此整条获得，不会被"取走一张即破坏"截断。
+ * 技能自行构造的 UsedCard 描述符不在处理区 → 无可获得之牌（与旧行为一致）。
  */
 const jianxiongContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
   const { card } = event.data as DamageEventData;
   if (!card) return; // 技能伤害（刚烈反击/反间等）或无来源伤害（闪电）→ 无可获得之牌
 
-  // 造成伤害的牌对应的全部实体牌，结算期间都位于处理区
-  for (const physical of card.physicalCards) {
-    const found = await takeFromProcessing(game, owner, physical);
-    if (!found) continue;
-    console.log(
-      `  ✨${owner.name} 发动【奸雄】！获得造成伤害的 ${cardEmoji(found.type)} ` +
-      `(${found.suit}${displayNumber(found.number)})`,
-    );
-  }
+  const uc = materializeUsedCard(game, card);
+  if (uc.loc?.kind !== 'processing') return; // 不在处理区的牌无从获得
+  await exitUsedCard(game, uc, {
+    to: { player: owner, zone: 'hand' }, reason: 'obtain',
+  });
+  console.log(
+    `  ✨${owner.name} 发动【奸雄】！获得造成伤害的 ${cardEmoji(uc.type)} ` +
+    `(${uc.suit}${displayNumber(uc.number)})`,
+  );
 };
 
 defineSkill({

@@ -13,11 +13,13 @@ import {
 } from '../test-utils.js';
 import { moveCards } from './cardActions.js';
 import {
-  equipCard, enterUsedCard, moveUsedCard, settleUsedCard,
+  equipCard, enterUsedCard, moveUsedCard, playUsedCard, settleUsedCard,
 } from './usedCardActions.js';
 import { judgePhase } from '../flow/gameFlow.js';
 import { useCard } from '../flow/useCard.js';
 import { verifyCardState } from './cardAreaCheck.js';
+import { EventType } from '../events/index.js';
+import type { CardMoveEventData } from '../events/index.js';
 import { CardType } from '../types.js';
 
 describe('UC：进入驻留区建立', () => {
@@ -238,6 +240,28 @@ describe('UC：驻留区终点硬报错', () => {
     })).rejects.toThrow(/驻留区/);
 
     expect(p.hand.cards).toEqual([weapon]); // 未发生移动
+  });
+});
+
+describe('UC：打出（响应窗口）= UC 生命周期', () => {
+  it('打出：实体牌经处理区后进弃牌堆，UC 随清理销毁', async () => {
+    const g = freshGame();
+    const p = g.state.players[0];
+    const shan = makeUniqueCard(CardType.Shan);
+    giveHand(p, CardType.Tao);
+    p.hand.add(shan);
+    const zones: string[] = [];
+    g.triggerSystem.on(`${EventType.CardMove}.before`, (e) => {
+      zones.push((e.data as CardMoveEventData).to.zone);
+    });
+
+    await playUsedCard(g, p, shan);
+
+    expect(zones).toEqual(['processing', 'discardPile']); // 打出走处理区再清理
+    expect(g.state.discardPile.cards).toContain(shan);
+    expect(p.hand.cards.map((c) => c.type)).toEqual([CardType.Tao]);
+    expect(g.usedCards.size()).toBe(0);                   // 短时 UC 已销毁
+    expect(verifyCardState(g)).toEqual([]);
   });
 });
 

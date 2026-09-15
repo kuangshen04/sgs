@@ -8,7 +8,7 @@
 import type { Game } from '../game.js';
 import type { Card, Player } from '../types.js';
 import { asUsedCard } from '../content/cardRegistry.js';
-import { playUsedCard } from '../position/cardActions.js';
+import { playUsedCard } from '../position/usedCardActions.js';
 import { useCard } from '../flow/useCard.js';
 import { effectLordGate, effectOwnedBy, responseEffectsFor } from '../effects/effects.js';
 import type { ResponseEffect, ResponseOutcome, ResponseRequest } from '../effects/effects.js';

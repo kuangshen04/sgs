@@ -7,11 +7,12 @@
 //   - **处理区允许无 UC 的实体牌**（判定牌 / 观星亮出 / 鬼才替换牌），仍是合法物理终点；
 //   - 实体牌离开驻留区时由 move.ts 通知 UC 层钩子（破坏倒查在 position/usedCardActions.ts）。
 //
-// 使用牌流程 useCard 属 UC 层业务（flow/useCard.ts）；装备操作 equipCard 在 usedCardActions.ts。
+// 使用牌流程 useCard 属 UC 层业务（flow/useCard.ts）；装备操作 equipCard、打出 playUsedCard
+// 在 usedCardActions.ts。
 // ============================================================
 
 import { Card, Player } from '../types.js';
-import type { CardLocation, CardMoveReason, UsedCard } from '../types.js';
+import type { CardLocation, CardMoveReason } from '../types.js';
 import { cardEmoji, displayNumber, shuffle } from '../content/cardRegistry.js';
 import { EventType, GameEvent } from '../events/index.js';
 import type { DrawEventData, JudgeEventData } from '../events/index.js';
@@ -182,8 +183,8 @@ export async function moveCards(game: Game, spec: CardMoveSpec): Promise<Card[]>
 
 /**
  * 弃置：把一组牌从手牌移入弃牌堆，返回实际移除的牌（供调用方记录）。
- * 打出（playFromHand）/使用消耗（playUsedCard）/弃牌阶段（doDiscard）/制衡
- * 共用这一个移动原语；不在该玩家手牌的牌自动跳过。
+ * 弃牌阶段（doDiscard）/制衡/主动技 cost 共用这一个移动原语；
+ * 不在该玩家手牌的牌自动跳过。
  */
 export async function discardCards(game: Game, player: Player, cards: Card[]): Promise<Card[]> {
   const inHand = cards.filter((c) => {
@@ -192,28 +193,6 @@ export async function discardCards(game: Game, player: Player, cards: Card[]): P
   });
   return moveCards(game, {
     to: { zone: 'discardPile' }, cards: inHand, reason: 'discard',
-  });
-}
-
-/** 打出：把一张牌从手牌移入弃牌堆（不产生使用事件） */
-export async function playFromHand(game: Game, player: Player, card: Card): Promise<Card[]> {
-  const area = game.cardIndex.get(card.id);
-  if (!area || !('player' in area) || area.player !== player || area.zone !== 'hand') {
-    return [];
-  }
-  return moveCards(game, {
-    to: { zone: 'discardPile' }, cards: [card], reason: 'play',
-  });
-}
-
-/** 打出：消费 UsedCard 的全部实体源牌（支持多源，如丈八蛇矛响应） */
-export async function playUsedCard(game: Game, player: Player, used: UsedCard): Promise<Card[]> {
-  const inHand = used.physicalCards.filter((c) => {
-    const area = game.cardIndex.get(c.id);
-    return !!area && 'player' in area && area.player === player && area.zone === 'hand';
-  });
-  return moveCards(game, {
-    to: { zone: 'discardPile' }, cards: inHand, reason: 'play',
   });
 }
 
@@ -257,8 +236,8 @@ export async function takeFromProcessing(
   return moved[0] ?? null;
 }
 
-/** 把仍在处理区的牌移入弃牌堆；已被技能移走的牌自动跳过 */
-export async function settleProcessingCards(
+/** 把仍在处理区的牌移入弃牌堆；已被技能移走的牌自动跳过（判定牌这类**无 UC** 的牌走这里） */
+async function settleProcessingCards(
   game: Game, cards: Card[], reason: CardMoveReason = 'discard',
 ): Promise<Card[]> {
   const stillProcessing = cards.filter(

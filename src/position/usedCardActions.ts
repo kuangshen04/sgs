@@ -139,8 +139,10 @@ export async function settleUsedCard(
 }
 
 /**
- * 装备：把一张牌置入对应槽位（顶掉旧装备）；返回被顶掉的旧装备。
- * 旧装备走一次 replace 移动离区（其 UC 由离开钩子破坏），新牌作为 UC 进入槽位。
+ * 装备：把 UC（或实体牌）置入对应槽位（顶掉旧装备）；返回被顶掉的旧装备。
+ * 两条路径共用：直接装备（UC 尚在手牌 → enter）与"装备牌的使用效果"
+ * （UC 已在处理区 → move，见 flow/useCard.ts）；旧装备走一次 replace 移动离区
+ * （其 UC 由离开钩子破坏）。
  */
 export async function equipCard(
   game: Game, player: Player, card: Card | UsedCard,
@@ -151,6 +153,23 @@ export async function equipCard(
   if (old) {
     await moveCards(game, { to: { zone: 'discardPile' }, cards: [old], reason: 'replace' });
   }
-  await enterUsedCard(game, uc, { kind: 'equipment', player, slot }, { reason: 'equip' });
+  const loc: UsedCardLocation = { kind: 'equipment', player, slot };
+  if (uc.loc) await moveUsedCard(game, uc, loc, { reason: 'equip' });
+  else await enterUsedCard(game, uc, loc, { reason: 'equip' });
   return old;
+}
+
+/**
+ * 打出（响应窗口的原语）：**打出 = 一条 UC 的生命周期**——UC 进处理区、结算、清理。
+ * 打出的结算内容为空（效果就是消耗这张牌本身），因此进入处理区后立即收尾；
+ * 若将来出现"打出后仍留在处理区"的读取方（无懈机制重设计等），把 settle 交给调用方。
+ * 支持转化牌（龙胆/武圣/倾国）与多牌源（丈八蛇矛）。
+ */
+export async function playUsedCard(
+  game: Game, player: Player, card: Card | UsedCard,
+): Promise<Card[]> {
+  const uc = materializeUsedCard(game, card);
+  await enterUsedCard(game, uc, { kind: 'processing' }, { reason: 'play' });
+  await settleUsedCard(game, uc, 'play');
+  return uc.physicalCards;
 }

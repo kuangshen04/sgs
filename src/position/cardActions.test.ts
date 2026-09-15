@@ -8,7 +8,7 @@ import { describe, it, expect } from 'vitest';
 import { freshGame, giveHand, makeUniqueCard, equipAt, placeJudgment } from '../test-utils.js';
 
 import {
-  discardCards, drawCards, getCardArea, giveCards, moveCards, peekTop, playFromHand, reshuffle,
+  discardCards, drawCards, getCardArea, giveCards, moveCards, peekTop, reshuffle,
   takeTop, takeBottom, putTop, putBottom, findInDeck, findInDeckAndDiscard,
 } from './cardActions.js';
 import { moveUsedCard } from './usedCardActions.js';
@@ -167,35 +167,6 @@ describe('牌堆原语', () => {
     const found = findInDeckAndDiscard(g, (card) => card.type === CardType.Shan);
 
     expect(found).toEqual([discardShan]);
-  });
-});
-
-// ============================================================
-// playFromHand — 打出原语
-// ============================================================
-
-describe('playFromHand', () => {
-  it('把牌从手牌移入弃牌堆', async () => {
-    const g = freshGame();
-    const player = g.state.players[0];
-    giveHand(player, CardType.Sha, CardType.Tao);
-    const card = player.hand.cards[0];
-
-    await playFromHand(g, player, card);
-
-    expect(player.hand.cards.map((c) => c.type)).toEqual([CardType.Tao]);
-    expect(g.state.discardPile.cards).toContain(card);
-  });
-
-  it('牌不在手牌 → 不重复入弃牌堆', async () => {
-    const g = freshGame();
-    const player = g.state.players[0];
-    giveHand(player, CardType.Tao);
-    const phantom = makeUniqueCard(CardType.Sha);
-
-    await playFromHand(g, player, phantom);
-
-    expect(g.state.discardPile.cards).not.toContain(phantom);
   });
 });
 

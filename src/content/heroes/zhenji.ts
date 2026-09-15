@@ -3,7 +3,7 @@
 // ============================================================
 
 import { judge, takeFromDiscard } from '../../position/cardActions.js';
-import { playUsedCard } from '../../position/cardActions.js';
+import { playUsedCard } from '../../position/usedCardActions.js';
 import { cardEmoji, displayNumber, asUsedCard } from '../cardRegistry.js';
 import { askYesNo, handCardsStep, selectedCards } from '../../decision/choose.js';
 import { subjectIsOwner } from '../../effects/skills.js';

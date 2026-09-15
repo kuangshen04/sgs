@@ -12,7 +12,7 @@ cardRegistry.register({
   type: CardType.LeBu,
   name: '乐不思蜀',
   emoji: '😄',
-  content: async () => {}, // 使用时无效果（置入判定区由 useCard 处理）
+  content: async () => {}, // 使用效果 = UC 迁入目标判定区（引擎统一处理，见 flow/useCard.ts）
   delayContent: async (game, target, judgeCard) => {
     if (judgeCard.suit === '♥') {
       console.log(`  ${target.name} 的乐不思蜀判定为红桃，无事发生`);
@@ -38,7 +38,7 @@ cardRegistry.register({
   type: CardType.ShanDian,
   name: '闪电',
   emoji: '⚡',
-  content: async () => {}, // 使用时无效果（置入判定区由 useCard 处理）
+  content: async () => {}, // 使用效果 = UC 迁入目标判定区（引擎统一处理，见 flow/useCard.ts）
   delayContent: async (game, target, judgeCard, uc) => {
     const explode = judgeCard.suit === '♠' && judgeCard.number >= 2 && judgeCard.number <= 9;
     if (explode) {

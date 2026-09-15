@@ -307,20 +307,36 @@ describe('useCard — 五谷丰登', () => {
 });
 
 describe('useCard — 乐不思蜀（延时锦囊）', () => {
-  it('使用时直接置入目标判定区，不能被无懈', async () => {
+  it('使用时置入目标判定区（目标无无懈）', async () => {
     const g = freshGame();
     const attacker = g.state.players[0];
     const target = g.state.players[1];
     giveHand(attacker, CardType.LeBu);
-    giveHand(target, CardType.WuXie); // 目标有无懈也不应响应
+    giveHand(target, CardType.Sha);
     const card = attacker.hand.cards[0];
 
     await useCard(g, { player: attacker, card, targets: [target] });
 
     expect(attacker.hand.cards.length).toBe(0);
     expect(target.judgment.cards.map((c) => c.id)).toContain(card.id); // 置入判定区
-    expect(target.hand.cards.map((c) => c.type)).toEqual([CardType.WuXie]); // 无懈未打出
     expect(g.state.discardPile.cards.find((c) => c.id === card.id)).toBeUndefined(); // 不在弃牌堆
+  });
+
+  it('使用时也可被无懈可击抵消（R2：延时锦囊走统一的目标窗口）', async () => {
+    const g = freshGame();
+    const attacker = g.state.players[0];
+    const target = g.state.players[1];
+    giveHand(attacker, CardType.LeBu);
+    giveHand(target, CardType.WuXie); // 目标有无懈 → 无懈 AI 保护自己
+    const card = attacker.hand.cards[0];
+
+    await useCard(g, { player: attacker, card, targets: [target] });
+
+    expect(attacker.hand.cards.length).toBe(0);
+    expect(target.judgment.cards).toHaveLength(0);                  // 未置入判定区
+    expect(target.hand.cards).toHaveLength(0);                      // 无懈已打出
+    expect(g.state.discardPile.cards.map((c) => c.type).sort())
+      .toEqual([CardType.LeBu, CardType.WuXie].sort());             // 乐不思蜀与被抵消的无懈都进弃牌堆
   });
 });
 

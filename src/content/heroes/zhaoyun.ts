@@ -4,7 +4,7 @@
 
 import { cardRegistry, asUsedCard } from '../cardRegistry.js';
 import { handCardsStep, targetsStep, computeTargetOptions, selectedCards, selectedPlayers } from '../../decision/choose.js';
-import { playUsedCard } from '../../position/cardActions.js';
+import { playUsedCard } from '../../position/usedCardActions.js';
 import { defineSkill } from '../../effects/effects.js';
 import { heroRegistry } from '../heroRegistry.js';
 import { CardType } from '../../types.js';

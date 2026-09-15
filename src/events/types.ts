@@ -3,6 +3,7 @@
 // ============================================================
 
 import type { Card, CardLocation, CardMoveReason, Player, RespondMarks, UsedCard } from '../types.js';
+import type { UsedCardInstance } from '../position/usedCards.js';
 
 /** 事件名常量 */
 export const EventType = {
@@ -85,7 +86,8 @@ export interface TargetingEventData {
 
 export interface UseCardEventData {
   player: Player;
-  card: UsedCard;
+  /** 本次使用对应的 UC（规则身份 + 实体组成 + 容器位置；读规则读 UC，演进 3.5） */
+  card: UsedCardInstance;
   targets: Player[];
   /** 响应过程状态（无双/铁骑等 targeting.after 写入，响应流程读取） */
   marks?: RespondMarks;

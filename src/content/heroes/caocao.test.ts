@@ -56,6 +56,25 @@ describe('奸雄（曹操技能）', () => {
     expect(caocao.hand.cards.length).toBe(0);
   });
 
+  it('多牌源的杀（丈八蛇矛式两张牌当杀）→ 整条 UC 获得，剩余实体牌不被破坏', async () => {
+    const g = freshGame({}, caocaoHeroes);
+    const attacker = g.state.players[0];
+    const caocao = g.state.players[1];
+    const a = makeUniqueCard(CardType.Sha);
+    const b = makeUniqueCard(CardType.Tao);
+    attacker.hand.replaceAll([a, b]);
+
+    // 转化规则产出的多牌 UC（R4 国色/丈八走同一条路径）
+    await useCard(g, {
+      player: attacker,
+      card: { type: CardType.Sha, name: '杀', suit: '♠', number: 1, physicalCards: [a, b] },
+      targets: [caocao],
+    });
+
+    expect(caocao.hp).toBe(3);
+    expect(caocao.hand.cards.map((c) => c.id).sort()).toEqual([a.id, b.id].sort());
+  });
+
   it('刚烈反击伤害不误归原杀（曹操用杀被反击，不得获得杀）', async () => {
     const g = freshGame({}, ['曹操', '夏侯惇', '孙权']);
     const caocao = g.state.players[0];
