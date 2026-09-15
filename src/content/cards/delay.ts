@@ -4,7 +4,7 @@
 
 import { CardTag, CardType } from '../../types.js';
 import { cardRegistry, displayNumber } from '../cardRegistry.js';
-import { moveUsedCard } from '../../position/usedCardActions.js';
+import { moveUsedCard, hasJudgmentUsedCardNamed } from '../../position/usedCardActions.js';
 import { damage } from '../../flow/life.js';
 import { effectRegistry } from '../../effects/persistentEffects.js';
 
@@ -47,16 +47,19 @@ cardRegistry.register({
       );
       await damage(game, { target, amount: 3 }); // 雷电伤害无来源
     } else {
-      // 判定非黑桃2~9 → UC 迁移到下家（座位顺序中下一名存活角色）的判定区
+      // 判定非黑桃2~9 → 按座位（行动）顺序找第一个**可以成为闪电目标**的角色：
+      // 跳过已死的与"判定区已有同名（闪电）UC"的；都没有 → 不迁移，由判定阶段收尾进弃牌堆。
       const players = game.state.players;
       const start = players.indexOf(target);
-      for (let i = 1; i <= players.length; i++) {
+      for (let i = 1; i < players.length; i++) {
         const next = players[(start + i) % players.length];
         if (!next.alive) continue;
+        if (hasJudgmentUsedCardNamed(game, next, uc.name)) continue;
         await moveUsedCard(game, uc, { kind: 'judgment', player: next }, { reason: 'transfer' });
         console.log(`  ${target.name} 的闪电判定非黑桃2~9，移到 ${next.name} 的判定区`);
-        break;
+        return;
       }
+      console.log(`  ${target.name} 的闪电判定非黑桃2~9，但无人可以承接，闪电进入弃牌堆`);
     }
   },
   tags: [CardTag.Trick, CardTag.Delay],

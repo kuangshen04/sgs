@@ -139,6 +139,14 @@ export async function settleUsedCard(
 }
 
 /**
+ * 判定区是否已有同名 UC —— "判定区同名 UC 只能存在 1 张"规则用（读规则读 UC）：
+ * 延时锦囊不能以"判定区已有同名 UC"的角色为目标；闪电转移同样跳过这类角色。
+ */
+export function hasJudgmentUsedCardNamed(game: Game, player: Player, name: string): boolean {
+  return game.usedCards.at({ kind: 'judgment', player }).some((uc) => uc.name === name);
+}
+
+/**
  * 装备：把 UC（或实体牌）置入对应槽位（顶掉旧装备）；返回被顶掉的旧装备。
  * 两条路径共用：直接装备（UC 尚在手牌 → enter）与"装备牌的使用效果"
  * （UC 已在处理区 → move，见 flow/useCard.ts）；旧装备走一次 replace 移动离区

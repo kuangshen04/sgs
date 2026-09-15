@@ -145,4 +145,33 @@ describe('judgePhase', () => {
     expect(next.judgment.cards.map((c) => c.id)).toContain(shandian.id);
     expect(g.state.discardPile.cards.find((c) => c.id === shandian.id)).toBeUndefined();
   });
+
+  it('闪电转移跳过判定区已有闪电的角色（判定区同名 UC 只能 1 张）', async () => {
+    const g = freshGame();
+    const [p0, p1, p2] = g.state.players;
+    const shandian = makeUniqueCard(CardType.ShanDian);
+    placeJudgment(g, p0, shandian);
+    placeJudgment(g, p1, makeUniqueCard(CardType.ShanDian)); // 下家已有闪电 → 跳过
+    g.state.deck.replaceAll([makeUniqueCard(CardType.Tao, '♥', 5)]);
+
+    await judgePhase(g, { player: p0 });
+
+    expect(p1.judgment.cards).toHaveLength(1);                        // 未被叠加
+    expect(p2.judgment.cards.map((c) => c.id)).toContain(shandian.id); // 落到再下一个
+  });
+
+  it('无人可以承接闪电 → 闪电进弃牌堆', async () => {
+    const g = freshGame({}, ['刘备', '曹操']); // 2 人局：唯一的下家已有闪电
+    const [p0, p1] = g.state.players;
+    const shandian = makeUniqueCard(CardType.ShanDian);
+    placeJudgment(g, p0, shandian);
+    placeJudgment(g, p1, makeUniqueCard(CardType.ShanDian));
+    g.state.deck.replaceAll([makeUniqueCard(CardType.Tao, '♥', 5)]);
+
+    await judgePhase(g, { player: p0 });
+
+    expect(p1.judgment.cards).toHaveLength(1);
+    expect(g.state.discardPile.cards.map((c) => c.id)).toContain(shandian.id);
+    expect(g.usedCards.size()).toBe(1); // 只剩 p1 判定区的闪电 UC
+  });
 });

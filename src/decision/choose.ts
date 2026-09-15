@@ -7,9 +7,10 @@
 // ============================================================
 
 import type { Card, Player, UsedCard } from '../types.js';
-import { CardType } from '../types.js';
+import { CardTag, CardType } from '../types.js';
 import { cardRegistry, asUsedCard } from '../content/cardRegistry.js';
 import type { CardDef } from '../content/cardRegistry.js';
+import { hasJudgmentUsedCardNamed } from '../position/usedCardActions.js';
 import type { Game } from '../game.js';
 import type { AreaName } from '../position/areas.js';
 import { equipmentCards } from '../position/areas.js';
@@ -51,7 +52,11 @@ export function computeCardOptions(
     .map(({ card, def }) => ({ card, def: def! }));
 }
 
-/** 计算某张效果牌（可能是虚拟牌）的合法目标（规则：targetFilter + 距离/免疫等） */
+/**
+ * 计算某张效果牌（可能是虚拟牌）的合法目标（规则：targetFilter + 距离/免疫等）。
+ * 延时锦囊另加一条通用限制：**判定区已有同名 UC 的角色不能成为目标**
+ * （"判定区同名 UC 只能存在 1 张"；读规则读 UC，见演进 3.5）。
+ */
 export function computeTargetOptions(
   game: Game,
   card: UsedCard,
@@ -59,8 +64,11 @@ export function computeTargetOptions(
 ): TargetOption[] {
   const def = cardRegistry.get(card.type);
   if (!def) return [];
-  return def.targetFilter(player, game.state.players)
-    .map((t) => ({ player: t, index: game.state.players.indexOf(t) }));
+  let targets = def.targetFilter(player, game.state.players);
+  if (def.tags.includes(CardTag.Delay)) {
+    targets = targets.filter((t) => !hasJudgmentUsedCardNamed(game, t, card.name));
+  }
+  return targets.map((t) => ({ player: t, index: game.state.players.indexOf(t) }));
 }
 
 // ============================================================
