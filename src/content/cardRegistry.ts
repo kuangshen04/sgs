@@ -2,7 +2,7 @@
 // 三国杀最小原型 — 卡牌定义、注册表与牌堆
 // ============================================================
 
-import { Card, CardTag, CardType, Player } from '../types.js';
+import { Card, CardTag, CardType, Player, colorOfSuit } from '../types.js';
 import type { UsedCard } from '../types.js';
 import type { UsedCardInstance } from '../position/usedCards.js';
 import type { Game } from '../game.js';
@@ -83,7 +83,17 @@ export function displayNumber(n: number): string {
   }
 }
 
-/** 把物理牌包装成 UsedCard（非转化牌：physicalCards = [card]）；已是 UsedCard 则原样返回 */
+/**
+ * 效果牌身份的显示文本（花色 + 点数）；无花色/无点数时对应部分留空。
+ * 虚拟牌可能既无花色也无点数（无牌/多牌转化），避免打印成 "nullnull"。
+ */
+export function cardFaceText(card: { suit?: string | null; number?: number | null }): string {
+  if (card.suit == null && card.number == null) return '';
+  const num = card.number == null ? '' : displayNumber(card.number);
+  return `${card.suit ?? ''}${num}`;
+}
+
+/** 把物理牌包装成 UsedCard（非转化牌：physicalCards = [card]，身份按实体牌推导）；已是 UsedCard 则原样返回 */
 export function asUsedCard(card: Card | UsedCard): UsedCard {
   if ('physicalCards' in card) return card;
   return {
@@ -91,6 +101,7 @@ export function asUsedCard(card: Card | UsedCard): UsedCard {
     name: card.name,
     suit: card.suit,
     number: card.number,
+    color: colorOfSuit(card.suit),
     physicalCards: [card],
   };
 }

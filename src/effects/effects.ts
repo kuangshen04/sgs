@@ -98,6 +98,12 @@ export interface ResponseEffect extends EffectCommon {
   form: 'response';
   /** 只对哪种响应牌型生效（闪 / 杀 / 桃 / 无懈） */
   respondsTo: CardType;
+  /**
+   * 本效果成功时产出的**零牌虚拟牌**类型（如八卦阵视为打出一张闪）。
+   * 声明后由响应执行方按"打出 = UC 进处理区 → 收尾"生成一条 0 实体牌 UC；
+   * 借他人真牌（护驾/激将）不声明（牌由被借者的响应流程消费）。
+   */
+  virtualCard?: CardType;
   canUse: (game: Game, player: Player, request: ResponseRequest) => boolean;
   selectionPlan: (game: Game, player: Player, request: ResponseRequest) => SelectionPlan;
   resolve: (

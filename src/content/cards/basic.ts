@@ -4,7 +4,7 @@
 
 import { CardTag, CardType } from '../../types.js';
 import type { CardContentFn } from '../cardRegistry.js';
-import { cardRegistry, cardEmoji, displayNumber } from '../cardRegistry.js';
+import { cardRegistry, cardEmoji, cardFaceText } from '../cardRegistry.js';
 import { damage, recover } from '../../flow/life.js';
 import { distanceTo, attackRange } from '../../flow/distance.js';
 import { effectRegistry } from '../../effects/persistentEffects.js';
@@ -13,7 +13,7 @@ import { resolveShaResponse } from '../../flow/respond.js';
 const shaContent: CardContentFn = async (game, data, event) => {
   const attacker = data.player;
   console.log(
-    `  ${attacker.name} 使用了 🗡️杀 (${data.card.suit}${displayNumber(data.card.number)})，目标 ${data.targets.length} 名`,
+    `  ${attacker.name} 使用了 🗡️杀 (${cardFaceText(data.card)})，目标 ${data.targets.length} 名`,
   );
 
   const marks = event.data.marks ?? {};
@@ -34,7 +34,7 @@ const taoContent: CardContentFn = async (game, data, _event) => {
   const before = target.hp;
   await recover(game, { target, amount: 1 });
   console.log(
-    `  ${user.name} 使用了 🍑桃 (${data.card.suit}${displayNumber(data.card.number)})，` +
+    `  ${user.name} 使用了 🍑桃 (${cardFaceText(data.card)})，` +
     `${target.name} 体力恢复到 ${before}→${target.hp}/${target.maxHp}`,
   );
 };

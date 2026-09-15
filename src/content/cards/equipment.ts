@@ -197,8 +197,8 @@ registerBareEffect({
     const { card, target } = event.data as TargetingEventData;
     if (target !== owner) return false; // 只保护装备者自己
     if (card.type !== CardType.Sha) return false;
-    // 黑色杀（♠/♣）对装备者无效
-    return card.suit === '♠' || card.suit === '♣';
+    // 黑色杀对装备者无效（读 UC 的**颜色**：多牌转化异色则无颜色 → 仁王盾不生效）
+    return card.color === 'black';
   },
   run: async (game, event, owner) => {
     const { card, target } = event.data as TargetingEventData;
@@ -333,13 +333,14 @@ registerBareEffect({
   },
 });
 
+/**
+ * 丈八蛇矛：两张手牌当【杀】——**多牌转化**，故不声明花色/点数
+ * （引擎按转化规则推导：无花色无点数；两张同色则有该颜色，异色则无颜色）。
+ */
 function makeZhangbaSha(sources: Card[]): UsedCard {
-  const source = sources[0];
   return {
     type: CardType.Sha,
     name: '杀',
-    suit: source.suit,
-    number: source.number,
     physicalCards: sources,
   };
 }
@@ -471,6 +472,7 @@ registerBareEffect({
   equipType: CardType.BaGuaZhen,
   name: '八卦阵',
   respondsTo: CardType.Shan,
+  virtualCard: CardType.Shan, // 成功时视为打出一条零牌虚拟【闪】（无花色/点数/颜色）
   canUse: () => true, // 归属（装备八卦阵）由 effects.ts 判定
   selectionPlan: () => ({
     nextStep: () => null,

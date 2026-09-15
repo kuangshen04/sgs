@@ -16,7 +16,7 @@ import { CardTag } from '../types.js';
 import type { Card, Player, UsedCard } from '../types.js';
 import { EventType, GameEvent } from '../events/index.js';
 import type { TargetingEventData, UseCardEventData } from '../events/index.js';
-import { cardRegistry, cardEmoji, displayNumber } from '../content/cardRegistry.js';
+import { cardRegistry, cardEmoji, cardFaceText } from '../content/cardRegistry.js';
 import {
   enterUsedCard, equipCard, materializeUsedCard, moveUsedCard, settleUsedCard,
 } from '../position/usedCardActions.js';
@@ -101,7 +101,7 @@ export async function useCard(
               await moveUsedCard(game, uc, { kind: 'judgment', player: target }, { reason: 'use' });
               console.log(
                 `  ${event.data.player.name} 使用了 ${cardEmoji(uc.type)}` +
-                `(${uc.suit}${displayNumber(uc.number)})，置入 ${target.name} 的判定区`,
+                `(${cardFaceText(uc)})，置入 ${target.name} 的判定区`,
               );
             }
           } else if (def?.tags.includes(CardTag.Equip)) {
@@ -110,7 +110,7 @@ export async function useCard(
             const replaced = await equipCard(game, target, uc);
             console.log(
               `  ${event.data.player.name} 装备了 ${cardEmoji(uc.type)}` +
-              `(${uc.suit}${displayNumber(uc.number)})` +
+              `(${cardFaceText(uc)})` +
               (replaced ? `，顶掉 ${cardEmoji(replaced.type)}` : ''),
             );
           } else if (def) {

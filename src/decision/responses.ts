@@ -7,8 +7,10 @@
 
 import type { Game } from '../game.js';
 import type { Card, Player } from '../types.js';
-import { asUsedCard } from '../content/cardRegistry.js';
-import { playUsedCard } from '../position/usedCardActions.js';
+import { asUsedCard, cardRegistry } from '../content/cardRegistry.js';
+import {
+  enterUsedCard, playUsedCard, settleUsedCard,
+} from '../position/usedCardActions.js';
 import { useCard } from '../flow/useCard.js';
 import { effectLordGate, effectOwnedBy, responseEffectsFor } from '../effects/effects.js';
 import type { ResponseEffect, ResponseOutcome, ResponseRequest } from '../effects/effects.js';
@@ -96,7 +98,20 @@ export async function executeResponse(
   }
   if (action.group === 'rule') {
     const effect = action.data as ResponseEffect;
-    return effect.resolve(game, player, request, answers);
+    const resolved = await effect.resolve(game, player, request, answers);
+    // 零牌虚拟牌（八卦阵视为闪）：同样按"打出 = UC 进处理区 → 收尾"结算
+    if (resolved === 'done' && effect.virtualCard) {
+      const uc = game.usedCards.create(
+        {
+          type: effect.virtualCard,
+          name: cardRegistry.get(effect.virtualCard)?.name ?? effect.virtualCard,
+        },
+        [],
+      );
+      await enterUsedCard(game, uc, { kind: 'processing' }, { reason: 'play' });
+      await settleUsedCard(game, uc, 'play');
+    }
+    return resolved;
   }
   return 'done'; // decline 由调用方在此之前处理
 }

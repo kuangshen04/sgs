@@ -63,16 +63,34 @@ export interface Card {
   number: number; // 1-13
 }
 
+/** 牌的颜色（由花色派生；无花色 → 无颜色） */
+export type CardColor = 'red' | 'black';
+
+/** 花色 → 颜色；无花色返回 null */
+export function colorOfSuit(suit: string | null | undefined): CardColor | null {
+  if (suit === '♥' || suit === '♦') return 'red';
+  if (suit === '♠' || suit === '♣') return 'black';
+  return null;
+}
+
 /**
  * 一次“使用中的牌”：效果牌 / 虚拟牌描述符。
  * 与物理 Card 不同，它不占任何 CardLocation；physicalCards 是本次使用
  * 实际消耗并进入处理区的实体牌。
+ *
+ * 规则身份（花色/点数/颜色）由实体组成**推导**（标包转化规则，见 usedCards.deriveCardFace）：
+ *   - 单牌转化 → 继承该实体牌的花色与点数；
+ *   - 无牌转化 → 无花色、无点数、无颜色；
+ *   - 多牌转化 → 无花色、无点数；所有实体牌同色则有该颜色，否则无颜色；
+ *   - 特殊声明 → 以声明为准。
+ * 三个字段因此可省略（= 交给引擎推导）；UC 实例上的取值是推导结果（可为 null）。
  */
 export interface UsedCard {
   type: CardType;
   name: string;
-  suit: string;
-  number: number;
+  suit?: string | null;
+  number?: number | null;
+  color?: CardColor | null;
   physicalCards: Card[];
 }
 

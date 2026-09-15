@@ -3,7 +3,7 @@
 // 效果装载由 createGame 内置（触发器随局隔离）。
 // ============================================================
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 import { freshGame, giveHand, makeUniqueCard, equipAt } from '../test-utils.js';
 
@@ -13,6 +13,8 @@ import { choosePlayAction } from '../decision/playChoices.js';
 
 import { cardRegistry } from './cardRegistry.js';
 import { CardTag, CardType } from '../types.js';
+import type { UsedCardInstance } from '../position/usedCards.js';
+import { verifyCardState } from '../position/cardAreaCheck.js';
 import { cardsInAreas } from '../position/areas.js';
 
 describe('麒麟弓（装备触发）', () => {
@@ -122,6 +124,26 @@ describe('仁王盾（装备触发）', () => {
     await useCard(g, { player: attacker, card: sha, targets: [defender] });
 
     expect(defender.hp).toBe(hpBefore - 1);
+  });
+
+  it('多牌转化的杀只有同色才是"黑色杀"（异色无颜色 → 仁王盾不生效）', async () => {
+    const g = freshGame();
+    const attacker = g.state.players[0];
+    const defender = g.state.players[1];
+    equipAt(g, defender, makeUniqueCard(CardType.RenWangDun));
+    const black = makeUniqueCard(CardType.Sha, '♠', 3);
+    const red = makeUniqueCard(CardType.Tao, '♥', 4);
+    attacker.hand.replaceAll([black, red]);
+    const hpBefore = defender.hp;
+
+    // 两张牌当杀（多牌转化）：异色 → 无颜色
+    await useCard(g, {
+      player: attacker,
+      card: { type: CardType.Sha, name: '杀', physicalCards: [black, red] },
+      targets: [defender],
+    });
+
+    expect(defender.hp).toBe(hpBefore - 1); // 仁王盾未拦下
   });
 });
 
@@ -368,5 +390,26 @@ describe('八卦阵（响应规则）', () => {
     expect(defender.hp).toBe(hpBefore);
     expect(defender.hand.cards.length).toBe(0); // 八卦阵黑失败后出了真闪
     expect(g.state.discardPile.cards).toContain(realShan);
+  });
+
+  it('判定红 → 产出零牌虚拟【闪】UC（无花色/点数/颜色，随打出流程清理）', async () => {
+    const g = freshGame();
+    const attacker = g.state.players[0];
+    const defender = g.state.players[1];
+    attacker.hand.replaceAll([makeUniqueCard(CardType.Sha)]);
+    equipAt(g, defender, makeUniqueCard(CardType.BaGuaZhen));
+    g.state.deck.replaceAll([makeUniqueCard(CardType.Tao, '♥', 5)]);
+    const spy = vi.spyOn(g.usedCards, 'create');
+
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [defender] });
+
+    const virtual = spy.mock.results
+      .map((r) => r.value as UsedCardInstance)
+      .find((uc) => uc.type === CardType.Shan && uc.physicalCards.length === 0);
+    expect(virtual).toBeDefined();
+    expect([virtual!.suit, virtual!.number, virtual!.color]).toEqual([null, null, null]);
+    expect(virtual!.loc).toBeNull();                        // 打出流程结束即清理（只剩八卦阵自己的 UC）
+    expect(g.usedCards.all().map((uc) => uc.name)).toEqual(['八卦阵']);
+    expect(verifyCardState(g)).toEqual([]);
   });
 });

@@ -5,7 +5,7 @@
 import { CardTag, CardType } from '../../types.js';
 import type { Player } from '../../types.js';
 import type { CardContentFn } from '../cardRegistry.js';
-import { cardRegistry, cardEmoji, displayNumber } from '../cardRegistry.js';
+import { cardRegistry, cardEmoji, cardFaceText } from '../cardRegistry.js';
 import { drawCards, moveCards, takeTop } from '../../position/cardActions.js';
 import { useCard } from '../../flow/useCard.js';
 import { damage, recover } from '../../flow/life.js';
@@ -24,7 +24,7 @@ const wuzhongContent: CardContentFn = async (game, data, _event) => {
   const before = player.hand.cards.length;
   await drawCards(game, { target: player, count: 2 });
   console.log(
-    `  ${player.name} 使用了 📜无中生有 (${data.card.suit}${displayNumber(data.card.number)})，` +
+    `  ${player.name} 使用了 📜无中生有 (${cardFaceText(data.card)})，` +
     `摸了 ${player.hand.cards.length - before} 张牌`,
   );
 };
@@ -33,7 +33,7 @@ const juedouContent: CardContentFn = async (game, data, _event) => {
   const initiator = data.player;
   const target = data.targets[0];
   console.log(
-    `  ${initiator.name} 对 ${target.name} 使用了 ⚔️决斗 (${data.card.suit}${displayNumber(data.card.number)})`,
+    `  ${initiator.name} 对 ${target.name} 使用了 ⚔️决斗 (${cardFaceText(data.card)})`,
   );
 
   let current = target;
@@ -56,7 +56,7 @@ const juedouContent: CardContentFn = async (game, data, _event) => {
 const nanmanContent: CardContentFn = async (game, data, _event) => {
   const user = data.player;
   console.log(
-    `  ${user.name} 使用了 🐘南蛮入侵 (${data.card.suit}${displayNumber(data.card.number)})！` +
+    `  ${user.name} 使用了 🐘南蛮入侵 (${cardFaceText(data.card)})！` +
     `所有其他角色必须打出杀`,
   );
 
@@ -72,7 +72,7 @@ const nanmanContent: CardContentFn = async (game, data, _event) => {
 const wanjianContent: CardContentFn = async (game, data, _event) => {
   const user = data.player;
   console.log(
-    `  ${user.name} 使用了 🏹万箭齐发 (${data.card.suit}${displayNumber(data.card.number)})！` +
+    `  ${user.name} 使用了 🏹万箭齐发 (${cardFaceText(data.card)})！` +
     `所有其他角色必须打出闪`,
   );
 
@@ -88,7 +88,7 @@ const wanjianContent: CardContentFn = async (game, data, _event) => {
 const taoyuanContent: CardContentFn = async (game, data, _event) => {
   const user = data.player;
   console.log(
-    `  ${user.name} 使用了 🌸桃园结义 (${data.card.suit}${displayNumber(data.card.number)})！` +
+    `  ${user.name} 使用了 🌸桃园结义 (${cardFaceText(data.card)})！` +
     `所有角色回复 1 点体力`,
   );
 
@@ -105,7 +105,7 @@ const wuguContent: CardContentFn = async (game, data, _event) => {
   const pool = [...revealed];
   console.log(`  ${user.name} 使用了 🌾五谷丰登！亮出 ${pool.length} 张牌`);
   for (const c of pool) {
-    console.log(`    ${cardEmoji(c.type)}(${c.suit}${displayNumber(c.number)})`);
+    console.log(`    ${cardEmoji(c.type)}(${cardFaceText(c)})`);
   }
 
   // 从使用者开始按座次，每人选一张
@@ -144,7 +144,7 @@ const guoheContent: CardContentFn = async (game, data, _event) => {
     to: { zone: 'discardPile' }, cards: [card], reason: 'discard',
   });
   console.log(
-    `  弃置了 ${cardEmoji(card.type)} (${card.suit}${displayNumber(card.number)})`,
+    `  弃置了 ${cardEmoji(card.type)} (${cardFaceText(card)})`,
   );
 };
 
@@ -162,7 +162,7 @@ const shunshouContent: CardContentFn = async (game, data, _event) => {
     to: { player: user, zone: 'hand' }, cards: [card], reason: 'give',
   });
   console.log(
-    `  获得了 ${cardEmoji(card.type)} (${card.suit}${displayNumber(card.number)})`,
+    `  获得了 ${cardEmoji(card.type)} (${cardFaceText(card)})`,
   );
 };
 

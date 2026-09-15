@@ -16,7 +16,9 @@
 // 本模块只有类型 + 存储 + 纯谓词，不产生任何物理移动（那是 usedCardActions）。
 // ============================================================
 
-import type { Card, CardLocation, CardType, Player } from '../types.js';
+import type { Card, CardColor, CardLocation, CardType, Player } from '../types.js';
+import { colorOfSuit } from '../types.js';
+import type { UsedCard } from '../types.js';
 import type { Game } from '../game.js';
 
 /** 装备槽位（UC 层分类；也是实体牌在装备区的实际落点） */
@@ -26,12 +28,45 @@ export type EquipSlot = 'weapon' | 'armor' | 'defensiveHorse' | 'offensiveHorse'
 export const EQUIP_SLOTS: readonly EquipSlot[] =
   ['weapon', 'armor', 'defensiveHorse', 'offensiveHorse'];
 
-/** UC 的规则身份（Card 与 UsedCard 都满足这个形状） */
+/** UC 的规则身份声明：`type/name` 必填；花色/点数/颜色可省略 = 由实体组成推导（特殊声明优先） */
 export interface CardShape {
   type: CardType;
   name: string;
-  suit: string;
-  number: number;
+  suit?: string | null;
+  number?: number | null;
+  color?: CardColor | null;
+}
+
+/** 推导完成的规则身份（UC 实例上的取值） */
+export interface CardFace {
+  suit: string | null;
+  number: number | null;
+  color: CardColor | null;
+}
+
+/**
+ * 效果牌身份推导（标包转化规则）：**逐字段**"声明优先、其余按实体组成推导"。
+ *   - 单牌转化 → 未声明的项继承该实体牌的花色与点数；
+ *   - 无牌转化 → 未声明的项为空（无花色、无点数、无颜色）；
+ *   - 多牌转化 → 未声明的花色/点数为空；颜色取"全部实体牌同色"的结果，异色则无颜色；
+ *   - 特殊声明 → 声明了哪一项就以哪一项为准。
+ */
+export function deriveCardFace(as: CardShape, physicalCards: Card[]): CardFace {
+  const single = physicalCards.length === 1 ? physicalCards[0] : null;
+  const suit = as.suit !== undefined ? as.suit : (single?.suit ?? null);
+  const number = as.number !== undefined ? as.number : (single?.number ?? null);
+  let color: CardColor | null;
+  if (as.color !== undefined) {
+    color = as.color;                       // ① 显式声明颜色
+  } else if (as.suit !== undefined) {
+    color = colorOfSuit(as.suit);           // ② 声明了花色 → 颜色随花色
+  } else if (single) {
+    color = colorOfSuit(single.suit);       // ③ 单牌转化 → 随实体牌花色
+  } else {                                  // ④ 无牌/多牌转化 → 全部同色才有颜色
+    const colors = new Set(physicalCards.map((c) => colorOfSuit(c.suit)));
+    color = colors.size === 1 ? [...colors][0] : null;
+  }
+  return { suit: suit ?? null, number: number ?? null, color: color ?? null };
 }
 
 /** 需要 UC 承载的容器（装备槽 / 判定区）—— 公开 moveCards 对这些终点硬报错 */
@@ -47,13 +82,17 @@ export type UsedCardZoneLocation =
 export type UsedCardLocation = UsedCardZoneLocation | { kind: 'processing' };
 
 /**
- * UsedCard 实体：规则身份（`type/name/suit/number` 即"视为什么牌"）+ 实体组成 + 容器位置。
- * 转化 = 构造时给出不同于实体牌的规则身份（如国色：方块牌 → 乐不思蜀）；
- * 无转化时两者相同（"视为自身"只是默认构造，不是写死的假设）。
+ * UsedCard 实体：规则身份（`type/name/suit/number/color` 即"视为什么牌"）+ 实体组成 + 容器位置。
+ * 身份由 `create` 按 `deriveCardFace` 推导（转化 = 构造时给出不同的 `type/name`，或特殊声明）；
+ * 无转化时身份与实体牌相同（"视为自身"只是默认推导的结果，不是写死的假设）。
  */
-export interface UsedCardInstance extends CardShape {
+export interface UsedCardInstance extends UsedCard {
   /** 本局内唯一的 UC 身份（事件与规则引用"这一条 UC"用） */
   id: number;
+  /** 推导完成的规则身份（无花色/点数/颜色时为 null） */
+  suit: string | null;
+  number: number | null;
+  color: CardColor | null;
   /** 实体组成（多对一；0 牌虚拟牌为空数组） */
   physicalCards: Card[];
   /** 当前容器位置；null = 刚生成尚未入容器，或已退出 */
@@ -72,7 +111,7 @@ export interface UsedCardHooks {
 }
 
 export interface UsedCardStore {
-  /** 生成一条 UC（**不入容器**）：规则身份取 as，实体组成取 physicalCards（默认空 = 0 牌虚拟） */
+  /** 生成一条 UC（**不入容器**）：规则身份取 as（可省略花色/点数/颜色 = 由实体组成推导） */
   create(as: CardShape, physicalCards?: Card[]): UsedCardInstance;
   /** 登记入容器：写反查索引 + 落 loc/seq（重复绑定、已在容器中均抛错） */
   bind(uc: UsedCardInstance, loc: UsedCardLocation): void;
@@ -94,9 +133,11 @@ export function createUsedCardStore(): UsedCardStore {
 
   return {
     create(as: CardShape, physicalCards: Card[] = []): UsedCardInstance {
+      const face = deriveCardFace(as, physicalCards);
       return {
         id: nextId++,
-        type: as.type, name: as.name, suit: as.suit, number: as.number,
+        type: as.type, name: as.name,
+        suit: face.suit, number: face.number, color: face.color,
         physicalCards, loc: null, seq: 0,
       };
     },

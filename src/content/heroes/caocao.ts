@@ -3,7 +3,7 @@
 // ============================================================
 
 import { exitUsedCard, materializeUsedCard } from '../../position/usedCardActions.js';
-import { cardEmoji, displayNumber } from '../cardRegistry.js';
+import { cardEmoji, cardFaceText } from '../cardRegistry.js';
 import { resolvePlayResponse } from '../../flow/respond.js';
 import { defineSkill } from '../../effects/effects.js';
 import type { DamageEventData } from '../../events/index.js';
@@ -35,7 +35,7 @@ const jianxiongContent = async (game: Game, event: GameEvent<any>, owner: Player
   });
   console.log(
     `  ✨${owner.name} 发动【奸雄】！获得造成伤害的 ${cardEmoji(uc.type)} ` +
-    `(${uc.suit}${displayNumber(uc.number)})`,
+    `(${cardFaceText(uc)})`,
   );
 };
 

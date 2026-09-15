@@ -243,6 +243,58 @@ describe('UC：驻留区终点硬报错', () => {
   });
 });
 
+describe('UC：规则身份推导（花色 / 点数 / 颜色）', () => {
+  it('无转化（视为自身）：继承实体牌的花色点数与颜色', () => {
+    const g = freshGame();
+    const c = makeUniqueCard(CardType.Sha, '♥', 7);
+    const uc = g.usedCards.create(c, [c]);
+
+    expect([uc.suit, uc.number, uc.color]).toEqual(['♥', 7, 'red']);
+  });
+
+  it('单牌转化：继承源牌的花色与点数', () => {
+    const g = freshGame();
+    const source = makeUniqueCard(CardType.Sha, '♦', 9); // 国色类：方块牌当乐不思蜀
+    const uc = g.usedCards.create({ type: CardType.LeBu, name: '乐不思蜀' }, [source]);
+
+    expect([uc.type, uc.suit, uc.number, uc.color]).toEqual([CardType.LeBu, '♦', 9, 'red']);
+  });
+
+  it('无牌转化：无花色、无点数、无颜色', () => {
+    const g = freshGame();
+    const uc = g.usedCards.create({ type: CardType.JueDou, name: '决斗' }, []);
+
+    expect([uc.suit, uc.number, uc.color]).toEqual([null, null, null]);
+  });
+
+  it('多牌转化：无花色无点数；全同色则有该颜色，异色则无颜色', () => {
+    const g = freshGame();
+    const black1 = makeUniqueCard(CardType.Sha, '♠', 3);
+    const black2 = makeUniqueCard(CardType.Sha, '♣', 8);
+    const red = makeUniqueCard(CardType.Tao, '♥', 4);
+
+    const same = g.usedCards.create({ type: CardType.Sha, name: '杀' }, [black1, black2]);
+    expect([same.suit, same.number, same.color]).toEqual([null, null, 'black']);
+
+    const mixed = g.usedCards.create({ type: CardType.Sha, name: '杀' }, [black1, red]);
+    expect([mixed.suit, mixed.number, mixed.color]).toEqual([null, null, null]);
+  });
+
+  it('特殊声明优先：声明的项按声明，未声明的项按实体组成推导', () => {
+    const g = freshGame();
+    const a = makeUniqueCard(CardType.Sha, '♠', 3);
+    const b = makeUniqueCard(CardType.Sha, '♣', 8);
+
+    // 声明花色 → 该花色生效（颜色由花色派生），点数仍为多牌转化的空值
+    const declared = g.usedCards.create({ type: CardType.Sha, name: '杀', suit: '♥' }, [a, b]);
+    expect([declared.suit, declared.number, declared.color]).toEqual(['♥', null, 'red']);
+
+    // 只声明颜色
+    const colored = g.usedCards.create({ type: CardType.Sha, name: '杀', color: 'black' }, [a, b]);
+    expect([colored.suit, colored.number, colored.color]).toEqual([null, null, 'black']);
+  });
+});
+
 describe('UC：打出（响应窗口）= UC 生命周期', () => {
   it('打出：实体牌经处理区后进弃牌堆，UC 随清理销毁', async () => {
     const g = freshGame();
