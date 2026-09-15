@@ -109,12 +109,12 @@ export async function judgePhase(
             await game.triggerSystem.trigger(`${EventType.Targeting}.after`, evt);
           }, { triggers: false });
 
-          if (windowEvent.data.cancelled) {
+          // 被抵消 = 未执行效果（无判定牌）；延时牌仍在此决定收尾去向
+          // （闪电按规则集依然流向合法下家；其余牌不处理 → 收尾进弃牌堆）
+          const judgeCard = windowEvent.data.cancelled ? null : await judge(game, player);
+          if (!judgeCard) {
             console.log(`  🚫${player.name} 判定区的 ${cardEmoji(uc.type)} 被无懈可击抵消`);
-            continue;
           }
-
-          const judgeCard = await judge(game, player);
           await def.delayContent?.(game, player, judgeCard, uc);
         } finally {
           // 结算结束：仍在处理区的 UC 退出（实体牌回弃牌堆）；闪电转移等已迁走的自动跳过

@@ -9,6 +9,9 @@ import { freshGame, giveHand, makeUniqueCard, placeJudgment } from '../test-util
 
 import { judgePhase, playPhase } from './gameFlow.js';
 
+import { cardRegistry } from '../content/cardRegistry.js';
+import { moveCards } from '../position/cardActions.js';
+import { moveUsedCard } from '../position/usedCardActions.js';
 import { CardType } from '../types.js';
 
 // ============================================================
@@ -160,7 +163,7 @@ describe('judgePhase', () => {
     expect(p2.judgment.cards.map((c) => c.id)).toContain(shandian.id); // 落到再下一个
   });
 
-  it('无人可以承接闪电 → 闪电进弃牌堆', async () => {
+  it('下家已有闪电 → 闪电可绕回自己（自己的判定区此刻已空出，是合法目标）', async () => {
     const g = freshGame({}, ['刘备', '曹操']); // 2 人局：唯一的下家已有闪电
     const [p0, p1] = g.state.players;
     const shandian = makeUniqueCard(CardType.ShanDian);
@@ -170,8 +173,45 @@ describe('judgePhase', () => {
 
     await judgePhase(g, { player: p0 });
 
-    expect(p1.judgment.cards).toHaveLength(1);
-    expect(g.state.discardPile.cards.map((c) => c.id)).toContain(shandian.id);
-    expect(g.usedCards.size()).toBe(1); // 只剩 p1 判定区的闪电 UC
+    expect(p1.judgment.cards).toHaveLength(1);                        // 未被叠加
+    expect(p0.judgment.cards.map((c) => c.id)).toContain(shandian.id); // 回到自己
+    expect(g.state.discardPile.cards.map((c) => c.id)).not.toContain(shandian.id);
+  });
+
+  it('所有角色都不是闪电的合法目标 → 不迁移（由收尾进弃牌堆）', async () => {
+    // 规则集里这条分支由免疫类效果逼出（如帷幕"不能成为黑色锦囊的目标"；标包内容暂无此类效果），
+    // 故直接调用闪电的 delayContent 锁定行为：判定非爆且无人可承接 → UC 留在处理区，收尾进弃牌堆。
+    const g = freshGame({}, ['刘备', '曹操']);
+    const [p0, p1] = g.state.players;
+    const shandian = makeUniqueCard(CardType.ShanDian);
+    p0.hand.replaceAll([shandian]);
+    // 人人判定区都有同名 UC（绕过放置合法性构造；真人局里由免疫类效果造成）
+    placeJudgment(g, p0, makeUniqueCard(CardType.ShanDian));
+    placeJudgment(g, p1, makeUniqueCard(CardType.ShanDian));
+    await moveCards(g, { to: { zone: 'processing' }, cards: [shandian], reason: 'resolve' });
+    const uc = g.usedCards.create(shandian, [shandian]);
+    g.usedCards.bind(uc, { kind: 'processing' }); // 模拟判定阶段已把它移入处理区
+    const def = cardRegistry.get(CardType.ShanDian)!;
+
+    await def.delayContent!(g, p0, makeUniqueCard(CardType.Tao, '♥', 5), uc);
+
+    expect(uc.loc).toEqual({ kind: 'processing' }); // 未迁移 → 收尾会进弃牌堆
+  });
+
+  it('闪电被无懈抵消 → 未执行效果，但依然流向合法下家（不进弃牌堆）', async () => {
+    const g = freshGame({}, ['刘备', '曹操', '孙权']);
+    const [p0, p1] = g.state.players;
+    const shandian = makeUniqueCard(CardType.ShanDian);
+    placeJudgment(g, p0, shandian);
+    giveHand(p0, CardType.WuXie); // 被判定者出无懈抵消自己的闪电
+    const deckCard = makeUniqueCard(CardType.Tao, '♥', 5);
+    g.state.deck.replaceAll([deckCard]);
+
+    await judgePhase(g, { player: p0 });
+
+    expect(p0.judgment.cards).toHaveLength(0);
+    expect(p1.judgment.cards.map((c) => c.id)).toContain(shandian.id); // 流向下家
+    expect(g.state.deck.cards).toContain(deckCard);                    // 未判定，牌堆未动
+    expect(g.state.discardPile.cards.map((c) => c.id)).not.toContain(shandian.id);
   });
 });

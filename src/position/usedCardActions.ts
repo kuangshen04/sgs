@@ -147,6 +147,15 @@ export function hasJudgmentUsedCardNamed(game: Game, player: Player, name: strin
 }
 
 /**
+ * 延时锦囊能否置于该角色的判定区（**放置合法性** = 规则意义上的"合法目标"）：
+ * 存活 + 判定区无同名 UC。未来"不能成为黑色锦囊的目标"（帷幕类免疫，按 `uc.color` 判定）
+ * 等限制也在此汇合。
+ */
+export function canPlaceDelayOn(game: Game, card: UsedCard, player: Player): boolean {
+  return player.alive && !hasJudgmentUsedCardNamed(game, player, card.name);
+}
+
+/**
  * 装备：把 UC（或实体牌）置入对应槽位（顶掉旧装备）；返回被顶掉的旧装备。
  * 两条路径共用：直接装备（UC 尚在手牌 → enter）与"装备牌的使用效果"
  * （UC 已在处理区 → move，见 flow/useCard.ts）；旧装备走一次 replace 移动离区
