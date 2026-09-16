@@ -7,7 +7,8 @@
 // ============================================================
 
 import { CardTag, CardType } from '../../types.js';
-import type { Card, UsedCard } from '../../types.js';
+import type { Card, Player, UsedCard } from '../../types.js';
+import type { Game } from '../../game.js';
 import { cardRegistry, cardEmoji } from '../cardRegistry.js';
 import { discardCards, drawCards, moveCards, judge } from '../../position/cardActions.js';
 import { useCard } from '../../flow/useCard.js';
@@ -24,6 +25,8 @@ import {
   selectedPlayers,
 } from '../../decision/choose.js';
 import { registerBareEffect } from '../../effects/effects.js';
+import { disableUsedCard, restoreUsedCard } from '../../position/usedCardActions.js';
+import type { UsedCardInstance } from '../../position/usedCards.js';
 import { damage } from '../../flow/life.js';
 import { cardsInAreas, hasCardsInAreas } from '../../position/areas.js';
 
@@ -287,6 +290,51 @@ function registerBlankWeapon(
 registerBlankWeapon(CardType.QingGangJian, '青釭剑', '🗡️', 2);
 registerBlankWeapon(CardType.ZhangBaSheMao, '丈八蛇矛', '🔱', 3);
 registerBlankWeapon(CardType.FangTianHuaJi, '方天画戟', '🔱', 4);
+
+/**
+ * 青釭剑：锁定技，当你使用【杀】指定一名目标角色后，你令其防具技能无效
+ * 直到此【杀】被抵消或造成伤害。
+ *
+ * 实现要点（演进 9.5）：
+ * - 失效 = 目标**防具槽那条 UC** 的 `disabled`；装备效果归属每次查询重算，
+ *   于是该防具的一切效果（仁王盾的 targeting 取消、八卦阵的响应判定…）即刻不再归属；
+ * - 期限 = **本条【杀】使用事件的收尾**（`event.onClear`）：规则文本的
+ *   "被抵消或造成伤害" 都发生在该事件内，事件结束即复原；
+ * - 装备效果本就不参与"是否发动"的询问（`needsAsk = !!effect.skill && !effect.forced`），
+ *   故这里不需要 `forced`，锁定技语义由本定义承载。
+ */
+registerBareEffect({
+  form: 'triggered',
+  equipType: CardType.QingGangJian,
+  timing: 'targeting.after',
+  condition: (game, event, owner) => {
+    const { user, card, target } = event.data as TargetingEventData;
+    if (user !== owner) return false;
+    if (card.type !== CardType.Sha) return false;
+    return !!targetArmorUsedCard(game, target); // 目标防具槽有未失效的 UC 才需要
+  },
+  run: async (game, event, owner) => {
+    const { target } = event.data as TargetingEventData;
+    const armor = targetArmorUsedCard(game, target);
+    if (!armor) return;
+    disableUsedCard(armor);
+    console.log(`  🗡️${owner.name} 的青釭剑令 ${target.name} 的防具无效`);
+    // 期限：本条【杀】的使用事件收尾时复原（事件结束 ⇒ 已被抵消或已造成伤害）
+    const useEvent = event.getParent(EventType.UseCard) ?? event;
+    useEvent.onClear(() => {
+      restoreUsedCard(armor);
+      console.log(`  🗡️${owner.name} 的青釭剑效果结束，${target.name} 的防具复原`);
+    });
+  },
+});
+
+/** 目标装备区防具槽上的 UC（未失效者；青釭剑用） */
+function targetArmorUsedCard(
+  game: Game, target: Player,
+): UsedCardInstance | undefined {
+  const uc = game.usedCards.at({ kind: 'equipment', player: target, slot: 'armor' })[0];
+  return uc && !uc.disabled ? uc : undefined;
+}
 
 // 丈八蛇矛：两张手牌当杀（装备来源归属由 effects.ts 按 equipType 判定）
 registerBareEffect({

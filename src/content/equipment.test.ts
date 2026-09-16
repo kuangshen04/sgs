@@ -208,6 +208,80 @@ describe('雌雄双股剑（装备触发）', () => {
   });
 });
 
+describe('青釭剑（令目标防具技能无效）', () => {
+  it('使用杀指定目标后令其防具（八卦阵）失效：判定不发生、造成伤害', async () => {
+    const g = freshGame();
+    const attacker = g.state.players[0];
+    const defender = g.state.players[1];
+    equipAt(g, attacker, makeUniqueCard(CardType.QingGangJian));
+    equipAt(g, defender, makeUniqueCard(CardType.BaGuaZhen));
+    attacker.hand.replaceAll([makeUniqueCard(CardType.Sha)]);
+    const red = makeUniqueCard(CardType.Tao, '♥', 5); // 若八卦阵生效会判定出红 → 免伤
+    g.state.deck.replaceAll([red]);
+    const hpBefore = defender.hp;
+
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [defender] });
+
+    expect(defender.hp).toBe(hpBefore - 1);      // 防具失效 → 杀命中
+    expect(g.state.deck.cards).toContain(red);   // 未判定（八卦阵根本没触发）
+  });
+
+  it('期限 = 本条【杀】结算结束即复原（他人再杀时八卦阵恢复生效）', async () => {
+    const g = freshGame();
+    const [jianOwner, other, defender] = g.state.players;
+    equipAt(g, jianOwner, makeUniqueCard(CardType.QingGangJian));
+    equipAt(g, defender, makeUniqueCard(CardType.BaGuaZhen));
+    const sha = makeUniqueCard(CardType.Sha);
+    const sha2 = makeUniqueCard(CardType.Sha);
+    jianOwner.hand.replaceAll([sha]);
+    other.hand.replaceAll([sha2]);
+    const red = makeUniqueCard(CardType.Tao, '♥', 5); // 八卦阵判定红 → 免伤
+    g.state.deck.replaceAll([red]);
+
+    // 青釭剑的杀：防具失效 → 命中（且未判定）
+    await useCard(g, { player: jianOwner, card: sha, targets: [defender] });
+    const hpAfterFirst = defender.hp;
+    expect(hpAfterFirst).toBe(defender.maxHp - 1);
+
+    const armor = g.usedCards.at({ kind: 'equipment', player: defender, slot: 'armor' })[0]!;
+    expect(armor.disabled).toBe(false); // 本条杀结束即复原
+
+    // 他人（无青釭剑）再杀：八卦阵恢复生效 → 判定红 → 免伤
+    await useCard(g, { player: other, card: sha2, targets: [defender] });
+
+    expect(defender.hp).toBe(hpAfterFirst);
+    expect(g.state.deck.cards).not.toContain(red); // 判定牌已被亮出
+  });
+
+  it('目标没有防具 → 不触发（无副作用）', async () => {
+    const g = freshGame();
+    const attacker = g.state.players[0];
+    const defender = g.state.players[1];
+    equipAt(g, attacker, makeUniqueCard(CardType.QingGangJian));
+    attacker.hand.replaceAll([makeUniqueCard(CardType.Sha)]);
+    const hpBefore = defender.hp;
+
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [defender] });
+
+    expect(defender.hp).toBe(hpBefore - 1);
+    expect(g.usedCards.all().filter((uc) => uc.disabled)).toHaveLength(0);
+  });
+
+  it('非装备者使用杀（青釭剑不在自己装备区）→ 不触发', async () => {
+    const g = freshGame();
+    const [owner, attacker, defender] = g.state.players;
+    equipAt(g, owner, makeUniqueCard(CardType.QingGangJian)); // 剑在第三方身上
+    equipAt(g, defender, makeUniqueCard(CardType.BaGuaZhen));
+    attacker.hand.replaceAll([makeUniqueCard(CardType.Sha)]);
+    g.state.deck.replaceAll([makeUniqueCard(CardType.Tao, '♥', 5)]);
+    const hpBefore = defender.hp;
+
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [defender] });
+
+    expect(defender.hp).toBe(hpBefore); // 八卦阵正常生效免伤
+  });
+});
+
 describe('马匹（白板注册）', () => {
   it.each([
     [CardType.JueYing, CardTag.DefensiveHorse],

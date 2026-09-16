@@ -388,6 +388,48 @@ describe('事件历史（id / endId / history）', () => {
 });
 
 // ============================================================
+// 收尾钩子（onClear）— "临时状态活到本事件结束"
+// ============================================================
+
+describe('事件级收尾钩子 onClear', () => {
+  it('执行期间登记的钩子在收尾时执行（晚于 opts.clear）', async () => {
+    const game = makeGame();
+    const order: string[] = [];
+    const ev = new GameEvent('useCard', {}, game);
+
+    await ev.execute(async (e) => {
+      e.onClear(() => { order.push('hook1'); });
+      e.onClear(() => { order.push('hook2'); });
+      order.push('content');
+    }, { clear: () => { order.push('clear'); } });
+
+    expect(order).toEqual(['content', 'clear', 'hook1', 'hook2']);
+  });
+
+  it('content 抛错时钩子仍执行（异常路径不泄漏临时状态）', async () => {
+    const game = makeGame();
+    const order: string[] = [];
+    const ev = new GameEvent('useCard', {}, game);
+
+    await expect(ev.execute(async (e) => {
+      e.onClear(() => { order.push('hook'); });
+      throw new Error('boom');
+    })).rejects.toThrow('boom');
+
+    expect(order).toEqual(['hook']);
+    expect(game.eventStack.top).toBeNull();
+  });
+
+  it('事件已完成 → 登记钩子抛错（禁止延迟登记）', async () => {
+    const game = makeGame();
+    const ev = new GameEvent('useCard', {}, game);
+    await ev.execute(async () => {});
+
+    expect(() => ev.onClear(() => {})).toThrow(/already completed/);
+  });
+});
+
+// ============================================================
 // 历史范围查询 — findEventSince
 // ============================================================
 

@@ -25,10 +25,15 @@ export class GameEvent<T = Record<string, unknown>> {
   readonly game: Game;
   private _phase: EventPhase = 'created';
   private _parent: GameEvent<any> | null;
-  /** 全局递增 id（== game.history 下标）；execute 入史时赋值，未执行前为 -1 */
+  /** 全局递增 id（== game.history 下标；execute 入史时赋值，未执行前为 -1） */
   private _id = -1;
   /** 子树跨度终点（FreeKill end_id 等价物）；finally 定稿，叶子事件 == id */
   private _endId?: number;
+  /**
+   * 事件级收尾钩子（execute 之后仍可登记）：用于"临时状态活到本事件结束"，
+   * 如青釭剑"令其防具技能无效直到此【杀】被抵消或造成伤害"。
+   */
+  private _clearHooks: Array<(event: GameEvent<T>) => void | Promise<void>> = [];
 
   constructor(type: string, data: T, game: Game) {
     this.type = type;
@@ -81,6 +86,19 @@ export class GameEvent<T = Record<string, unknown>> {
   }
 
   /**
+   * 登记"本事件收尾时执行"的钩子（可在 execute 期间由触发效果调用）。
+   * 语义与 `opts.clear` 相同（finally 内、定稿 endId 与弹栈之前执行，异常路径也执行），
+   * 区别是登记时机不限于创建时：典型用例 = 青釭剑在 targeting 时点令防具失效，
+   * 期限 = 本条【杀】的使用事件结束。
+   */
+  onClear(hook: (event: GameEvent<T>) => void | Promise<void>): void {
+    if (this._phase === 'completed') {
+      throw new Error(`Event "${this.type}" has already completed; cannot register a clear hook.`);
+    }
+    this._clearHooks.push(hook);
+  }
+
+  /**
    * 执行事件：入史赋 id → before triggers → content → after triggers，
    * finally 中 clear → 定稿 endId → 弹栈（演进 2.2/2.4）。
    *
@@ -89,6 +107,7 @@ export class GameEvent<T = Record<string, unknown>> {
    * @param opts.triggers 默认 true：自动触发 before/after；设 false 后由 content 自己触发。
    * @param opts.clear 事件级收尾钩子：无论正常/被取消/content 抛错/GameOver 解卷都执行；
    *   执行时机 = finally 内、定稿 endId 与弹栈之前（FreeKill clear 同款顺序）。
+   *   执行期由效果登记的钩子（`onClear`）在同一时机、按登记顺序随后执行。
    */
   async execute(
     content: (event: this) => Promise<void>,
@@ -127,6 +146,7 @@ export class GameEvent<T = Record<string, unknown>> {
     } finally {
       try {
         await opts?.clear?.(this);
+        for (const hook of this._clearHooks) await hook(this);
       } finally {
         // 定稿 end_id：此时 history 尾 = 本事件子树的最后一个后代（栈纪律保证），叶子 = 自己
         this._endId = this.game.history.length - 1;

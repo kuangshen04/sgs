@@ -329,8 +329,27 @@
        顺带修掉丈八蛇矛"两张牌当杀却抄第一张的花色点数"的旧写法）；响应型效果声明 `virtualCard`
        即产出零牌虚拟 UC（八卦阵的闪）。
      - 验收：436 例绿，`tsc` 干净，整局冒烟通过。
-   - **R3 [ ] 装备技能 + 失效/复原（青釭剑）**：UC 上挂"授予技能"与失效标记；`playerHasSkill` 合并
-     武将实例与 UC 授予；青釭剑 = 禁用目标装备 UC（先查 `meta.compulsory` 抗性）。
+   - **R3 [x] 装备技能 + 失效/复原（青釭剑）** —— 接缝决策见演进 9.5（**UC 只做裸效果归属 + 失效位，
+     不绑技能语义**；何时升级的三条判据也记在那里）：
+     - **归属经 UC**：`equippedUsedCard(game, player, type)` = 该玩家装备区里未失效的那条 UC；
+       `effectOwnedBy(game, effect, owner)` 的装备分支据此判定（归属每次查询重算 ⇒
+       装备进出/失效/复原即时生效，无需 grant/revoke 同步）。
+     - **失效位**：`UsedCardInstance.disabled`，唯一写点 `disableUsedCard` / `restoreUsedCard`。
+     - **时限**：`GameEvent.onClear`（执行期可登记的事件收尾钩子，与 `opts.clear` 同时机、之前/异常路径都执行）
+       —— 青釭剑"直到此【杀】被抵消或造成伤害"= 本条【杀】使用事件的收尾。
+     - **青釭剑本体**：`targeting.after` 触发（装备效果本就不询问，锁定技语义由定义承载）；
+       `condition` 要求目标防具槽有未失效 UC；`run` 失效该 UC 并在杀的 useCard 事件 onClear 复原。
+     - **规则层查询统一带 game**（本项机械代价，独立提交 410ad7f）：`CardDef.canUse/targetFilter`、
+       `distanceTo/attackRange`、`effectRegistry.sum/has`、`collectConversionEffects` 全部带上 game。
+     - 未引入 `Compulsory` 抗性（青釭剑按原文即能废掉仁王盾这类锁定技）。
+     - 验收：454 例绿（青釭剑 4 例 + onClear 3 例），`tsc` 干净。
+   - **R3 遗留（记录在案，需后续裁决）**：**青釭剑 vs 仁王盾 的时点顺序**。仁王盾当前建模为
+     `targeting.before` 取消目标，而 `useCard` 在 cancelled 时跳过 `targeting.after` ⇒
+     青釭剑（`targeting.after`）来不及失效，黑色杀被仁王盾拦下 —— 与官方裁决
+     （青釭剑使防具无效 ⇒ 仁王盾无效 ⇒ 黑色杀命中）不符。三条候选路线：
+     ① 青釭剑改挂 `targeting.before` 并靠注册序先于仁王盾（依赖注册序，脆弱）；
+     ② 把仁王盾的"黑色【杀】对你无效"从 targeting 取消改为**结算期无效判定**（更贴规则文本，
+        但要改既有行为与测试）；③ 交给第 6 项"排序显式化"统一裁决。
    - **R4 [x] 判定区转化身份（国色）**：大乔·国色 = `conversion` 效果（`toType: LeBu`），源牌 = 方片手牌，
      目标规则直接复用【乐不思蜀】（含陆逊·谦逊 `immuneLeBu` 与同名 UC 限制）；花色/点数由 `deriveCardFace`
      单牌继承 —— 引擎侧**零特判**（判定阶段、无懈窗口、被拆/被顺全按 UC 身份走）。
