@@ -12,7 +12,7 @@ import type { Player } from '../types.js';
 import type { Game } from '../game.js';
 import type { GameEvent } from '../events/index.js';
 import { installWuxieTrigger } from '../content/cards/trick.js';
-import { askYesNo } from '../decision/choose.js';
+import { askOption, askYesNo } from '../decision/choose.js';
 import {
   activatedEffects,
   effectLordGate,
@@ -49,28 +49,109 @@ export function installEffects(game: Game): void {
   _installedGames.add(game);
 
   for (const timing of triggeredTimings()) {
-    const effects = triggeredEffectsAt(timing);
+    const effects = triggeredEffectsAt(timing); // 静态快照；归属/门槛/条件在运行期重算
     game.triggerSystem.on(timing, async (event: GameEvent<any>) => {
-      const g = event.game;
-      const subject = eventSubject(event);
-      for (const effect of effects) {
-        // 按座次询问所有存活角色（FreeKill 模型）
-        for (const player of g.state.players) {
-          if (!player.alive) continue; // 死亡后技能失效
-          if (!effectOwnedBy(g, effect, player)) continue;
-          if (!effectLordGate(g, player, effect)) continue;
-          if (effect.condition && !effect.condition(g, event, player, subject)) continue;
-          // 技能来源的"你可以"询问；强制发动（forced）与装备/裸效果不询问
-          const needsAsk = !!effect.skill && !effect.forced;
-          if (needsAsk && !(await askYesNo(g, player, `是否发动【${effect.skill}】`, true))) continue;
-          await effect.run(g, event, player);
-        }
-      }
+      await dispatchTriggered(event, effects);
     });
   }
 
   // 无懈可击响应（卡牌响应机制）
   installWuxieTrigger(game);
+}
+
+// ============================================================
+// 触发分发（演进 5.2 红线：排序必须显式，不得依赖注册/导入顺序）
+// ============================================================
+
+/**
+ * 同一时点的触发结算顺序：
+ * 1) **座次主排序**：从当前回合角色起，按行动顺序（逆时针）逐个角色处理；
+ * 2) 同一角色先执行**强制发动**的候选（`forced` 效果；装备/裸效果本就不询问），
+ *    再对可选候选逐个询问——**多个候选时由该角色选择先发动哪个**（无名杀 arrangeTrigger 同款）；
+ * 3) 每次询问前**重新评估**归属/门槛/条件（前一个效果可能改变状态）；
+ * 4) 候选默认序（AI 与将来前端的默认呈现序）= 技能效果 → 装备效果 → 裸效果，各自按定义序。
+ *
+ * 选择"放弃"即本次时点该角色的剩余候选不再发动；触发过程不进历史（演进 5.2 红线）。
+ */
+async function dispatchTriggered(
+  event: GameEvent<any>,
+  effects: readonly TriggeredEffect[],
+): Promise<void> {
+  const game = event.game;
+  const subject = eventSubject(event);
+  const players = game.state.players;
+  const start = game.state.currentIndex; // 当前回合角色
+  for (let offset = 0; offset < players.length; offset++) {
+    const player = players[(start + offset) % players.length];
+    if (!player.alive) continue;
+    await runPlayerTriggered(game, event, player, effects, subject);
+  }
+}
+
+/** 某角色在当前时点的候选效果（归属 + 主公门槛 + 条件；每次调用重算） */
+function triggerCandidates(
+  game: Game,
+  event: GameEvent<any>,
+  player: Player,
+  effects: readonly TriggeredEffect[],
+  subject: Player | undefined,
+): TriggeredEffect[] {
+  return effects.filter((e) =>
+    effectOwnedBy(game, e, player)
+    && effectLordGate(game, player, e)
+    && (!e.condition || e.condition(game, event, player, subject)));
+}
+
+/** 单个角色的触发结算：强制发动先行，可选候选由该角色决定顺序 */
+async function runPlayerTriggered(
+  game: Game,
+  event: GameEvent<any>,
+  player: Player,
+  effects: readonly TriggeredEffect[],
+  subject: Player | undefined,
+): Promise<void> {
+  const fired = new Set<TriggeredEffect>();
+
+  for (const effect of triggerCandidates(game, event, player, effects, subject)) {
+    if (effect.skill && !effect.forced) continue; // 可选效果：稍后逐个询问
+    fired.add(effect);
+    await effect.run(game, event, player);
+  }
+
+  while (true) {
+    const optional = triggerCandidates(game, event, player, effects, subject)
+      .filter((e) => !fired.has(e) && e.skill && !e.forced);
+    if (optional.length === 0) return;
+
+    let chosen: TriggeredEffect | null;
+    if (optional.length === 1) {
+      const ok = await askYesNo(game, player, `是否发动【${optional[0].skill}】`, true);
+      chosen = ok ? optional[0] : null;
+    } else {
+      // 同角色同优先级：由玩家选择先发动哪个（放弃 = 本次时点剩余候选不再发动）
+      chosen = await askTriggerChoice(game, player, optional);
+    }
+    if (!chosen) return;
+
+    fired.add(chosen);
+    await chosen.run(game, event, player);
+  }
+}
+
+/**
+ * 询问该角色下一个发动的触发效果（多候选时）。
+ * AI 决策点（真人/前端接入时在此注入）：默认取候选序第一个，永不放弃。
+ */
+async function askTriggerChoice(
+  game: Game,
+  player: Player,
+  candidates: readonly TriggeredEffect[],
+): Promise<TriggeredEffect | null> {
+  const choices = candidates.map((e, i) => ({ value: String(i), label: `【${e.skill}】` }));
+  choices.push({ value: 'skip', label: '放弃' });
+  const picked = await askOption(game, player, '选择下一个发动的技能', choices);
+  if (picked === null || picked === 'skip') return null;
+  return candidates[Number(picked)] ?? null;
 }
 
 // ============================================================
