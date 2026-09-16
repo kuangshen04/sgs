@@ -5,13 +5,14 @@
 // playChoices 只负责把它作为 action 候选接入。
 // ============================================================
 
+import type { Game } from '../game.js';
 import type { Player } from '../types.js';
 import { conversionEffects, effectOwnedBy } from './effects.js';
 import type { ConversionEffect } from './effects.js';
 
 /** 收集玩家拥有的转化效果（武将技能 + 装备武器，如武圣/龙胆/奇袭/丈八蛇矛） */
-export function collectConversionEffects(player: Player): ConversionEffect[] {
-  return conversionEffects().filter((e) => effectOwnedBy(e, player));
+export function collectConversionEffects(game: Game, player: Player): ConversionEffect[] {
+  return conversionEffects().filter((e) => effectOwnedBy(game, e, player));
 }
 
 export type { ConversionEffect } from './effects.js';

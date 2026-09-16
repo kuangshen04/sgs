@@ -26,10 +26,10 @@ cardRegistry.register({
     }
   },
   tags: [CardTag.Trick, CardTag.Delay],
-  canUse: (player, allPlayers) =>
-    allPlayers.some((p) => p !== player && p.alive && !effectRegistry.has(p, 'immuneLeBu')),
-  targetFilter: (user, allPlayers) =>
-    allPlayers.filter((p) => p !== user && p.alive && !effectRegistry.has(p, 'immuneLeBu')),
+  canUse: (game, player, allPlayers) =>
+    allPlayers.some((p) => p !== player && p.alive && !effectRegistry.has(game, p, 'immuneLeBu')),
+  targetFilter: (game, user, allPlayers) =>
+    allPlayers.filter((p) => p !== user && p.alive && !effectRegistry.has(game, p, 'immuneLeBu')),
   targetCount: 1,
   ai: {
     shouldUse: () => true,
@@ -84,7 +84,7 @@ cardRegistry.register({
   },
   tags: [CardTag.Trick, CardTag.Delay],
   canUse: () => true,
-  targetFilter: (user) => [user],
+  targetFilter: (_game, user) => [user],
   targetCount: 1,
   ai: {
     shouldUse: () => true,

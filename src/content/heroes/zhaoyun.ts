@@ -30,7 +30,7 @@ defineSkill({
       canUse: (game, player, shaUsed) => {
         const def = cardRegistry.get(CardType.Sha)!;
         return player.hand.cards.some((c) => c.type === CardType.Shan)
-          && def.canUse(player, game.state.players, shaUsed);
+          && def.canUse(game, player, game.state.players, shaUsed);
       },
       selectionPlan: (game, player) => ({
         nextStep(answers) {

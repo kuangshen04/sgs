@@ -111,7 +111,7 @@ defineSkill({
       // 规则：杀的次数/范围合法（Sha.canUse 把关）且存在蜀盟友手牌中的真杀
       canUse: (game, player, ctx) => {
         const shaDef = cardRegistry.get(CardType.Sha)!;
-        return shaDef.canUse(player, game.state.players, ctx.shaUsed)
+        return shaDef.canUse(game, player, game.state.players, ctx.shaUsed)
           && allyShaSources(game, player).length > 0;
       },
       selectionPlan: (game, player) => ({

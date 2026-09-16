@@ -36,10 +36,10 @@ export interface CardDef {
   range?: number;
   /** 卡牌标签（基本牌/锦囊牌等） */
   tags: CardTag[];
-  /** 规则层面：出牌阶段是否合法可用 */
-  canUse: (player: Player, allPlayers: Player[], shaUsed: boolean) => boolean;
+  /** 规则层面：出牌阶段是否合法可用（规则层查询统一带 game：读规则读 UC，演进 9.5） */
+  canUse: (game: Game, player: Player, allPlayers: Player[], shaUsed: boolean) => boolean;
   /** 此牌可选择的合法目标列表（规则层面） */
-  targetFilter: (user: Player, allPlayers: Player[]) => Player[];
+  targetFilter: (game: Game, user: Player, allPlayers: Player[]) => Player[];
   /** 目标数量约束（规则层面）：固定数 或 'all' 表示合法目标全部 */
   targetCount: number | 'all';
   ai: {

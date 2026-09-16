@@ -114,7 +114,7 @@ function buildPlayActions(
   }
 
   // 转化牌（武圣等）：源牌存在 + 效果牌规则合法 + AI 愿意用
-  for (const conversion of collectConversionEffects(player)) {
+  for (const conversion of collectConversionEffects(game, player)) {
     if (!conversion.canUse(game, player, shaUsed)) continue;
     if (!conversion.ai.shouldUse(game, player, shaUsed)) continue;
     actions.push({

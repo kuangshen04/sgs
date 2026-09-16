@@ -9,13 +9,13 @@
 // 实体牌**被动**离开驻留区（获得/破坏/顶装备/判定结算）走 installUsedCardHooks 装的钩子。
 // ============================================================
 
-import type { Card, CardLocation, CardMoveReason, Player, UsedCard } from '../types.js';
+import type { Card, CardLocation, CardMoveReason, CardType, Player, UsedCard } from '../types.js';
 import type { Game } from '../game.js';
 import { CardTag } from '../types.js';
 import { cardRegistry, asUsedCard } from '../content/cardRegistry.js';
 import { movePhysical, sameCardLocation } from './move.js';
 import { moveCards } from './cardActions.js';
-import { physicalLocationOf } from './usedCards.js';
+import { EQUIP_SLOTS, physicalLocationOf } from './usedCards.js';
 import type {
   CardShape, EquipSlot, UsedCardInstance, UsedCardLocation,
 } from './usedCards.js';
@@ -136,6 +136,32 @@ export async function settleUsedCard(
   reason: CardMoveReason,
 ): Promise<void> {
   if (uc.loc?.kind === 'processing') await exitUsedCard(game, uc, { reason });
+}
+
+/**
+ * 玩家装备区里"承载该类型装备效果"的 UC —— 装备效果的**归属解析**（读规则读 UC，演进 9.5）。
+ * 返回未失效的那条；失效（青釭剑等）即视为不归属。装备进出/失效/复原即时生效。
+ */
+export function equippedUsedCard(
+  game: Game, player: Player, cardType: CardType,
+): UsedCardInstance | undefined {
+  for (const slot of EQUIP_SLOTS) {
+    const uc = game.usedCards.at({ kind: 'equipment', player, slot })[0];
+    if (uc && uc.type === cardType && !uc.disabled) return uc;
+  }
+  return undefined;
+}
+
+/** 令一条 UC 失效（其授予的装备效果即刻不再归属）；返回是否发生了变化 */
+export function disableUsedCard(uc: UsedCardInstance): boolean {
+  if (uc.disabled) return false;
+  uc.disabled = true;
+  return true;
+}
+
+/** 复原一条 UC（失效期结束） */
+export function restoreUsedCard(uc: UsedCardInstance): void {
+  uc.disabled = false;
 }
 
 /**

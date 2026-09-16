@@ -35,7 +35,7 @@ cardRegistry.register({
   tags: [CardTag.Equip, CardTag.Weapon],
   range: 1,
   canUse: () => true,
-  targetFilter: (user) => [user],
+  targetFilter: (_game, user) => [user],
   targetCount: 1,
   ai: {
     shouldUse: () => true,
@@ -59,7 +59,7 @@ cardRegistry.register({
   content: async () => {}, // 白板：持续效果（判定出闪）待常驻效果系统
   tags: [CardTag.Equip, CardTag.Armor],
   canUse: () => true,
-  targetFilter: (user) => [user],
+  targetFilter: (_game, user) => [user],
   targetCount: 1,
   ai: {
     shouldUse: () => true,
@@ -78,7 +78,7 @@ cardRegistry.register({
   tags: [CardTag.Equip, CardTag.Weapon],
   range: 5,
   canUse: () => true,
-  targetFilter: (user) => [user],
+  targetFilter: (_game, user) => [user],
   targetCount: 1,
   ai: {
     shouldUse: () => true,
@@ -127,7 +127,7 @@ cardRegistry.register({
   tags: [CardTag.Equip, CardTag.Weapon],
   range: 2,
   canUse: () => true,
-  targetFilter: (user) => [user],
+  targetFilter: (_game, user) => [user],
   targetCount: 1,
   ai: {
     shouldUse: () => true,
@@ -179,7 +179,7 @@ cardRegistry.register({
   content: async () => {}, // 无使用效果（触发效果在 registerBareEffect）
   tags: [CardTag.Equip, CardTag.Armor],
   canUse: () => true,
-  targetFilter: (user) => [user],
+  targetFilter: (_game, user) => [user],
   targetCount: 1,
   ai: {
     shouldUse: () => true,
@@ -217,7 +217,7 @@ cardRegistry.register({
   tags: [CardTag.Equip, CardTag.Weapon],
   range: 2,
   canUse: () => true,
-  targetFilter: (user) => [user],
+  targetFilter: (_game, user) => [user],
   targetCount: 1,
   ai: {
     shouldUse: () => true,
@@ -274,7 +274,7 @@ function registerBlankWeapon(
     tags: [CardTag.Equip, CardTag.Weapon],
     range,
     canUse: () => true,
-    targetFilter: (user) => [user],
+    targetFilter: (_game, user) => [user],
     targetCount: 1,
     ai: {
       shouldUse: () => true,
@@ -297,7 +297,7 @@ registerBareEffect({
   canUse: (game, player, shaUsed) => {
     const def = cardRegistry.get(CardType.Sha)!;
     return player.hand.cards.length >= 2
-      && def.canUse(player, game.state.players, shaUsed);
+      && def.canUse(game, player, game.state.players, shaUsed);
   },
   selectionPlan: (game, player) => ({
     nextStep(answers) {
@@ -354,7 +354,7 @@ cardRegistry.register({
   tags: [CardTag.Equip, CardTag.Weapon],
   range: 3,
   canUse: () => true,
-  targetFilter: (user) => [user],
+  targetFilter: (_game, user) => [user],
   targetCount: 1,
   ai: {
     shouldUse: () => true,
@@ -392,7 +392,7 @@ cardRegistry.register({
   tags: [CardTag.Equip, CardTag.Weapon],
   range: 3,
   canUse: () => true,
-  targetFilter: (user) => [user],
+  targetFilter: (_game, user) => [user],
   targetCount: 1,
   ai: {
     shouldUse: () => true,
@@ -442,7 +442,7 @@ function registerBlankHorse(
     content: async () => {}, // 白板：距离修正走常驻效果
     tags: [CardTag.Equip, tag],
     canUse: () => true,
-    targetFilter: (user) => [user],
+    targetFilter: (_game, user) => [user],
     targetCount: 1,
     ai: {
       shouldUse: () => true,

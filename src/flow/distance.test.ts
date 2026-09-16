@@ -40,21 +40,21 @@ describe('distanceTo', () => {
   it('无修正时等于座位距离', () => {
     const g = freshGame({}, fourPlayers);
     const [a, , c] = g.state.players;
-    expect(distanceTo(g.state.players, a, c)).toBe(2);
+    expect(distanceTo(g, a, c)).toBe(2);
   });
 
   it('进攻马：来源距离-1', () => {
     const g = freshGame({}, fourPlayers);
     const [a, , c] = g.state.players;
     equipAt(g, a, makeUniqueCard(CardType.ChiTu));
-    expect(distanceTo(g.state.players, a, c)).toBe(1);
+    expect(distanceTo(g, a, c)).toBe(1);
   });
 
   it('防御马：目标被接近距离+1', () => {
     const g = freshGame({}, fourPlayers);
     const [a, , c] = g.state.players;
     equipAt(g, c, makeUniqueCard(CardType.JueYing));
-    expect(distanceTo(g.state.players, a, c)).toBe(3);
+    expect(distanceTo(g, a, c)).toBe(3);
   });
 
   it('多来源叠加且最低为 1（马术 + 进攻马 = -2）', () => {
@@ -62,21 +62,21 @@ describe('distanceTo', () => {
     const [machao, , c] = g.state.players;
     equipAt(g, machao, makeUniqueCard(CardType.ChiTu));
     // 座位 2 - 马术 1 - 进攻马 1 = 0 → clamp 1
-    expect(distanceTo(g.state.players, machao, c)).toBe(1);
+    expect(distanceTo(g, machao, c)).toBe(1);
   });
 });
 
 describe('attackRange', () => {
   it('无武器为 1', () => {
     const g = freshGame({}, fourPlayers);
-    expect(attackRange(g.state.players[0])).toBe(1);
+    expect(attackRange(g, g.state.players[0])).toBe(1);
   });
 
   it('装备武器取卡牌攻击范围（诸葛连弩 1）', () => {
     const g = freshGame({}, fourPlayers);
     const p = g.state.players[0];
     equipAt(g, p, makeUniqueCard(CardType.ZhugeLianNu));
-    expect(attackRange(p)).toBe(1);
+    expect(attackRange(g, p)).toBe(1);
   });
 
   it.each([
@@ -89,7 +89,7 @@ describe('attackRange', () => {
     const g = freshGame({}, fourPlayers);
     const p = g.state.players[0];
     equipAt(g, p, makeUniqueCard(type));
-    expect(attackRange(p)).toBe(range);
+    expect(attackRange(g, p)).toBe(range);
   });
 });
 
@@ -102,7 +102,7 @@ describe('杀的 targetFilter 与攻击范围', () => {
     const g = freshGame({}, fourPlayers);
     const [a, b, c, d] = g.state.players;
 
-    const targets = shaDef().targetFilter(a, g.state.players);
+    const targets = shaDef().targetFilter(g, a, g.state.players);
 
     expect(targets.map((p) => p.name)).not.toContain(c.name); // 对位不可达
     expect(targets.map((p) => p.name)).toEqual(expect.arrayContaining([b.name, d.name])); // 相邻可达
@@ -113,7 +113,7 @@ describe('杀的 targetFilter 与攻击范围', () => {
     const [a, , c] = g.state.players;
     equipAt(g, a, makeUniqueCard(CardType.QiLinGong));
 
-    const targets = shaDef().targetFilter(a, g.state.players);
+    const targets = shaDef().targetFilter(g, a, g.state.players);
 
     expect(targets.map((p) => p.name)).toContain(c.name);
   });
@@ -123,7 +123,7 @@ describe('杀的 targetFilter 与攻击范围', () => {
     const [a, , c] = g.state.players;
     equipAt(g, a, makeUniqueCard(CardType.HanBingJian));
 
-    const targets = shaDef().targetFilter(a, g.state.players);
+    const targets = shaDef().targetFilter(g, a, g.state.players);
 
     expect(targets.map((p) => p.name)).toContain(c.name);
   });
@@ -134,7 +134,7 @@ describe('杀的 targetFilter 与攻击范围', () => {
     c.hand.replaceAll([makeUniqueCard(CardType.Sha)]); // 区域内有牌
     equipAt(g, a, makeUniqueCard(CardType.QiLinGong));
 
-    const targets = cardRegistry.get(CardType.ShunShou)!.targetFilter(a, g.state.players);
+    const targets = cardRegistry.get(CardType.ShunShou)!.targetFilter(g, a, g.state.players);
 
     expect(targets.map((p) => p.name)).not.toContain(c.name); // 距离 2 > 1，麒麟弓不生效
   });

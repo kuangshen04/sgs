@@ -33,7 +33,7 @@ export function collectResponseEffects(
 ): ResponseEffect[] {
   return responseEffectsFor(request.cardType).filter((e) =>
     !used.has(e)
-    && effectOwnedBy(e, player)
+    && effectOwnedBy(game, e, player)
     && effectLordGate(game, player, e)
     && e.canUse(game, player, request)
     && e.ai.shouldUse(game, player, request),

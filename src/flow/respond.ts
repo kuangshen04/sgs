@@ -31,7 +31,7 @@ export async function resolveShaResponse(
     return false;
   }
 
-  const need = 1 + effectRegistry.sum(attacker, 'shaRequired');
+  const need = 1 + effectRegistry.sum(game, attacker, 'shaRequired');
   const request: ResponseRequest = { type: 'play', cardType: CardType.Shan };
 
   for (let i = 0; i < need; i++) {

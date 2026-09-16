@@ -48,7 +48,7 @@ export function computeCardOptions(
   const allPlayers = game.state.players;
   return player.hand.cards
     .map((card) => ({ card, def: cardRegistry.get(card.type) }))
-    .filter(({ def }) => def && def.canUse(player, allPlayers, shaUsed))
+    .filter(({ def }) => def && def.canUse(game, player, allPlayers, shaUsed))
     .map(({ card, def }) => ({ card, def: def! }));
 }
 
@@ -64,7 +64,7 @@ export function computeTargetOptions(
 ): TargetOption[] {
   const def = cardRegistry.get(card.type);
   if (!def) return [];
-  let targets = def.targetFilter(player, game.state.players);
+  let targets = def.targetFilter(game, player, game.state.players);
   if (def.tags.includes(CardTag.Delay)) {
     targets = targets.filter((t) => canPlaceDelayOn(game, card, t));
   }

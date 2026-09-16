@@ -61,7 +61,7 @@ describe('computeCardOptions', () => {
     const player = g.state.players[0];
     const def = cardRegistry.get(CardType.JueDou)!;
 
-    expect(def.canUse(player, g.state.players, false)).toBe(true);        // 规则：合法
+    expect(def.canUse(g, player, g.state.players, false)).toBe(true);        // 规则：合法
     expect(def.ai.shouldUse(player, false)).toBe(false);                  // AI：没杀垫底不用
   });
 
@@ -80,7 +80,7 @@ describe('computeCardOptions', () => {
     player.hp = player.maxHp;
     const def = cardRegistry.get(CardType.Tao)!;
 
-    expect(def.canUse(player, g.state.players, false)).toBe(false);
+    expect(def.canUse(g, player, g.state.players, false)).toBe(false);
   });
 
   it('桃 hp 满时不可用', () => {

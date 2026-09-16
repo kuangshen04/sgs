@@ -38,7 +38,7 @@ const liuliContent = async (
   // 新目标：攻击范围内其他角色（不能是使用者，不能是自己；askForTargets 默认 AI：第一个）
   const candidates = game.state.players.filter(
     (p) => p.alive && p !== owner && p !== user
-      && distanceTo(game.state.players, owner, p) <= attackRange(owner),
+      && distanceTo(game, owner, p) <= attackRange(game, owner),
   );
   const targets = await askForTargets(game, owner, '流离：将杀转移给谁', candidates, 1);
   if (!targets) return;
@@ -80,7 +80,7 @@ defineSkill({
     canUse: (game, player) => {
       const def = cardRegistry.get(CardType.LeBu)!;
       return player.hand.cards.some(isDiamond)
-        && def.canUse(player, game.state.players, false)
+        && def.canUse(game, player, game.state.players, false)
         && lebuTargets(game, player).length > 0; // 有合法目标才可选（含同名 UC / 谦逊限制）
     },
     selectionPlan: (game, player) => ({
@@ -131,7 +131,7 @@ defineSkill({
       // 需有合法转移目标（攻击范围内、非使用者、非自己）
       return game.state.players.some(
         (p) => p.alive && p !== owner && p !== user
-          && distanceTo(game.state.players, owner, p) <= attackRange(owner),
+          && distanceTo(game, owner, p) <= attackRange(game, owner),
       );
     },
     run: liuliContent,

@@ -57,7 +57,7 @@ export function installEffects(game: Game): void {
         // 按座次询问所有存活角色（FreeKill 模型）
         for (const player of g.state.players) {
           if (!player.alive) continue; // 死亡后技能失效
-          if (!effectOwnedBy(effect, player)) continue;
+          if (!effectOwnedBy(g, effect, player)) continue;
           if (!effectLordGate(g, player, effect)) continue;
           if (effect.condition && !effect.condition(g, event, player, subject)) continue;
           // 技能来源的"你可以"询问；强制发动（forced）与装备/裸效果不询问
@@ -85,7 +85,7 @@ export function collectActiveEffects(
 ): ActivatedEffect[] {
   if (!player.alive) return [];
   return activatedEffects().filter((e) =>
-    effectOwnedBy(e, player)
+    effectOwnedBy(game, e, player)
     && effectLordGate(game, player, e)
     && e.canUse(game, player, ctx)
     && e.ai.shouldUse(game, player, ctx),

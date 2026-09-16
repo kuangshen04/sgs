@@ -18,8 +18,8 @@ describe('咆哮（张飞锁定技）', () => {
     const zhangfei = g.state.players[1];
     const liubei = g.state.players[0];
 
-    expect(effectRegistry.has(zhangfei, 'unlimitedSha')).toBe(true);
-    expect(effectRegistry.has(liubei, 'unlimitedSha')).toBe(false);
+    expect(effectRegistry.has(g, zhangfei, 'unlimitedSha')).toBe(true);
+    expect(effectRegistry.has(g, liubei, 'unlimitedSha')).toBe(false);
   });
 
   it('张飞出牌阶段使用杀没有数量限制', async () => {

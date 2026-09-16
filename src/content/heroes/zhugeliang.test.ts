@@ -19,11 +19,11 @@ describe('空城（诸葛亮锁定技）', () => {
     const g = freshGame({}, ['刘备', '诸葛亮', '孙权']);
     const zhuge = g.state.players[1];
 
-    expect(effectRegistry.has(zhuge, 'immuneSha')).toBe(true);
-    expect(effectRegistry.has(zhuge, 'immuneJueDou')).toBe(true);
+    expect(effectRegistry.has(g, zhuge, 'immuneSha')).toBe(true);
+    expect(effectRegistry.has(g, zhuge, 'immuneJueDou')).toBe(true);
 
     giveHand(zhuge, CardType.Sha);
-    expect(effectRegistry.has(zhuge, 'immuneSha')).toBe(false); // 有手牌后失效
+    expect(effectRegistry.has(g, zhuge, 'immuneSha')).toBe(false); // 有手牌后失效
   });
 
   it('无手牌时不能成为杀/决斗的目标（targetFilter 排除）', () => {

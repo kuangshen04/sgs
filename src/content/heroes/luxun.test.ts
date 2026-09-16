@@ -20,9 +20,9 @@ describe('谦逊（陆逊锁定技）', () => {
     const g = freshGame({}, ['刘备', '陆逊', '孙权']);
     const luxun = g.state.players[1];
 
-    expect(effectRegistry.has(luxun, 'immuneShunShou')).toBe(true);
-    expect(effectRegistry.has(luxun, 'immuneLeBu')).toBe(true);
-    expect(effectRegistry.has(luxun, 'immuneSha')).toBe(false); // 杀不受谦逊影响
+    expect(effectRegistry.has(g, luxun, 'immuneShunShou')).toBe(true);
+    expect(effectRegistry.has(g, luxun, 'immuneLeBu')).toBe(true);
+    expect(effectRegistry.has(g, luxun, 'immuneSha')).toBe(false); // 杀不受谦逊影响
   });
 
   it('不能成为顺手牵羊/乐不思蜀的目标（targetFilter 排除）', () => {

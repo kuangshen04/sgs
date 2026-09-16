@@ -32,7 +32,7 @@ defineSkill({
     canUse: (game, player) => {
       const def = cardRegistry.get(CardType.GuoHe)!;
       return player.hand.cards.some(isBlack)
-        && def.canUse(player, game.state.players, false);
+        && def.canUse(game, player, game.state.players, false);
     },
     selectionPlan: (game, player) => ({
       nextStep(answers) {

@@ -42,7 +42,7 @@ const juedouContent: CardContentFn = async (game, data, _event) => {
   while (true) {
     // 无双②：每次响应时看对方是否持有无双——持有则需打出两张杀（常驻查询 'juedouShaRequired'；
     // 吕布使用决斗时目标需两张、吕布成为目标时对手需两张；双方都是吕布则双方都需两张）。
-    const required = 1 + effectRegistry.sum(opponent, 'juedouShaRequired');
+    const required = 1 + effectRegistry.sum(game, opponent, 'juedouShaRequired');
     const ok = await resolveJueDouResponse(game, current, required);
     if (!ok) {
       // 打不出杀 → 受伤（失败时点暂无监听者，直接结算）；card = 决斗（造成伤害的牌）
@@ -181,7 +181,7 @@ const jiedaoContent: CardContentFn = async (game, data, _event) => {
   // 且不含借刀使用者本人（维持现状的简化，规则文本待核）。
   // AI 决策点（真人/前端接入时在此注入）：默认取座次第一个合法角色。
   const shaDef = cardRegistry.get(CardType.Sha)!;
-  const candidates = shaDef.targetFilter(target, game.state.players)
+  const candidates = shaDef.targetFilter(game, target, game.state.players)
     .filter((p) => p !== user);
   const picked = candidates.length > 0
     ? await askForTargets(game, user, '借刀杀人：指定目标要杀的角色', candidates, 1)
@@ -302,7 +302,7 @@ cardRegistry.register({
   content: wuzhongContent,
   tags: [CardTag.Trick],
   canUse: () => true,
-  targetFilter: (user) => [user],
+  targetFilter: (_game, user) => [user],
   targetCount: 1,
   ai: {
     shouldUse: () => true,
@@ -317,10 +317,10 @@ cardRegistry.register({
   emoji: '⚔️',
   content: juedouContent,
   tags: [CardTag.Trick],
-  canUse: (player, allPlayers) =>
-    allPlayers.some((p) => p !== player && p.alive && !effectRegistry.has(p, 'immuneJueDou')),
-  targetFilter: (user, allPlayers) =>
-    allPlayers.filter((p) => p !== user && p.alive && !effectRegistry.has(p, 'immuneJueDou')),
+  canUse: (game, player, allPlayers) =>
+    allPlayers.some((p) => p !== player && p.alive && !effectRegistry.has(game, p, 'immuneJueDou')),
+  targetFilter: (game, user, allPlayers) =>
+    allPlayers.filter((p) => p !== user && p.alive && !effectRegistry.has(game, p, 'immuneJueDou')),
   targetCount: 1,
   ai: {
     shouldUse: (player) => player.hand.cards.some((c) => c.type === CardType.Sha), // AI：有杀垫底才决斗
@@ -400,9 +400,9 @@ cardRegistry.register({
   emoji: '🗡️',
   content: jiedaoContent,
   tags: [CardTag.Trick],
-  canUse: (player, allPlayers) =>
+  canUse: (game, player, allPlayers) =>
     allPlayers.some((p) => p !== player && p.alive && !!p.equipment.weapon),
-  targetFilter: (user, allPlayers) =>
+  targetFilter: (game, user, allPlayers) =>
     allPlayers.filter((p) => p !== user && p.alive && !!p.equipment.weapon),
   targetCount: 1,
   ai: {
@@ -418,10 +418,10 @@ cardRegistry.register({
   emoji: '🌉',
   content: guoheContent,
   tags: [CardTag.Trick],
-  canUse: (player, allPlayers) =>
+  canUse: (game, player, allPlayers) =>
     // 规则：存在区域内有牌的目标（无距离限制）
     allPlayers.some((p) => p !== player && p.alive && hasCardsInAreas(p)),
-  targetFilter: (user, allPlayers) =>
+  targetFilter: (game, user, allPlayers) =>
     allPlayers.filter((p) => p !== user && p.alive && hasCardsInAreas(p)),
   targetCount: 1,
   ai: {
@@ -437,15 +437,15 @@ cardRegistry.register({
   emoji: '🐑',
   content: shunshouContent,
   tags: [CardTag.Trick],
-  canUse: (player, allPlayers) =>
+  canUse: (game, player, allPlayers) =>
     // 规则：存在距离为 1（或奇才无视距离）且区域内有牌的目标
     allPlayers.some((p) => p !== player && p.alive && hasCardsInAreas(p)
-      && (effectRegistry.has(player, 'noTrickDistance') || distanceTo(allPlayers, player, p) <= 1)
-      && !effectRegistry.has(p, 'immuneShunShou')),
-  targetFilter: (user, allPlayers) =>
+      && (effectRegistry.has(game, player, 'noTrickDistance') || distanceTo(game, player, p) <= 1)
+      && !effectRegistry.has(game, p, 'immuneShunShou')),
+  targetFilter: (game, user, allPlayers) =>
     allPlayers.filter((p) => p !== user && p.alive && hasCardsInAreas(p)
-      && (effectRegistry.has(user, 'noTrickDistance') || distanceTo(allPlayers, user, p) <= 1)
-      && !effectRegistry.has(p, 'immuneShunShou')),
+      && (effectRegistry.has(game, user, 'noTrickDistance') || distanceTo(game, user, p) <= 1)
+      && !effectRegistry.has(game, p, 'immuneShunShou')),
   targetCount: 1,
   ai: {
     shouldUse: () => true,

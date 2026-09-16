@@ -95,6 +95,11 @@ export interface UsedCardInstance extends UsedCard {
   color: CardColor | null;
   /** 实体组成（多对一；0 牌虚拟牌为空数组） */
   physicalCards: Card[];
+  /**
+   * 失效标记：该 UC 授予的装备效果即刻不再归属（归属每次查询重算，故失效/复原即时生效）。
+   * 唯一写点是 usedCardActions 的 disableUsedCard / restoreUsedCard。
+   */
+  disabled: boolean;
   /** 当前容器位置；null = 刚生成尚未入容器，或已退出 */
   loc: UsedCardLocation | null;
   /** 进入容器时分配的序号（容器内顺序的唯一来源） */
@@ -138,7 +143,7 @@ export function createUsedCardStore(): UsedCardStore {
         id: nextId++,
         type: as.type, name: as.name,
         suit: face.suit, number: face.number, color: face.color,
-        physicalCards, loc: null, seq: 0,
+        physicalCards, disabled: false, loc: null, seq: 0,
       };
     },
     bind(uc: UsedCardInstance, loc: UsedCardLocation): void {

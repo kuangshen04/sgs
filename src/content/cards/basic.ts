@@ -45,16 +45,16 @@ cardRegistry.register({
   emoji: '🗡️',
   content: shaContent,
   tags: [CardTag.Basic],
-  canUse: (player, _allPlayers, shaUsed) =>
+  canUse: (game, player, _allPlayers, shaUsed) =>
     // 规则：每回合限一次（咆哮/诸葛连弩可无视），且存在攻击范围内目标
-    (!shaUsed || effectRegistry.has(player, 'unlimitedSha')) &&
+    (!shaUsed || effectRegistry.has(game, player, 'unlimitedSha')) &&
     _allPlayers.some((p) => p !== player && p.alive
-      && distanceTo(_allPlayers, player, p) <= attackRange(player)
-      && !effectRegistry.has(p, 'immuneSha')), // 空城等：不能成为杀的目标
-  targetFilter: (user, allPlayers) =>
+      && distanceTo(game, player, p) <= attackRange(game, player)
+      && !effectRegistry.has(game, p, 'immuneSha')), // 空城等：不能成为杀的目标
+  targetFilter: (game, user, allPlayers) =>
     allPlayers.filter((p) => p !== user && p.alive
-      && distanceTo(allPlayers, user, p) <= attackRange(user)
-      && !effectRegistry.has(p, 'immuneSha')),
+      && distanceTo(game, user, p) <= attackRange(game, user)
+      && !effectRegistry.has(game, p, 'immuneSha')),
   targetCount: 1,
   ai: {
     shouldUse: () => true,
@@ -85,8 +85,8 @@ cardRegistry.register({
   emoji: '🍑',
   content: taoContent,
   tags: [CardTag.Basic],
-  canUse: (player) => player.hp < player.maxHp, // 规则：桃需受伤才能用
-  targetFilter: (user) => [user],
+  canUse: (_game, player) => player.hp < player.maxHp, // 规则：桃需受伤才能用
+  targetFilter: (_game, user) => [user],
   targetCount: 1,
   ai: {
     shouldUse: () => true,

@@ -101,7 +101,7 @@ describe('借刀杀人', () => {
     const user = g.state.players[0];
     const def = cardRegistry.get(CardType.JieDao)!;
 
-    expect(def.canUse(user, g.state.players, false)).toBe(false);
+    expect(def.canUse(g, user, g.state.players, false)).toBe(false);
   });
 
   it('杀目标由使用者在范围内指定，空城者不会被选中', async () => {

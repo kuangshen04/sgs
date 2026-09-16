@@ -11,6 +11,7 @@
 
 import { CardType } from '../types.js';
 import type { Player, UsedCard } from '../types.js';
+import { equippedUsedCard } from '../position/usedCardActions.js';
 import type { Game } from '../game.js';
 import type { GameEvent } from '../events/index.js';
 import type { SelectionAnswers, SelectionPlan } from '../decision/selection.js';
@@ -320,25 +321,16 @@ export function loseSkill(player: Player, name: string): void {
 // 归属与门槛（触发/常驻/响应/转化/主动共用）
 // ============================================================
 
-/** 玩家装备区是否装备了指定类型的牌 */
-export function hasEquipped(player: Player, cardType: CardType): boolean {
-  const eq = player.equipment;
-  if (eq.weapon?.type === cardType) return true;
-  if (eq.armor?.type === cardType) return true;
-  if (eq.defensiveHorse?.type === cardType) return true;
-  if (eq.offensiveHorse?.type === cardType) return true;
-  return false;
-}
-
 /**
- * 效果是否归属于该玩家。
+ * 效果是否归属于该玩家（**归属 = 唯一的效果生命周期开关**，每次查询重算）。
  * - 技能归属：查局内技能实例（存在且未失效）——获得/失去技能即时生效，无需注销 handler
- * - 装备归属：装备槽中含此类型牌
+ * - 装备归属：解析到该玩家装备区里**未失效的那条 UC**（读规则读 UC，演进 9.5）
+ *   ——装备进出 / 失效 / 复原同样即时生效，不需要 grant/revoke 同步
  * - 裸效果：恒真
  */
-export function effectOwnedBy(effect: EffectCommon, owner: Player): boolean {
+export function effectOwnedBy(game: Game, effect: EffectCommon, owner: Player): boolean {
   if (effect.skill) return playerHasSkill(owner, effect.skill);
-  if (effect.equipType) return hasEquipped(owner, effect.equipType);
+  if (effect.equipType) return !!equippedUsedCard(game, owner, effect.equipType);
   return true;
 }
 

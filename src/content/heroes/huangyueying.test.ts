@@ -58,8 +58,8 @@ describe('集智（黄月英技能）', () => {
 describe('奇才（黄月英锁定技）', () => {
   it('effectRegistry：黄月英拥有 noTrickDistance，普通角色没有', () => {
     const g = freshGame({}, ['刘备', '黄月英', '孙权']);
-    expect(effectRegistry.has(g.state.players[1], 'noTrickDistance')).toBe(true);
-    expect(effectRegistry.has(g.state.players[0], 'noTrickDistance')).toBe(false);
+    expect(effectRegistry.has(g, g.state.players[1], 'noTrickDistance')).toBe(true);
+    expect(effectRegistry.has(g, g.state.players[0], 'noTrickDistance')).toBe(false);
   });
 
   it('4人局：奇才让顺手牵羊无视距离', () => {
