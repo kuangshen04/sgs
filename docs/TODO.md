@@ -392,9 +392,18 @@
      - 验收：465 例绿（新增 `flow/useCard.test.ts` 5 例：逐目标 cardEffect 时序 / 内容在 before-after 之间 /
        `nullified` 跳过内容 / `cancelled` 跳过内容 / 五谷亮牌一次 + 逐目标各取一张），`tsc` 干净，
        整局冒烟跑通（五谷/南蛮/桃园均正常）。
-   - **U2 [ ] 无懈与无目标流程（行为变化）**：去掉"`targets` 为空 ⇒ target = 使用者自己"的伪造，
-     无懈改走无目标流程（窗口 = 它自己的 `cardEffect.before`）；响应关系用 `use.responseTo` +
-     `effect.cardsResponded`；支持 `unoffsetable`（**事件级**声明）。
+   - **U2 [x] 无懈与无目标流程（行为变化）**：去掉"`targets` 为空 ⇒ target = 使用者自己"的伪造，
+     无目标牌走单独流程且**不产生 targeting 事件**；无懈的窗口从 `targeting.before` 移到
+     **它自己的 `cardEffect.before`**（无懈抵消的是"一张牌对某个目标的效果"），无懈自身也是一次
+     无目标使用 ⇒ 反无懈由递归自然形成；响应关系显式记录：`ResponseRequest.respondTo` →
+     `UseCardEventData.responseTo`（无懈 content 据此置 `cancelled`）+ `effect.cardsResponded`
+     （响应了哪些牌）；支持**事件级** `unoffsetable`（整条牌不可被无懈响应 → 不开窗）。
+     判定阶段窗口（judgePhase 自建 targeting + `judging`）保留为**冻结**遗留分支。
+     - **行为变化（显式声明）**：① 无目标使用不再产生伪造的 targeting 事件（无懈的"反无懈窗口"
+       改挂在它自己的 cardEffect.before）；② 无懈窗口从"目标指定阶段（全部目标先问）"移到
+       "逐目标生效前"（与该目标的结算交错，顺序更贴规则）；③ 响应关系不再靠事件栈反查。
+     - 验收：467 例绿（改写 3 例旧行为测试 + 新增 unoffsetable/cardsResponded 2 例），`tsc` 干净，
+       整局冒烟跑通（无懈大量触发且日志正常）。
    - **U3 [ ] 仁王盾改 `nullified`（行为变化）**：修正青釭剑 vs 仁王盾（阶段问题，非排序问题）；
      装备牌 / 延时锦囊落地移入生效阶段并受 `nullified` 约束。
    - **U4 [ ] 引擎级合法性校验 + 离间**：`useCard` 侧校验使用者 `canUse` 与逐目标 `targetFilter`

@@ -12,7 +12,7 @@ import { damage, recover } from '../../flow/life.js';
 import { distanceTo, attackRange } from '../../flow/distance.js';
 import { hasCardsInAreas } from '../../position/areas.js';
 import { askForCard, askFromAreas, askFromCards, askForTargets, askOption } from '../../decision/choose.js';
-import type { TargetingEventData } from '../../events/index.js';
+import type { CardEffectEventData, TargetingEventData } from '../../events/index.js';
 import { EventType } from '../../events/index.js';
 import { effectRegistry } from '../../effects/persistentEffects.js';
 import { otherAlive, allAlive } from './helpers.js';
@@ -228,12 +228,18 @@ const jiedaoContent: CardContentFn = async (game, data, _event) => {
 };
 
 /**
- * 无懈可击的 content：沿事件栈向上找到原始锦囊的 targeting 事件并置位 cancelled。
+ * 无懈可击的 content：把它所**响应的那次生效**置为 cancelled（演进 3.6 U2：响应关系显式记录，
+ * 不再靠事件栈反查）。无懈本身也是一次"无目标使用"，因此它同样可以被响应（反无懈）——
+ * 后出的无懈在前一个的 `cardEffect.before` 窗口里被使用，其 content 给前一个的生效事件置位。
  *
- * 运行时事件栈：[… useCard(锦囊) → targeting(目标) → useCard(无懈)]
- * 无懈自己的 targeting 已出栈，getParent('targeting') 命中锦囊的 targeting。
+ * 遗留分支（冻结）：判定阶段的窗口仍是 targeting 事件（judgePhase 自建），此时没有响应对象，
+ * 沿事件栈找最近的 targeting 置位（行为与旧实现一致）。
  */
-const wuxieContent: CardContentFn = async (_game, _data, event) => {
+const wuxieContent: CardContentFn = async (_game, data, event) => {
+  if (data.use.responseTo) {
+    data.use.responseTo.cancelled = true;
+    return;
+  }
   const targetEvent = event.getParent(EventType.Targeting);
   if (targetEvent) {
     targetEvent.data.cancelled = true;
@@ -241,57 +247,82 @@ const wuxieContent: CardContentFn = async (_game, _data, event) => {
 };
 
 /**
- * 默认无懈 AI 决策（写死，行为保持）：某玩家是否对本次锦囊 targeting 出无懈。
- * 策略：只保护自己——仅当自己是锦囊目标时响应；不反无懈——普通窗口下
+ * 默认无懈 AI 决策（写死，行为保持）：某玩家是否对本次生效出无懈。
+ * 策略：只保护自己——仅当自己是该次生效的目标时响应；不反无懈——普通窗口下
  * 不对别人（含自己刚出的）无懈出反无懈。
  * （judging = 判定阶段的延时锦囊窗口：允许被判定者抵消自己的延时锦囊。）
  * AI 决策点（真人/前端接入时在此注入）：换更强策略（保护他人 / 反无懈 / 按锦囊利害取舍）时改此处。
  */
 function wuxieGuardPolicy(
   player: Player,
-  target: Player,
+  target: Player | undefined,
   user: Player,
   judging: boolean | undefined,
 ): boolean {
-  if (target !== player) return false;            // 只保护自己
+  if (target !== player) return false;            // 只保护自己（无目标生效 → 无人响应）
   if (!judging && user === player) return false;  // 不反自己的无懈
   return true;
 }
 
+/** 询问一圈（从当前回合角色起按座次）：是否有人对"某次生效 / 判定窗口"使用无懈 */
+async function askWuxie(
+  game: Game,
+  target: Player | undefined,
+  user: Player,
+  judging: boolean | undefined,
+  respondTo: CardEffectEventData | undefined,
+): Promise<void> {
+  const players = game.state.players;
+  const startIndex = game.state.currentIndex;
+  for (let offset = 0; offset < players.length; offset++) {
+    const player = players[(startIndex + offset) % players.length];
+    if (!player.alive) continue;
+    if (!wuxieGuardPolicy(player, target, user, judging)) continue;
+
+    // 使用型响应窗口：真无懈 + 放弃（响应对象随请求下传 → 无懈 content 据此置 cancelled）
+    const ok = await resolveUseResponse(game, player, {
+      type: 'use',
+      cardType: CardType.WuXie,
+      respondTo,
+    });
+    if (!ok) continue;
+    console.log(
+      `  ✨${player.name} 使用 🛡️无懈可击 抵消对 ${target?.name ?? '此效果'} 的效果`,
+    );
+
+    // 无论无懈成功或被反无懈，只尝试一次就停止
+    break;
+  }
+}
+
 /**
  * 注册无懈可击 trigger handler（挂到指定对局的触发器注册表）。
- * 响应链无需显式实现：每个无懈使用都会生成自身 targeting 事件 → 递归触发本 handler，
- * 后出的无懈在 content 中给前一个的 targeting 置位 cancelled（last-wins），
- * 前一个的 content 便不会执行。
- * 本循环只剩 AI 策略：从当前回合角色起按座次询问（谁响应由 wuxieGuardPolicy 决定）。
+ *
+ * 主窗口 = **每次单目标生效之前**（`cardEffect.before`）：无懈抵消的是"一张牌对某个目标的效果"，
+ * 而不是"目标指定"；无懈自身的一次无目标使用同样会产生 cardEffect，其 `cardEffect.before`
+ * 就是反无懈窗口（响应对象随之链式传递，反无懈由递归自然形成）。
+ * 事件级 `unoffsetable`（如离间的决斗）声明"整条牌不可被无懈响应" → 不开窗。
+ * 遗留（冻结）：判定阶段窗口仍挂在 targeting 事件上（judgePhase 自建，无响应对象）。
  */
 export function installWuxieTrigger(game: Game): void {
+  game.triggerSystem.on(`${EventType.CardEffect}.before`, async (effectEvent) => {
+    const effect = effectEvent.data as CardEffectEventData;
+    const def = cardRegistry.get(effect.card.type);
+    if (!def?.tags.includes(CardTag.Trick)) return;
+    if (effect.use.unoffsetable || effect.unoffsetable) return; // 不可被无懈响应
+    if (effect.cancelled) return;                               // 已被抵消
+
+    await askWuxie(game, effect.to, effect.use.player, undefined, effect);
+  });
+
+  // 遗留：判定阶段的无懈窗口（judgePhase 的 targeting 事件；冻结，待无懈重设计）
   game.triggerSystem.on(`${EventType.Targeting}.before`, async (targetingEvent) => {
     const { user, card, target, judging } = targetingEvent.data as TargetingEventData;
+    if (!judging) return;
     const def = cardRegistry.get(card.type);
     if (!def?.tags.includes(CardTag.Trick)) return;
 
-    const game = targetingEvent.game;
-    const state = game.state;
-    const startIndex = state.currentIndex;
-
-    for (let offset = 0; offset < state.players.length; offset++) {
-      const idx = (startIndex + offset) % state.players.length;
-      const player = state.players[idx];
-      if (!player.alive) continue;
-      if (!wuxieGuardPolicy(player, target, user, judging)) continue;
-
-      // 使用型响应窗口：真无懈 + 放弃
-      const ok = await resolveUseResponse(game, player, {
-        type: 'use',
-        cardType: CardType.WuXie,
-      });
-      if (!ok) continue;
-      console.log(`  ✨${player.name} 使用 🛡️无懈可击 抵消对 ${target.name} 的效果`);
-
-      // 无论无懈成功或被反无懈，只尝试一次就停止
-      break;
-    }
+    await askWuxie(targetingEvent.game, target, user, judging, undefined);
   });
 }
 

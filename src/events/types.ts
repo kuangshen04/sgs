@@ -100,6 +100,11 @@ export interface UseCardEventData {
   unoffsetable?: boolean;
   /** 内容层协作数据（如五谷丰登亮出的牌池；onAction 与逐目标 content 之间共享） */
   extra?: Record<string, unknown>;
+  /**
+   * 本次使用是"对某次生效"的响应（如无懈可击抵消一次生效）。
+   * 响应关系显式记录，取代"沿事件栈反查父事件"（演进 3.6 U2）。
+   */
+  responseTo?: CardEffectEventData;
 }
 
 /**

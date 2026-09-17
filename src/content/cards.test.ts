@@ -532,6 +532,44 @@ describe('无懈可击', () => {
     expect(player.hand.cards.length).toBe(1); // 无懈未打出
   });
 
+  it('unoffsetable（事件级）：整条牌不可被无懈响应 → 不开窗', async () => {
+    const g = freshGame({}, ['刘备', '孙权', '曹操']); // 防御方用孙权，避免奸雄拿牌干扰手牌断言
+    const attacker = g.state.players[0];
+    const p1 = g.state.players[1];
+    giveHand(attacker, CardType.NanMan);
+    giveHand(p1, CardType.WuXie); // 有无懈也不应被询问
+
+    const hpBefore = p1.hp;
+    await useCard(g, {
+      player: attacker, card: attacker.hand.cards[0], targets: [p1], unoffsetable: true,
+    });
+
+    expect(p1.hp).toBe(hpBefore - 1);          // 生效未被抵消
+    expect(p1.hand.cards.length).toBe(1);      // 无懈未打出
+  });
+
+  it('响应关系记录：被抵消的目标生效上留有 cardsResponded', async () => {
+    const g = freshGame({}, ['刘备', '孙权', '曹操']);
+    const attacker = g.state.players[0];
+    const p1 = g.state.players[1];
+    giveHand(attacker, CardType.NanMan);
+    giveHand(p1, CardType.WuXie);
+    const seen: { cancelled?: boolean; responded: string[] }[] = [];
+    g.triggerSystem.on(`${EventType.CardEffect}.after`, (e) => {
+      const d = e.data as {
+        to?: unknown; cancelled?: boolean; cardsResponded?: { name: string }[];
+      };
+      if (!d.to) return; // 只看有目标的生效（无懈自身的那次无目标生效不计）
+      seen.push({ cancelled: d.cancelled, responded: (d.cardsResponded ?? []).map((c) => c.name) });
+    });
+
+    await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [p1] });
+
+    expect(seen).toHaveLength(1);
+    expect(seen[0].cancelled).toBe(true);              // 该目标的效果被抵消
+    expect(seen[0].responded).toEqual(['无懈可击']);    // 记录响应它的牌
+  });
+
   it('无懈可击可以被反无懈（手动模拟反无懈）', async () => {
     const g = freshGame();
     const attacker = g.state.players[0];
@@ -542,23 +580,26 @@ describe('无懈可击', () => {
     giveHand(p1, CardType.WuXie); // 无懈₁ — 保护自己
     giveHand(p2, CardType.WuXie); // 无懈₂ — 反无懈
 
-    // 手动注册 handler：当 无懈 的 targeting 触发时，p2 出无懈反制
+    // 手动注册 handler：无懈₁ 的**生效**（cardEffect，无目标）即将结算时，p2 出无懈反制。
+    // 响应对象随请求下传（respondTo）→ 无懈₂ 的 content 给无懈₁ 的生效置 cancelled（演进 3.6 U2）。
     const counterHandler = async (e: any) => {
-      if (e.data.card.type === CardType.WuXie && p2.hand.cards.some((c: Card) => c.type === CardType.WuXie)) {
-        const wx = p2.hand.cards.find((c: Card) => c.type === CardType.WuXie)!;
-        await useCard(g, { player: p2, card: wx, targets: [] });
-      }
+      const effect = e.data as { card: Card; to?: unknown; cancelled?: boolean };
+      if (effect.card.type !== CardType.WuXie || effect.to !== undefined) return;
+      if (effect.cancelled) return; // 已经被处理过
+      const wx = p2.hand.cards.find((c: Card) => c.type === CardType.WuXie);
+      if (!wx) return;
+      await useCard(g, { player: p2, card: wx, targets: [], responseTo: effect as never });
     };
-    g.triggerSystem.on(`${EventType.Targeting}.before`, counterHandler);
+    g.triggerSystem.on(`${EventType.CardEffect}.before`, counterHandler);
 
     const hpBefore = p1.hp;
     await useCard(g, { player: attacker, card: attacker.hand.cards[0], targets: [p1] });
 
-    // 无懈₁ 被无懈₂ 反制 → 南蛮 targeting 未被 cancel → p1 受伤
+    // 无懈₁ 被无懈₂ 反制 → 南蛮对 p1 的生效未被抵消 → p1 受伤
     expect(p1.hp).toBe(hpBefore - 1);
 
     // 只移除自定义 handler，不影响默认无懈 handler
-    g.triggerSystem.off(`${EventType.Targeting}.before`, counterHandler);
+    g.triggerSystem.off(`${EventType.CardEffect}.before`, counterHandler);
   });
 });
 
@@ -627,32 +668,39 @@ describe('targeting', () => {
     expect(p3.hp).toBe(hp3Before);   // 被抵消
   });
 
-  it('无目标牌触发单次 targeting(target = user)', async () => {
+  it('无目标牌不再伪造 target：不产生 targeting 事件，只产生一次无目标的 cardEffect', async () => {
     const g = freshGame();
     const player = g.state.players[0];
     giveHand(player, CardType.Shan);
 
-    const triggered: string[] = [];
+    const targeted: string[] = [];
+    const effects: (string | undefined)[] = [];
     g.triggerSystem.on(`${EventType.Targeting}.before`, (e) => {
-      triggered.push(e.data.target.name);
+      targeted.push((e.data as { target: { name: string } }).target.name);
+    });
+    g.triggerSystem.on(`${EventType.CardEffect}.before`, (e) => {
+      effects.push((e.data as { to?: { name: string } }).to?.name);
     });
 
     await useCard(g, { player, card: player.hand.cards[0], targets: [] });
 
-    expect(triggered).toEqual([player.name]);
+    expect(targeted).toEqual([]);        // 不再伪造 target = 使用者
+    expect(effects).toEqual([undefined]); // 无目标流程：一次 cardEffect（to 为空）
   });
 
-  it('无目标牌的 targeting 被 cancel → content 不执行', async () => {
+  it('无目标牌的生效被抵消（cardEffect.before 置 cancelled）→ content 不执行', async () => {
     const g = freshGame();
     const player = g.state.players[0];
     giveHand(player, CardType.WuZhong); // 本来会摸 2 张
 
-    g.triggerSystem.on(`${EventType.Targeting}.before`, (e) => { e.data.cancelled = true; });
+    g.triggerSystem.on(`${EventType.CardEffect}.before`, (e) => {
+      (e.data as { cancelled?: boolean }).cancelled = true;
+    });
 
     const before = player.hand.cards.length;
     await useCard(g, { player, card: player.hand.cards[0], targets: [] });
 
-    expect(player.hand.cards.length).toBe(before - 1); // 牌已消耗
+    expect(player.hand.cards.length).toBe(before - 1); // 牌已消耗（未摸牌）
     expect(g.state.discardPile.cards.length).toBe(1);   // 牌在弃牌堆
   });
 

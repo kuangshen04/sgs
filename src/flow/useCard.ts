@@ -43,6 +43,7 @@ export async function useCard(
     card: uc,
     unoffsetable: data.unoffsetable,
     extra: data.extra,
+    responseTo: data.responseTo,
   };
   return new GameEvent<UseCardEventData>(EventType.UseCard, usedData, game)
     .execute(async (event) => {
@@ -66,11 +67,8 @@ export async function useCard(
           }
           await def?.onAction?.(game, event.data, event, 'after');
         } else {
-          // ③'【无目标】单独流程（如无懈）
-          // U1 过渡：仍跑一次"target = 使用者"的 targeting 窗口（无懈的反无懈窗口就挂在这里）。
-          // 去掉这个伪造 target 与"把无懈窗口搬到 cardEffect.before"是同一件事，U2 一起做（演进 3.6）。
-          const fake = await runTargeting(game, event, uc, [event.data.player]);
-          if (fake.length === 0) return; // 窗口内被抵消 → 不生效（行为保持）
+          // ③'【无目标】单独流程（如无懈）：不伪造 target，也不产生 targeting 事件。
+          // 无懈自身也是一次这样的使用，因此它的 `cardEffect.before` 就是反无懈窗口（U2）。
           await runCardEffect(game, event, def, undefined);
         }
       } finally {

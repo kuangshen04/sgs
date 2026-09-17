@@ -7,9 +7,9 @@
 
 import type { Game } from '../game.js';
 import type { Card, Player } from '../types.js';
-import { asUsedCard, cardRegistry } from '../content/cardRegistry.js';
+import { cardRegistry } from '../content/cardRegistry.js';
 import {
-  enterUsedCard, playUsedCard, settleUsedCard,
+  enterUsedCard, materializeUsedCard, playUsedCard, settleUsedCard,
 } from '../position/usedCardActions.js';
 import { useCard } from '../flow/useCard.js';
 import { effectLordGate, effectOwnedBy, responseEffectsFor } from '../effects/effects.js';
@@ -84,15 +84,22 @@ export async function executeResponse(
 ): Promise<ResponseOutcome> {
   if (action.group === 'real') {
     const physical = action.data as Card;
-    const used = asUsedCard(physical);
+    const uc = materializeUsedCard(game, physical);
+    // 响应关系记录：本次使用/打出响应了哪次生效（无懈/闪据此与"被响应者"挂钩）
+    const responded = request.respondTo;
+    if (responded) {
+      responded.cardsResponded = responded.cardsResponded ?? [];
+      responded.cardsResponded.push(uc);
+    }
     if (request.type === 'use') {
       await useCard(game, {
         player,
-        card: used,
+        card: uc,
         targets: request.target ? [request.target] : [],
+        responseTo: responded,
       });
     } else {
-      await playUsedCard(game, player, used);
+      await playUsedCard(game, player, uc);
     }
     return 'done';
   }

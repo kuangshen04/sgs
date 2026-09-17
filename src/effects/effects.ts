@@ -14,6 +14,7 @@ import type { Player, UsedCard } from '../types.js';
 import { equippedUsedCard } from '../position/usedCardActions.js';
 import type { Game } from '../game.js';
 import type { GameEvent } from '../events/index.js';
+import type { CardEffectEventData } from '../events/index.js';
 import type { SelectionAnswers, SelectionPlan } from '../decision/selection.js';
 
 /** 主动技能（activated 效果）的决策上下文（出牌阶段循环提供） */
@@ -138,6 +139,8 @@ export interface ResponseRequest {
   cardType: CardType;
   /** 使用型的目标（急救 / 桃的濒死角色） */
   target?: Player;
+  /** 本次响应所针对的"生效"（如无懈抵消的那次 cardEffect）；随响应下传给使用者 */
+  respondTo?: CardEffectEventData;
 }
 
 /** 单次响应结果：done 成功；retry 未成功可重新询问（如八卦阵判定失败） */
