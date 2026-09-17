@@ -39,7 +39,6 @@ export async function useCard(
   const usedData: UseCardEventData = {
     player: data.player,
     targets: data.targets,
-    marks: data.marks,
     card: uc,
     unoffsetable: data.unoffsetable,
     extra: data.extra,
@@ -47,7 +46,6 @@ export async function useCard(
   };
   return new GameEvent<UseCardEventData>(EventType.UseCard, usedData, game)
     .execute(async (event) => {
-      event.data.marks = event.data.marks ?? {}; // 杀响应过程状态（无双/铁骑写入）
       const def = cardRegistry.get(uc.type);
 
       // ① 使用的牌先进处理区（结算中位置）
@@ -56,14 +54,15 @@ export async function useCard(
       try {
         if (event.data.targets.length > 0) {
           // ② 目标阶段
-          event.data.targets = await runTargeting(game, event, uc, event.data.targets);
-          if (event.data.targets.length === 0) return; // 目标全部被取消 → 不生效
+          const aimed = await runTargeting(game, event, uc, event.data.targets);
+          event.data.targets = aimed.map((a) => a.target);
+          if (aimed.length === 0) return; // 目标全部被取消 → 不生效
 
           // ③ 生效阶段：整张牌的开幕 → 逐目标生效 → 整张牌的收尾
           await def?.onAction?.(game, event.data, event, 'before');
-          for (const target of event.data.targets) {
-            if (!target.alive) continue;
-            await runCardEffect(game, event, def, target);
+          for (const aim of aimed) {
+            if (!aim.target.alive) continue;
+            await runCardEffect(game, event, def, aim);
           }
           await def?.onAction?.(game, event.data, event, 'after');
         } else {
@@ -78,14 +77,20 @@ export async function useCard(
     });
 }
 
-/** 目标阶段：逐目标 targeting.before → targeting.after；返回未被取消的目标 */
+/** 目标阶段产出：目标 + 该目标在目标阶段被置的位（随生效事件继承） */
+interface AimResult {
+  target: Player;
+  disresponsive?: boolean;
+}
+
+/** 目标阶段：逐目标 targeting.before → targeting.after；返回未被取消的目标及其位 */
 async function runTargeting(
   game: Game,
   event: GameEvent<UseCardEventData>,
   uc: UsedCardInstance,
   targets: readonly Player[],
-): Promise<Player[]> {
-  const remaining: Player[] = [];
+): Promise<AimResult[]> {
+  const remaining: AimResult[] = [];
   for (const target of targets) {
     const targetingEvent = await new GameEvent<TargetingEventData>(
       EventType.Targeting,
@@ -100,7 +105,10 @@ async function runTargeting(
 
     if (!targetingEvent.data.cancelled) {
       // 读事件内的 target：流离等技能可在 targeting.before 中转移目标
-      remaining.push(targetingEvent.data.target);
+      remaining.push({
+        target: targetingEvent.data.target,
+        disresponsive: targetingEvent.data.disresponsive,
+      });
     } else {
       console.log(`  🚫${target.name} 被指定为目标的效果已被抵消`);
     }
@@ -110,20 +118,21 @@ async function runTargeting(
 
 /**
  * 单目标生效事件：`cardEffect.before` → 内容 → `cardEffect.after`。
- * `to === undefined` = 无目标流程（无懈）。
+ * `aim === undefined` = 无目标流程（无懈）。
  */
 async function runCardEffect(
   game: Game,
   event: GameEvent<UseCardEventData>,
   def: CardDef | undefined,
-  to: Player | undefined,
+  aim: AimResult | undefined,
 ): Promise<void> {
+  const to = aim?.target;
   const data: CardEffectEventData = {
     use: event.data,
     card: event.data.card,
     to,
-    marks: event.data.marks,
     unoffsetable: event.data.unoffsetable,
+    disresponsive: aim?.disresponsive,
   };
   await new GameEvent<CardEffectEventData>(EventType.CardEffect, data, game)
     .execute(async (evt) => {

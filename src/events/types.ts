@@ -2,7 +2,7 @@
 // 事件系统 — 事件名常量 & 事件数据接口
 // ============================================================
 
-import type { Card, CardLocation, CardMoveReason, Player, RespondMarks, UsedCard } from '../types.js';
+import type { Card, CardLocation, CardMoveReason, Player, UsedCard } from '../types.js';
 import type { UsedCardInstance } from '../position/usedCards.js';
 
 /** 事件名常量 */
@@ -84,6 +84,8 @@ export interface TargetingEventData {
   judging?: boolean;
   /** 目标指定被抵消（仁王盾 / 无懈）时置真，该 target 被剔除 */
   cancelled?: boolean;
+  /** 该目标**不可响应**（铁骑等在此置位；随生效事件继承，供内容层读） */
+  disresponsive?: boolean;
 }
 
 export interface UseCardEventData {
@@ -91,8 +93,6 @@ export interface UseCardEventData {
   /** 本次使用对应的 UC（规则身份 + 实体组成 + 容器位置；读规则读 UC，演进 3.5） */
   card: UsedCardInstance;
   targets: Player[];
-  /** 响应过程状态（无双/铁骑等 targeting.after 写入，响应流程读取） */
-  marks?: RespondMarks;
   /**
    * 整张牌**不可被无懈响应**（事件级，如离间的决斗）。
    * 由构造本次使用的技能声明（演进 3.6 U2）。
@@ -119,8 +119,6 @@ export interface CardEffectEventData {
   card: UsedCardInstance;
   /** 当前目标；无目标流程（如无懈）为 undefined */
   to?: Player;
-  /** 本次对该目标的过程状态（与 use.marks 同一对象） */
-  marks?: RespondMarks;
   /** 该目标上**此牌效果无效**（仁王盾等；引擎据此跳过内容） */
   nullified?: boolean;
   /** 该目标**不可被无懈响应**（读 use.unoffsetable；离间） */

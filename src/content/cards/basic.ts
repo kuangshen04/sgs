@@ -22,7 +22,7 @@ const shaContent: CardContentFn = async (game, data, _event) => {
   );
 
   const cancelled = await resolveShaResponse(
-    game, attacker, defender, data.card, data.marks ?? {},
+    game, attacker, defender, data.card, { disresponsive: data.disresponsive },
   );
   if (!cancelled) {
     // card：造成伤害的牌 = 本张杀（奸雄等技能据此获得，见 events/types.ts）

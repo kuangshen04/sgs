@@ -9,8 +9,7 @@ import { judge } from '../../position/cardActions.js';
 import { defineSkill } from '../../effects/effects.js';
 import { heroRegistry } from '../heroRegistry.js';
 import type { GameEvent } from '../../events/index.js';
-import type { TargetingEventData, UseCardEventData } from '../../events/index.js';
-import { EventType } from '../../events/index.js';
+import type { TargetingEventData } from '../../events/index.js';
 import type { Game } from '../../game.js';
 
 /** 马术：锁定技，纯常驻效果（归属由引擎按技能名判定） */
@@ -20,17 +19,14 @@ defineSkill({
   effects: [{ form: 'persistent', key: 'offensiveDistance', value: () => 1 }],
 });
 
-/** 铁骑：使用杀指定目标后判定，红色则此杀不可闪避 */
+/** 铁骑：使用杀指定目标后判定，红色则此杀对该目标不可闪避（per-target 位，取代旧的跨目标 marks） */
 const tieqiContent = async (
   game: Game, event: GameEvent<any>, owner: Player,
 ): Promise<void> => {
   const judgeCard = await judge(game, owner);
   if (judgeCard.suit === '♥' || judgeCard.suit === '♦') {
-    const useCardEvent = event.getParent(EventType.UseCard);
-    if (useCardEvent) {
-      const marks = (useCardEvent.data as UseCardEventData).marks;
-      if (marks) marks.unavoidable = true;
-    }
+    // targeting.after 的"当前目标"事件：置该目标的 disresponsive（随生效事件继承）
+    (event.data as TargetingEventData).disresponsive = true;
     console.log(
       `  ✨${owner.name} 的铁骑判定为 ${judgeCard.suit}${displayNumber(judgeCard.number)}（红色），此杀不可闪避`,
     );

@@ -52,4 +52,28 @@ describe('铁骑（马超触发技能）', () => {
     expect(target.hp).toBe(hpBefore);     // 闪抵消
     expect(target.hand.cards.length).toBe(0);
   });
+
+  it('多目标杀：不可响应是**每目标**的位（只对判定成功的目标生效）', async () => {
+    const g = freshGame({}, ['马超', '刘备', '孙权']);
+    const machao = g.state.players[0];
+    const p2 = g.state.players[1];
+    const p3 = g.state.players[2];
+    giveHand(machao, CardType.Sha);
+    giveHand(p2, CardType.Shan);
+    giveHand(p3, CardType.Shan);
+    // 牌堆顶（数组尾）为第一次判定：红桃 → p2 不可响应当前杀；随后黑桃 → p3 可响应
+    g.state.deck.add(makeUniqueCard(CardType.Sha, '♠', 1));
+    g.state.deck.add(makeUniqueCard(CardType.Sha, '♥', 1));
+    const hp2 = p2.hp;
+    const hp3 = p3.hp;
+
+    await useCard(g, {
+      player: machao, card: machao.hand.cards[0], targets: [p2, p3],
+    });
+
+    expect(p2.hp).toBe(hp2 - 1);          // 铁骑判定红 → 不可闪避（闪留在手里）
+    expect(p2.hand.cards.length).toBe(1);
+    expect(p3.hp).toBe(hp3);              // 判定黑 → 正常出闪抵消（不再被前一目标的位污染）
+    expect(p3.hand.cards.length).toBe(0);
+  });
 });

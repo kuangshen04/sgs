@@ -310,7 +310,7 @@ export function installWuxieTrigger(game: Game): void {
     const def = cardRegistry.get(effect.card.type);
     if (!def?.tags.includes(CardTag.Trick)) return;
     if (effect.use.unoffsetable || effect.unoffsetable) return; // 不可被无懈响应
-    if (effect.cancelled) return;                               // 已被抵消
+    if (effect.cancelled || effect.nullified) return;            // 已被抵消 / 已无效
 
     await askWuxie(game, effect.to, effect.use.player, undefined, effect);
   });

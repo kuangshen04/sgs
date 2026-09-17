@@ -12,7 +12,9 @@ import type { Game } from '../../game.js';
 import { cardRegistry, cardEmoji } from '../cardRegistry.js';
 import { discardCards, drawCards, moveCards, judge } from '../../position/cardActions.js';
 import { useCard } from '../../flow/useCard.js';
-import type { DamageEventData, ShaCancelledEventData, TargetingEventData } from '../../events/index.js';
+import type {
+  CardEffectEventData, DamageEventData, ShaCancelledEventData, TargetingEventData,
+} from '../../events/index.js';
 import { EventType } from '../../events/index.js';
 import {
   askForCard,
@@ -191,24 +193,26 @@ cardRegistry.register({
   },
 });
 
-// 仁王盾：黑色杀对其无效
+// 仁王盾：黑色杀对其无效 —— 在**该目标生效前**（cardEffect.before）把这一次生效置为无效。
+// 不放在 targeting 阶段取消目标：那是"目标不合法/被取消"的语义，会让青釭剑（targeting.after
+// 才失效防具）来不及生效；按规则"对你无效"属生效阶段的判定（演进 3.6 U3）。
 registerBareEffect({
   form: 'triggered',
   equipType: CardType.RenWangDun,
-  timing: 'targeting.before',
-  condition: (game, event, owner) => {
-    const { card, target } = event.data as TargetingEventData;
-    if (target !== owner) return false; // 只保护装备者自己
-    if (card.type !== CardType.Sha) return false;
-    // 黑色杀对装备者无效（读 UC 的**颜色**：多牌转化异色则无颜色 → 仁王盾不生效）
-    return card.color === 'black';
+  timing: 'cardEffect.before',
+  condition: (_game, event, owner) => {
+    const effect = event.data as CardEffectEventData;
+    if (effect.to !== owner) return false; // 只保护装备者自己
+    if (effect.card.type !== CardType.Sha) return false;
+    // 黑色杀对其无效（读 UC 的**颜色**：多牌转化异色则无颜色 → 仁王盾不生效）
+    return effect.card.color === 'black';
   },
-  run: async (game, event, owner) => {
-    const { card, target } = event.data as TargetingEventData;
+  run: async (_game, event, owner) => {
+    const effect = event.data as CardEffectEventData;
+    effect.nullified = true; // 引擎据此跳过内容（= 此牌对装备者无效）
     console.log(
-      `  🔰${owner.name} 的仁王盾发动！黑色 ${cardEmoji(card.type)} 对其无效`,
+      `  🔰${owner.name} 的仁王盾发动！黑色 ${cardEmoji(effect.card.type)} 对其无效`,
     );
-    event.data.cancelled = true; // targeting 时取消目标
   },
 });
 

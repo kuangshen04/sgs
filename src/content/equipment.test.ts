@@ -13,6 +13,7 @@ import { choosePlayAction } from '../decision/playChoices.js';
 
 import { cardRegistry } from './cardRegistry.js';
 import { CardTag, CardType } from '../types.js';
+import { EventType } from '../events/index.js';
 import type { UsedCardInstance } from '../position/usedCards.js';
 import { verifyCardState } from '../position/cardAreaCheck.js';
 import { cardsInAreas } from '../position/areas.js';
@@ -99,7 +100,7 @@ describe('寒冰剑（装备触发）', () => {
 });
 
 describe('仁王盾（装备触发）', () => {
-  it('黑色杀对装备者无效（targeting 时取消目标）', async () => {
+  it('黑色杀对装备者无效（cardEffect.before 置 nullified，仍是目标但不生效）', async () => {
     const g = freshGame();
     const attacker = g.state.players[0];
     const defender = g.state.players[1];
@@ -110,7 +111,7 @@ describe('仁王盾（装备触发）', () => {
 
     await useCard(g, { player: attacker, card: sha, targets: [defender] });
 
-    expect(defender.hp).toBe(hpBefore); // 目标被取消，未受伤
+    expect(defender.hp).toBe(hpBefore); // 效果被无效，未受伤
   });
 
   it('红色杀正常生效', async () => {
@@ -144,6 +145,39 @@ describe('仁王盾（装备触发）', () => {
     });
 
     expect(defender.hp).toBe(hpBefore - 1); // 仁王盾未拦下
+  });
+
+  it('青釭剑 vs 仁王盾：防具在**目标指定后**被失效 ⇒ 仁王盾不再生效（官方裁决）', async () => {
+    const g = freshGame();
+    const attacker = g.state.players[0];
+    const defender = g.state.players[1];
+    equipAt(g, attacker, makeUniqueCard(CardType.QingGangJian));
+    equipAt(g, defender, makeUniqueCard(CardType.RenWangDun));
+    const sha = makeUniqueCard(CardType.Sha, '♠', 3); // 黑色杀（无青釭剑时会被无效）
+    attacker.hand.replaceAll([sha]);
+    const hpBefore = defender.hp;
+
+    await useCard(g, { player: attacker, card: sha, targets: [defender] });
+
+    // 青釭剑在 targeting.after 失效防具 → 生效阶段的仁王盾不再是该玩家的效果 ⇒ 黑色杀命中
+    expect(defender.hp).toBe(hpBefore - 1);
+  });
+
+  it('生效阶段被 nullified 的延时锦囊不落地（留在处理区 → 弃牌堆）', async () => {
+    const g = freshGame();
+    const attacker = g.state.players[0];
+    const target = g.state.players[1];
+    const lebu = makeUniqueCard(CardType.LeBu);
+    attacker.hand.replaceAll([lebu]);
+    g.triggerSystem.on(`${EventType.CardEffect}.before`, (e) => {
+      const d = e.data as { card: { type: string }; nullified?: boolean };
+      if (d.card.type === CardType.LeBu) d.nullified = true;
+    });
+
+    await useCard(g, { player: attacker, card: lebu, targets: [target] });
+
+    expect(target.judgment.cards).toHaveLength(0);   // 未置入判定区
+    expect(g.state.discardPile.cards).toContain(lebu); // 收尾进弃牌堆
   });
 });
 

@@ -5,7 +5,7 @@
 // ============================================================
 
 import { CardType } from '../types.js';
-import type { Card, Player, RespondMarks, UsedCard } from '../types.js';
+import type { Card, Player, UsedCard } from '../types.js';
 import type { Game } from '../game.js';
 import { EventType, GameEvent } from '../events/index.js';
 import type { ShaCancelledEventData } from '../events/index.js';
@@ -18,15 +18,19 @@ import { effectRegistry } from '../effects/persistentEffects.js';
 
 /**
  * 结算一张杀的闪响应，返回是否被抵消。
- * - 不可闪避（铁骑标记）→ 跳过响应，未抵消
+ * - 不可响应（`disresponsive`：铁骑等）→ 跳过响应，未抵消
  * - 所需闪数（无双 = 常驻 'shaRequired' 查询）→ 逐张询问；成功后再问下一张
  * - 全部出完 → 触发 shaCancelled 抵消时点（青龙偃月刀/贯石斧监听）
  */
 export async function resolveShaResponse(
-  game: Game, attacker: Player, defender: Player, shaCard: Card | UsedCard, marks: RespondMarks,
+  game: Game,
+  attacker: Player,
+  defender: Player,
+  shaCard: Card | UsedCard,
+  opts: { disresponsive?: boolean } = {},
 ): Promise<boolean> {
   const usedCard = asUsedCard(shaCard);
-  if (marks.unavoidable) {
+  if (opts.disresponsive) {
     console.log(`  ⚡${defender.name} 无法闪避！`);
     return false;
   }
