@@ -382,6 +382,25 @@
      "优先级技能"用例）；**裸触发效果的所有者语义**（当前每个存活玩家都算归属 → 会重复执行，今天无此内容）。
 7. **技能 info 规则文本**——`SkillDef.info` / `CardDef.info` 纯数据字段，内容源 = docs 导出 JSON（TODO 一.5）。
    低风险，可随时插入。
+8. **用牌流程：目标阶段 + 单目标生效事件**（演进 3.6，已确认；吸收原第 5 项"离间"）：
+   - **U1 [x] 行为保持（纯结构）**：新增 `cardEffect` 事件（`cardEffect.before` / 内容 / `cardEffect.after`，
+     逐目标依次创建）+ `CardEffectEventData`（含 `to / nullified / unoffsetable / disresponsive /
+     cancelled / cardsResponded`，引擎在内容前只检查 `nullified|cancelled`）；`CardDef.content` 改
+     **单目标结算**（`data.to`）；新增 `CardDef.onAction(before|after)`（五谷丰登亮牌一次，牌池放
+     `use.extra`；南蛮/万箭/桃园只喊一次口号）；无目标牌走单独分支（U1 过渡期仍跑一次"target = 使用者"
+     的窗口，U2 与该窗口搬家一起删）。
+     - 验收：465 例绿（新增 `flow/useCard.test.ts` 5 例：逐目标 cardEffect 时序 / 内容在 before-after 之间 /
+       `nullified` 跳过内容 / `cancelled` 跳过内容 / 五谷亮牌一次 + 逐目标各取一张），`tsc` 干净，
+       整局冒烟跑通（五谷/南蛮/桃园均正常）。
+   - **U2 [ ] 无懈与无目标流程（行为变化）**：去掉"`targets` 为空 ⇒ target = 使用者自己"的伪造，
+     无懈改走无目标流程（窗口 = 它自己的 `cardEffect.before`）；响应关系用 `use.responseTo` +
+     `effect.cardsResponded`；支持 `unoffsetable`（**事件级**声明）。
+   - **U3 [ ] 仁王盾改 `nullified`（行为变化）**：修正青釭剑 vs 仁王盾（阶段问题，非排序问题）；
+     装备牌 / 延时锦囊落地移入生效阶段并受 `nullified` 约束。
+   - **U4 [ ] 引擎级合法性校验 + 离间**：`useCard` 侧校验使用者 `canUse` 与逐目标 `targetFilter`
+     （非法目标剔除、无目标则失败）；离间本体（0 牌虚拟决斗 + 视为他人使用 + 不可被无懈 + 出牌阶段限一次）。
+   - 不采纳（演进 3.6 记录）：副目标、额外结算次数、加伤/加回复、`prohibitedCardNames`、
+     `aboutToEffect`、实体牌标记查询、`skipDrop`、目标四阶段、FreeKill 三段固定时点。
 
 ### 伴生事项：CardArea 内部结构自定义（不在本阶段单独开设计）
 

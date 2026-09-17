@@ -16,6 +16,8 @@ export const EventType = {
   Judge: 'judge',
   Targeting: 'targeting',
   UseCard: 'useCard',
+  /** 单目标生效（本次使用 × 一个目标；时点 cardEffect.before/after，演进 3.6） */
+  CardEffect: 'cardEffect',
   CardMove: 'cardMove',
   ShaCancelled: 'shaCancelled',
   // Boundary 事件 — 游戏/轮/回合/阶段的分界标记
@@ -91,6 +93,39 @@ export interface UseCardEventData {
   targets: Player[];
   /** 响应过程状态（无双/铁骑等 targeting.after 写入，响应流程读取） */
   marks?: RespondMarks;
+  /**
+   * 整张牌**不可被无懈响应**（事件级，如离间的决斗）。
+   * 由构造本次使用的技能声明（演进 3.6 U2）。
+   */
+  unoffsetable?: boolean;
+  /** 内容层协作数据（如五谷丰登亮出的牌池；onAction 与逐目标 content 之间共享） */
+  extra?: Record<string, unknown>;
+}
+
+/**
+ * 单目标生效事件（本次使用 × 一个目标）—— 使用流程的第三段（演进 3.6）。
+ * 时点：`cardEffect.before` → 内容（`CardDef.content`）→ `cardEffect.after`。
+ * 引擎在内容前只检查 `nullified` / `cancelled`：已置位则跳过内容（= 无效 / 抵消）。
+ */
+export interface CardEffectEventData {
+  /** 本次使用 */
+  use: UseCardEventData;
+  /** 本张 UC（读规则读 UC） */
+  card: UsedCardInstance;
+  /** 当前目标；无目标流程（如无懈）为 undefined */
+  to?: Player;
+  /** 本次对该目标的过程状态（与 use.marks 同一对象） */
+  marks?: RespondMarks;
+  /** 该目标上**此牌效果无效**（仁王盾等；引擎据此跳过内容） */
+  nullified?: boolean;
+  /** 该目标**不可被无懈响应**（读 use.unoffsetable；离间） */
+  unoffsetable?: boolean;
+  /** 该目标**不可响应**（铁骑等；响应的编排由内容层自行读取） */
+  disresponsive?: boolean;
+  /** 该目标上的效果**已被抵消**（无懈置位；引擎据此跳过内容） */
+  cancelled?: boolean;
+  /** 响应此牌的牌（闪 / 无懈），供"抵消/被响应"查询 */
+  cardsResponded?: UsedCardInstance[];
 }
 
 /** 杀被闪抵消时点（青龙偃月刀/贯石斧/刺杀等监听） */

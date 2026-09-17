@@ -6,17 +6,25 @@ import { Card, CardTag, CardType, Player, colorOfSuit } from '../types.js';
 import type { UsedCard } from '../types.js';
 import type { UsedCardInstance } from '../position/usedCards.js';
 import type { Game } from '../game.js';
-import type { GameEvent, UseCardEventData } from '../events/index.js';
+import type { GameEvent, CardEffectEventData, UseCardEventData } from '../events/index.js';
 
 // ============================================================
 // 卡牌定义接口 & 注册表
 // ============================================================
 
-/** 卡牌效果函数 */
+/** 卡牌效果函数：**对该目标**结算（单目标生效事件的内容，演进 3.6） */
 export type CardContentFn = (
+  game: Game,
+  data: CardEffectEventData,
+  event: GameEvent<CardEffectEventData>,
+) => Promise<void>;
+
+/** 整张牌的开幕 / 收尾（可选）：亮牌一次、整体日志等 */
+export type CardActionFn = (
   game: Game,
   data: UseCardEventData,
   event: GameEvent<UseCardEventData>,
+  phase: 'before' | 'after',
 ) => Promise<void>;
 
 /** 一张牌的完整定义（由 cards.ts 注册） */
@@ -24,7 +32,13 @@ export interface CardDef {
   type: CardType;
   name: string;
   emoji: string;
+  /** 对**该目标**结算（在该目标的单目标生效事件内执行） */
   content: CardContentFn;
+  /**
+   * 整张牌的开幕 / 收尾（可选）：在**逐目标生效之前 / 之后**各调用一次。
+   * 用于"一次性的整体动作"，如五谷丰登亮牌一次（亮出的牌池放 `use.extra`）。
+   */
+  onAction?: CardActionFn;
   /**
    * 延时锦囊在判定阶段的结算效果（收到判定结果与该延时牌的 UC；可自行**迁移 UC**，如闪电移给下家）。
    * `judgeCard === null` = 本次被抵消（无判定牌、未执行效果）：延时牌仍在此决定收尾去向

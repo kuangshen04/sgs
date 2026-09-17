@@ -1,25 +1,32 @@
 // ============================================================
-// 使用牌流程（UC 层业务）— useCard
+// 使用牌流程（UC 层业务）— useCard（演进 3.6：目标阶段 + 单目标生效事件）
 //
-// 使用牌 = 一条 UC 的生命周期（两层边界见演进 3.5）：
+// useCard = 一条 UC 的一生：
 //   ① UC 进处理区（实体牌跟随）——短时 UC 的家；
-//   ② 逐目标的目标/响应窗口（无懈可击等）；
-//   ③ 效果：延时锦囊 / 装备的"使用效果"就是**移动这条 UC**（引擎统一提供）；
-//      其余牌的"使用效果"是内容层的 `def.content`；
-//   ④ 清理处理区：仍在处理区的 UC 销毁（实体牌入弃牌堆）；已迁走的（延时 / 装备）不动。
+//   ② 【有目标】目标阶段：逐目标 targeting.before → targeting.after（可取消目标 cancelled）；
+//   ③ 【有目标】生效阶段：onAction(before) → 逐目标依次创建单目标生效事件 cardEffect → onAction(after)
+//         cardEffect.before → 内容（CardDef.content，只结算当前目标）→ cardEffect.after
+//         引擎在内容前只检查 nullified / cancelled：已置位则跳过内容（= 无效 / 抵消）；
+//      延时锦囊 / 装备的"使用效果"是引擎提供的位置效果（U3 起移入生效阶段并受 nullified 约束）；
+//   ③'【无目标】单独流程（无懈这类"对某次生效"的使用）；
+//   ④ 收尾：清理处理区（UC 退出，实体牌入弃牌堆）。
 //
-// 打出（响应窗口）不走本流程，见 usedCardActions.playUsedCard。
+// 打出（响应窗口）不走本流程，见 usedCardActions.playUsedCard；
 // 判定牌、观星亮出的牌不是 UC，也不走本流程。
 // ============================================================
 
 import { CardTag } from '../types.js';
 import type { Card, Player, UsedCard } from '../types.js';
 import { EventType, GameEvent } from '../events/index.js';
-import type { TargetingEventData, UseCardEventData } from '../events/index.js';
+import type {
+  CardEffectEventData, TargetingEventData, UseCardEventData,
+} from '../events/index.js';
 import { cardRegistry, cardEmoji, cardFaceText } from '../content/cardRegistry.js';
+import type { CardDef } from '../content/cardRegistry.js';
 import {
   enterUsedCard, equipCard, materializeUsedCard, moveUsedCard, settleUsedCard,
 } from '../position/usedCardActions.js';
+import type { UsedCardInstance } from '../position/usedCards.js';
 import type { Game } from '../game.js';
 
 export async function useCard(
@@ -34,6 +41,8 @@ export async function useCard(
     targets: data.targets,
     marks: data.marks,
     card: uc,
+    unoffsetable: data.unoffsetable,
+    extra: data.extra,
   };
   return new GameEvent<UseCardEventData>(EventType.UseCard, usedData, game)
     .execute(async (event) => {
@@ -44,82 +53,107 @@ export async function useCard(
       await enterUsedCard(game, uc, { kind: 'processing' }, { reason: 'use' });
 
       try {
-        // ② 逐 target 判定（无懈可击等响应在这里）
-        let shouldExecute = true;
-
         if (event.data.targets.length > 0) {
-          const remaining: Player[] = [];
+          // ② 目标阶段
+          event.data.targets = await runTargeting(game, event, uc, event.data.targets);
+          if (event.data.targets.length === 0) return; // 目标全部被取消 → 不生效
+
+          // ③ 生效阶段：整张牌的开幕 → 逐目标生效 → 整张牌的收尾
+          await def?.onAction?.(game, event.data, event, 'before');
           for (const target of event.data.targets) {
-            const targetingEvent = await new GameEvent<TargetingEventData>(
-              EventType.Targeting,
-              { user: event.data.player, card: uc, target },
-              game,
-            ).execute(async (evt) => {
-              // targeting 是 trigger 检查点：自行编排 before / after，便于在 cancelled 时跳过
-              await game.triggerSystem.trigger(`${EventType.Targeting}.before`, evt);
-              if (evt.data.cancelled) return;
-              await game.triggerSystem.trigger(`${EventType.Targeting}.after`, evt);
-            }, { triggers: false });
-
-            if (!targetingEvent.data.cancelled) {
-              // 读事件内的 target：流离等技能可在 targeting.before 中转移目标
-              remaining.push(targetingEvent.data.target);
-            } else {
-              console.log(`  🚫${target.name} 被指定为目标的效果已被抵消`);
-            }
+            if (!target.alive) continue;
+            await runCardEffect(game, event, def, target);
           }
-          if (remaining.length === 0) {
-            shouldExecute = false;
-          } else {
-            event.data.targets = remaining;
-          }
+          await def?.onAction?.(game, event.data, event, 'after');
         } else {
-          // 无目标牌（如无懈可击）：单次 targeting，target = 使用者自己
-          // 这是唯一的响应窗口，无懈可击可以被反无懈
-          const targetingEvent = await new GameEvent<TargetingEventData>(
-            EventType.Targeting,
-            { user: event.data.player, card: uc, target: event.data.player },
-            game,
-          ).execute(async (evt) => {
-            await game.triggerSystem.trigger(`${EventType.Targeting}.before`, evt);
-            if (evt.data.cancelled) return;
-            await game.triggerSystem.trigger(`${EventType.Targeting}.after`, evt);
-          }, { triggers: false });
-
-          if (targetingEvent.data.cancelled) {
-            console.log(`  🚫${event.data.player.name} 的 ${def?.name ?? '牌'} 效果已被抵消`);
-            shouldExecute = false;
-          }
-        }
-
-        // ③ 效果
-        if (shouldExecute) {
-          if (def?.tags.includes(CardTag.Delay)) {
-            // 延时锦囊：效果 = UC 迁入目标判定区（判定期再结算，见 gameFlow.judgePhase）
-            const target = event.data.targets[0];
-            if (target) {
-              await moveUsedCard(game, uc, { kind: 'judgment', player: target }, { reason: 'use' });
-              console.log(
-                `  ${event.data.player.name} 使用了 ${cardEmoji(uc.type)}` +
-                `(${cardFaceText(uc)})，置入 ${target.name} 的判定区`,
-              );
-            }
-          } else if (def?.tags.includes(CardTag.Equip)) {
-            // 装备：效果 = UC 迁入对应槽位（顶掉旧装备）
-            const target = event.data.targets[0] ?? event.data.player;
-            const replaced = await equipCard(game, target, uc);
-            console.log(
-              `  ${event.data.player.name} 装备了 ${cardEmoji(uc.type)}` +
-              `(${cardFaceText(uc)})` +
-              (replaced ? `，顶掉 ${cardEmoji(replaced.type)}` : ''),
-            );
-          } else if (def) {
-            await def.content(game, event.data, event);
-          }
+          // ③'【无目标】单独流程（如无懈）
+          // U1 过渡：仍跑一次"target = 使用者"的 targeting 窗口（无懈的反无懈窗口就挂在这里）。
+          // 去掉这个伪造 target 与"把无懈窗口搬到 cardEffect.before"是同一件事，U2 一起做（演进 3.6）。
+          const fake = await runTargeting(game, event, uc, [event.data.player]);
+          if (fake.length === 0) return; // 窗口内被抵消 → 不生效（行为保持）
+          await runCardEffect(game, event, def, undefined);
         }
       } finally {
         // ④ 清理处理区：仍在处理区的 UC 退出（销毁，实体牌入弃牌堆）
         await settleUsedCard(game, uc, 'discard');
       }
+    });
+}
+
+/** 目标阶段：逐目标 targeting.before → targeting.after；返回未被取消的目标 */
+async function runTargeting(
+  game: Game,
+  event: GameEvent<UseCardEventData>,
+  uc: UsedCardInstance,
+  targets: readonly Player[],
+): Promise<Player[]> {
+  const remaining: Player[] = [];
+  for (const target of targets) {
+    const targetingEvent = await new GameEvent<TargetingEventData>(
+      EventType.Targeting,
+      { user: event.data.player, card: uc, target },
+      game,
+    ).execute(async (evt) => {
+      // targeting 是 trigger 检查点：自行编排 before / after，便于在 cancelled 时跳过
+      await game.triggerSystem.trigger(`${EventType.Targeting}.before`, evt);
+      if (evt.data.cancelled) return;
+      await game.triggerSystem.trigger(`${EventType.Targeting}.after`, evt);
+    }, { triggers: false });
+
+    if (!targetingEvent.data.cancelled) {
+      // 读事件内的 target：流离等技能可在 targeting.before 中转移目标
+      remaining.push(targetingEvent.data.target);
+    } else {
+      console.log(`  🚫${target.name} 被指定为目标的效果已被抵消`);
+    }
+  }
+  return remaining;
+}
+
+/**
+ * 单目标生效事件：`cardEffect.before` → 内容 → `cardEffect.after`。
+ * `to === undefined` = 无目标流程（无懈）。
+ */
+async function runCardEffect(
+  game: Game,
+  event: GameEvent<UseCardEventData>,
+  def: CardDef | undefined,
+  to: Player | undefined,
+): Promise<void> {
+  const data: CardEffectEventData = {
+    use: event.data,
+    card: event.data.card,
+    to,
+    marks: event.data.marks,
+    unoffsetable: event.data.unoffsetable,
+  };
+  await new GameEvent<CardEffectEventData>(EventType.CardEffect, data, game)
+    .execute(async (evt) => {
+      // 引擎只做这一件事：无效 / 被抵消 ⇒ 跳过内容
+      if (evt.data.nullified || evt.data.cancelled) return;
+
+      // 延时锦囊 / 装备的使用效果 = 引擎提供的位置效果（U3 起移入内容并受 nullified 约束）
+      if (def?.tags.includes(CardTag.Delay)) {
+        if (to) {
+          await moveUsedCard(game, evt.data.card, { kind: 'judgment', player: to }, { reason: 'use' });
+          console.log(
+            `  ${event.data.player.name} 使用了 ${cardEmoji(evt.data.card.type)}` +
+            `(${cardFaceText(evt.data.card)})，置入 ${to.name} 的判定区`,
+          );
+        }
+        return;
+      }
+      if (def?.tags.includes(CardTag.Equip)) {
+        const owner = to ?? event.data.player;
+        const replaced = await equipCard(game, owner, evt.data.card);
+        console.log(
+          `  ${event.data.player.name} 装备了 ${cardEmoji(evt.data.card.type)}` +
+          `(${cardFaceText(evt.data.card)})` +
+          (replaced ? `，顶掉 ${cardEmoji(replaced.type)}` : ''),
+        );
+        return;
+      }
+
+      if (def) await def.content(game, evt.data, evt);
     });
 }

@@ -10,27 +10,30 @@ import { distanceTo, attackRange } from '../../flow/distance.js';
 import { effectRegistry } from '../../effects/persistentEffects.js';
 import { resolveShaResponse } from '../../flow/respond.js';
 
-const shaContent: CardContentFn = async (game, data, event) => {
-  const attacker = data.player;
+/**
+ * 杀：对**该目标**结算（逐目标由引擎驱动）。
+ * 响应（闪）写死在这里：能否响应读 `disresponsive`（铁骑等置位），所需闪数走常驻查询（无双）。
+ */
+const shaContent: CardContentFn = async (game, data, _event) => {
+  const attacker = data.use.player;
+  const defender = data.to!;
   console.log(
-    `  ${attacker.name} 使用了 🗡️杀 (${cardFaceText(data.card)})，目标 ${data.targets.length} 名`,
+    `  ${attacker.name} 使用了 🗡️杀 (${cardFaceText(data.card)})，目标 ${defender.name}`,
   );
 
-  const marks = event.data.marks ?? {};
-  // 逐个目标结算：能否响应（铁骑）/ 所需闪数（无双）/ 抵消时点（shaCancelled）
-  for (const defender of data.targets) {
-    const cancelled = await resolveShaResponse(game, attacker, defender, data.card, marks);
-    if (!cancelled) {
-      // card：造成伤害的牌 = 本张杀（奸雄等技能据此获得，见 events/types.ts）
-      await damage(game, { target: defender, source: attacker, amount: 1, card: data.card });
-    }
+  const cancelled = await resolveShaResponse(
+    game, attacker, defender, data.card, data.marks ?? {},
+  );
+  if (!cancelled) {
+    // card：造成伤害的牌 = 本张杀（奸雄等技能据此获得，见 events/types.ts）
+    await damage(game, { target: defender, source: attacker, amount: 1, card: data.card });
   }
 };
 
 const taoContent: CardContentFn = async (game, data, _event) => {
-  const user = data.player;
+  const user = data.use.player;
   // 出牌阶段目标是自己；濒死求桃时目标是濒死角色（他人用桃救援）
-  const target = data.targets[0] ?? user;
+  const target = data.to ?? user;
   const before = target.hp;
   await recover(game, { target, amount: 1 });
   console.log(

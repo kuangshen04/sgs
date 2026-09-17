@@ -3,8 +3,8 @@
 // ============================================================
 
 import { CardTag, CardType } from '../../types.js';
-import type { Player } from '../../types.js';
-import type { CardContentFn } from '../cardRegistry.js';
+import type { Card, Player } from '../../types.js';
+import type { CardActionFn, CardContentFn } from '../cardRegistry.js';
 import { cardRegistry, cardEmoji, cardFaceText } from '../cardRegistry.js';
 import { drawCards, moveCards, takeTop } from '../../position/cardActions.js';
 import { useCard } from '../../flow/useCard.js';
@@ -20,7 +20,7 @@ import type { Game } from '../../game.js';
 import { resolveJueDouResponse, resolvePlayResponse, resolveUseResponse } from '../../flow/respond.js';
 
 const wuzhongContent: CardContentFn = async (game, data, _event) => {
-  const player = data.player;
+  const player = data.use.player;
   const before = player.hand.cards.length;
   await drawCards(game, { target: player, count: 2 });
   console.log(
@@ -30,8 +30,8 @@ const wuzhongContent: CardContentFn = async (game, data, _event) => {
 };
 
 const juedouContent: CardContentFn = async (game, data, _event) => {
-  const initiator = data.player;
-  const target = data.targets[0];
+  const initiator = data.use.player;
+  const target = data.to!;
   console.log(
     `  ${initiator.name} 对 ${target.name} 使用了 ⚔️决斗 (${cardFaceText(data.card)})`,
   );
@@ -54,85 +54,89 @@ const juedouContent: CardContentFn = async (game, data, _event) => {
 };
 
 const nanmanContent: CardContentFn = async (game, data, _event) => {
-  const user = data.player;
-  console.log(
-    `  ${user.name} 使用了 🐘南蛮入侵 (${cardFaceText(data.card)})！` +
-    `所有其他角色必须打出杀`,
-  );
-
-  for (const target of data.targets) {
-    if (await resolvePlayResponse(game, target, CardType.Sha)) {
-      console.log(`  ${target.name} 打出了 🗡️杀`);
-    } else {
-      await damage(game, { target, source: user, amount: 1, card: data.card });
-    }
+  const target = data.to!;
+  if (await resolvePlayResponse(game, target, CardType.Sha)) {
+    console.log(`  ${target.name} 打出了 🗡️杀`);
+  } else {
+    await damage(game, { target, source: data.use.player, amount: 1, card: data.card });
   }
 };
 
 const wanjianContent: CardContentFn = async (game, data, _event) => {
-  const user = data.player;
-  console.log(
-    `  ${user.name} 使用了 🏹万箭齐发 (${cardFaceText(data.card)})！` +
-    `所有其他角色必须打出闪`,
-  );
-
-  for (const target of data.targets) {
-    if (await resolvePlayResponse(game, target, CardType.Shan)) {
-      console.log(`  ${target.name} 打出了 🛡️闪`);
-    } else {
-      await damage(game, { target, source: user, amount: 1, card: data.card });
-    }
+  const target = data.to!;
+  if (await resolvePlayResponse(game, target, CardType.Shan)) {
+    console.log(`  ${target.name} 打出了 🛡️闪`);
+  } else {
+    await damage(game, { target, source: data.use.player, amount: 1, card: data.card });
   }
 };
 
 const taoyuanContent: CardContentFn = async (game, data, _event) => {
-  const user = data.player;
-  console.log(
-    `  ${user.name} 使用了 🌸桃园结义 (${cardFaceText(data.card)})！` +
-    `所有角色回复 1 点体力`,
-  );
+  await recover(game, { target: data.to!, amount: 1 });
+};
 
-  for (const target of data.targets) {
-    await recover(game, { target, amount: 1 });
+/** 南蛮/万箭/桃园：整张牌只喊一次口号（逐目标由引擎驱动） */
+const shoutNanman: CardActionFn = async (_game, data, _event, phase) => {
+  if (phase !== 'before') return;
+  console.log(
+    `  ${data.player.name} 使用了 🐘南蛮入侵 (${cardFaceText(data.card)})！所有其他角色必须打出杀`,
+  );
+};
+
+const shoutWanjian: CardActionFn = async (_game, data, _event, phase) => {
+  if (phase !== 'before') return;
+  console.log(
+    `  ${data.player.name} 使用了 🏹万箭齐发 (${cardFaceText(data.card)})！所有其他角色必须打出闪`,
+  );
+};
+
+const shoutTaoyuan: CardActionFn = async (_game, data, _event, phase) => {
+  if (phase !== 'before') return;
+  console.log(
+    `  ${data.player.name} 使用了 🌸桃园结义 (${cardFaceText(data.card)})！所有角色回复 1 点体力`,
+  );
+};
+
+/** 五谷丰登：整张牌亮牌一次（牌池放 use.extra），逐目标各自选一张 */
+const revealWugu: CardActionFn = async (game, data, _event, phase) => {
+  if (phase !== 'before') return;
+  const alive = game.state.players.filter((p) => p.alive).length;
+  const revealed = await takeTop(game, alive, { zone: 'processing' }, 'reveal');
+  data.extra = { ...data.extra, pool: revealed };
+  console.log(`  ${data.player.name} 使用了 🌾五谷丰登！亮出 ${revealed.length} 张牌`);
+  for (const c of revealed) {
+    console.log(`    ${cardEmoji(c.type)}(${cardFaceText(c)})`);
   }
 };
 
 const wuguContent: CardContentFn = async (game, data, _event) => {
-  const user = data.player;
-  const alive = game.state.players.filter((p) => p.alive).length;
-  const revealed = await takeTop(game, alive, { zone: 'processing' }, 'reveal');
-  if (revealed.length === 0) return;
-  const pool = [...revealed];
-  console.log(`  ${user.name} 使用了 🌾五谷丰登！亮出 ${pool.length} 张牌`);
-  for (const c of pool) {
-    console.log(`    ${cardEmoji(c.type)}(${cardFaceText(c)})`);
-  }
+  const pool = (data.use.extra?.pool as Card[] | undefined) ?? [];
+  const player = data.to!;
+  if (pool.length === 0) return;
+  const card = await askFromCards(game, player, '五谷丰登：选择一张牌', pool);
+  if (!card) return;
+  await moveCards(game, {
+    to: { player, zone: 'hand' }, cards: [card], reason: 'obtain',
+  });
+  pool.splice(pool.indexOf(card), 1);
+};
 
-  // 从使用者开始按座次，每人选一张
-  const start = game.state.players.indexOf(user);
-  for (let offset = 0; offset < game.state.players.length; offset++) {
-    const player = game.state.players[(start + offset) % game.state.players.length];
-    if (!player.alive) continue;
-    if (pool.length === 0) break;
-    const card = await askFromCards(game, player, '五谷丰登：选择一张牌', pool);
-    if (!card) continue;
-    await moveCards(game, {
-      to: { player, zone: 'hand' }, cards: [card], reason: 'obtain',
-    });
-    pool.splice(pool.indexOf(card), 1);
-  }
-
+/** 五谷收尾：亮出但没人要的牌进弃牌堆 */
+const settleWugu: CardActionFn = async (game, data, _event, phase) => {
+  if (phase !== 'after') return;
+  const pool = (data.extra?.pool as Card[] | undefined) ?? [];
   if (pool.length > 0) {
     await moveCards(game, {
-      to: { zone: 'discardPile' }, cards: pool, reason: 'discard',
+      to: { zone: 'discardPile' }, cards: [...pool], reason: 'discard',
     });
     console.log(`  剩余 ${pool.length} 张进弃牌堆`);
   }
+  data.extra = {};
 };
 
 const guoheContent: CardContentFn = async (game, data, _event) => {
-  const user = data.player;
-  const target = data.targets[0];
+  const user = data.use.player;
+  const target = data.to!;
   console.log(
     `  ${user.name} 对 ${target.name} 使用了 🌉过河拆桥，弃置其区域内的一张牌`,
   );
@@ -149,8 +153,8 @@ const guoheContent: CardContentFn = async (game, data, _event) => {
 };
 
 const shunshouContent: CardContentFn = async (game, data, _event) => {
-  const user = data.player;
-  const target = data.targets[0];
+  const user = data.use.player;
+  const target = data.to!;
   console.log(
     `  ${user.name} 对 ${target.name} 使用了 🐑顺手牵羊，获得其区域内的一张牌`,
   );
@@ -167,8 +171,8 @@ const shunshouContent: CardContentFn = async (game, data, _event) => {
 };
 
 const jiedaoContent: CardContentFn = async (game, data, _event) => {
-  const user = data.player;
-  const target = data.targets[0];
+  const user = data.use.player;
+  const target = data.to!;
   const weapon = target.equipment.weapon;
   if (!weapon) return;
 
@@ -334,6 +338,7 @@ cardRegistry.register({
   name: '南蛮入侵',
   emoji: '🐘',
   content: nanmanContent,
+  onAction: shoutNanman,
   tags: [CardTag.Trick],
   canUse: () => true,
   targetFilter: otherAlive,
@@ -350,6 +355,7 @@ cardRegistry.register({
   name: '万箭齐发',
   emoji: '🏹',
   content: wanjianContent,
+  onAction: shoutWanjian,
   tags: [CardTag.Trick],
   canUse: () => true,
   targetFilter: otherAlive,
@@ -366,6 +372,7 @@ cardRegistry.register({
   name: '桃园结义',
   emoji: '🌸',
   content: taoyuanContent,
+  onAction: shoutTaoyuan,
   tags: [CardTag.Trick],
   canUse: () => true,
   targetFilter: allAlive,
@@ -378,14 +385,30 @@ cardRegistry.register({
   },
 });
 
+/**
+ * 五谷丰登的目标：从使用者起按座次（行动顺序）——依次选牌的顺序即结算顺序。
+ */
+function wuguOrder(_game: Game, user: Player, all: Player[]): Player[] {
+  const start = all.indexOf(user);
+  const out: Player[] = [];
+  for (let offset = 0; offset < all.length; offset++) {
+    const p = all[(start + offset) % all.length];
+    if (p.alive) out.push(p);
+  }
+  return out;
+}
+
 cardRegistry.register({
   type: CardType.WuGu,
   name: '五谷丰登',
   emoji: '🌾',
   content: wuguContent,
+  onAction: (game, data, event, phase) => (phase === 'before'
+    ? revealWugu(game, data, event, phase)
+    : settleWugu(game, data, event, phase)),
   tags: [CardTag.Trick],
   canUse: () => true,
-  targetFilter: allAlive,
+  targetFilter: wuguOrder,
   targetCount: 'all',
   ai: {
     shouldUse: () => true,
