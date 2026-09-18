@@ -58,8 +58,8 @@
 - [x] `HeroDef` 增加 `sex` / `group` 字段
 - [x] 主公概念底座：`SkillDef.lordSkill` / `HeroDef.isLord` / `GameState.lord` + 注册门槛；救援已实现
 - [x] 性别相关效果：雌雄双股剑（异性目标触发）
-- [ ] 性别相关效果：离间（依赖转化牌系统）
-- [ ] 技能定义增加 `info` 规则文本（来自标包数据）
+- [x] 性别相关效果：离间（0 牌转化 + 视为他人使用 + 不可被无懈；阶段 3 U4）
+- [x] 技能定义增加 `info` 规则文本（来自标包数据；见阶段 3 第 7 项）
 
 ### 6. 游戏流程补全
 
@@ -380,8 +380,12 @@
      强制先行 / 放弃分支 / 条件重算），`tsc` 干净，整局冒烟跑通。
    - 未做（记录在案）：`firstDo/lastDo/getIndex` 与 `skill_priority_table` 显式优先级表（等真实
      "优先级技能"用例）；**裸触发效果的所有者语义**（当前每个存活玩家都算归属 → 会重复执行，今天无此内容）。
-7. **技能 info 规则文本**——`SkillDef.info` / `CardDef.info` 纯数据字段，内容源 = docs 导出 JSON（TODO 一.5）。
-   低风险，可随时插入。
+7. **技能 info 规则文本 [x]**——**只有技能与卡牌需要**（effect 不需要），字段与 `name` **同级**：
+   `Skill.info` / `CardDef.info`（`SkillMeta` 不再带 info）。数据源 = `docs/标包武将.json` 与
+   `docs/标包卡牌.json`（唯一事实来源，不落副本、避免漂移）：`content/info.ts` 建名字→info 的查询，
+   `defineSkill` / `cardRegistry.register` 在未显式给出时自动填充。
+   测试 `content/info.test.ts` 锁**覆盖**（每个已注册技能/卡牌都必须有 info 且与数据源一致）——
+   新增内容忘了在 docs 补 info 时立刻红。验收：478 例绿。
 8. **用牌流程：目标阶段 + 单目标生效事件**（演进 3.6，已确认；吸收原第 5 项"离间"）：
    - **U1 [x] 行为保持（纯结构）**：新增 `cardEffect` 事件（`cardEffect.before` / 内容 / `cardEffect.after`，
      逐目标依次创建）+ `CardEffectEventData`（含 `to / nullified / unoffsetable / disresponsive /

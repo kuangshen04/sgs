@@ -5,6 +5,7 @@
 import { Card, CardTag, CardType, Player, colorOfSuit } from '../types.js';
 import type { UsedCard } from '../types.js';
 import type { UsedCardInstance } from '../position/usedCards.js';
+import { cardInfo } from './info.js';
 import type { Game } from '../game.js';
 import type { GameEvent, CardEffectEventData, UseCardEventData } from '../events/index.js';
 
@@ -31,6 +32,8 @@ export type CardActionFn = (
 export interface CardDef {
   type: CardType;
   name: string;
+  /** 规则文本（纯数据；来自 docs 标包数据，未显式给出时按卡牌名自动填充） */
+  info?: string;
   emoji: string;
   /** 对**该目标**结算（在该目标的单目标生效事件内执行） */
   content: CardContentFn;
@@ -70,7 +73,8 @@ const _defs = new Map<CardType, CardDef>();
 
 export const cardRegistry = {
   register(def: CardDef): void {
-    _defs.set(def.type, def);
+    // 规则文本：未显式给出时按卡牌名从 docs 标包数据取（见 content/info.ts）
+    _defs.set(def.type, { ...def, info: def.info ?? cardInfo(def.name) });
   },
   get(type: CardType): CardDef | undefined {
     return _defs.get(type);

@@ -12,6 +12,7 @@
 import { CardType } from '../types.js';
 import type { Player, UsedCard } from '../types.js';
 import { equippedUsedCard } from '../position/usedCardActions.js';
+import { skillInfo } from '../content/info.js';
 import type { Game } from '../game.js';
 import type { GameEvent } from '../events/index.js';
 import type { CardEffectEventData } from '../events/index.js';
@@ -159,13 +160,11 @@ export type Effect =
 
 export interface SkillMeta {
   name: string;
-  /** 规则文本（来自 docs 导出数据；纯数据字段） */
-  info?: string;
   /** 主公技：身份场开启（state.lord 已设）且自己不是主公时不发动 */
   lord?: boolean;
   /**
    * 锁定技抗性标签（Compulsory）：绑技能；供"令其他武将技能失效"类效果
-   * 在失效判断**之前**检查抗性（消费者 = 阶段 3 第 3 项"技能失效/复原"）。
+   * 在失效判断**之前**检查抗性（消费者 = 后者出现时再接）。
    * 与 effect 级 `auto`（自动发动）/`forced`（强制发动）是三件不同的事。
    */
   compulsory?: boolean;
@@ -173,6 +172,8 @@ export interface SkillMeta {
 
 export interface Skill {
   name: string;
+  /** 规则文本（纯数据；来自 docs 标包数据，未显式给出时按技能名自动填充） */
+  info?: string;
   meta: SkillMeta;
   effects: Effect[];
 }
@@ -187,6 +188,8 @@ const _bareEffects: Effect[] = [];
 /** 定义一个技能（技能 = 元数据 + 效果集合）；同名重复定义即抛错（防缝合式重复注册） */
 export function defineSkill(input: {
   name: string;
+  /** 规则文本；省略时按技能名从 docs 标包数据取（见 content/info.ts） */
+  info?: string;
   meta?: Omit<SkillMeta, 'name'>;
   effects: Effect[];
 }): Skill {
@@ -195,6 +198,7 @@ export function defineSkill(input: {
   }
   const skill: Skill = {
     name: input.name,
+    info: input.info ?? skillInfo(input.name),
     meta: { name: input.name, ...input.meta },
     effects: input.effects.map((e) => ({ ...e, skill: e.skill ?? input.name })),
   };
