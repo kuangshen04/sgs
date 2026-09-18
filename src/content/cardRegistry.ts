@@ -13,7 +13,7 @@ import type { GameEvent, CardEffectEventData, UseCardEventData } from '../events
 // 卡牌定义接口 & 注册表
 // ============================================================
 
-/** 卡牌效果函数：**对该目标**结算（单目标生效事件的内容，演进 3.6） */
+/** 卡牌效果函数：**对该目标**结算（单目标生效事件的内容，adr/0006） */
 export type CardContentFn = (
   game: Game,
   data: CardEffectEventData,
@@ -46,14 +46,14 @@ export interface CardDef {
    * 延时锦囊在判定阶段的结算效果（收到判定结果与该延时牌的 UC；可自行**迁移 UC**，如闪电移给下家）。
    * `judgeCard === null` = 本次被抵消（无判定牌、未执行效果）：延时牌仍在此决定收尾去向
    * （闪电按规则集依然流向合法下家；不处理则收尾进弃牌堆）。
-   * 读规则读 UC（演进 3.5）：类型/名称/花色取 UC 自身的规则身份。
+   * 读规则读 UC（adr/0003）：类型/名称/花色取 UC 自身的规则身份。
    */
   delayContent?: (game: Game, target: Player, judgeCard: Card | null, uc: UsedCardInstance) => Promise<void>;
   /** 攻击范围（装备牌中的武器） */
   range?: number;
   /** 卡牌标签（基本牌/锦囊牌等） */
   tags: CardTag[];
-  /** 规则层面：出牌阶段是否合法可用（规则层查询统一带 game：读规则读 UC，演进 9.5） */
+  /** 规则层面：出牌阶段是否合法可用（规则层查询统一带 game：读规则读 UC，adr/0003） */
   canUse: (game: Game, player: Player, allPlayers: Player[], shaUsed: boolean) => boolean;
   /** 此牌可选择的合法目标列表（规则层面） */
   targetFilter: (game: Game, user: Player, allPlayers: Player[]) => Player[];

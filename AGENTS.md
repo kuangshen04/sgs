@@ -22,14 +22,15 @@
   `flow/`（流程与结算）· `content/`（卡牌/武将/牌堆等内容定义）；根目录只留 `index.ts` / `game.ts` /
   `types.ts` / `test-utils.ts`。**导览见 `docs/代码结构.md`**
 - **测试**：与被测模块同目录（`src/<cluster>/xxx.test.ts`；`content/heroes/*.test.ts` 随武将）
-- **需求与计划**：`docs/TODO.md`（编号分节，先列需求不做具体设计，完成一项勾选一项）
-- **演进与避坑**：`docs/演进与避坑.md`（借鉴无名杀/FreeKill 经验的决策记录，结论分级：已确认 / 方向）
+- **需求与计划**：`docs/TODO.md`（**只放还没落地的**：剩余阶段、未落地机制、写死清单、开放问题）
+- **已落地系统的决策**：`docs/adr/`（一篇一系统；索引与"旧编号 演进 X.Y 对照"见 `docs/adr/README.md`）
+- **经验与红线**：`docs/经验与红线.md`（借鉴无名杀/FreeKill 的核对结论 + 写死的红线）
+- **代码导览 / 工程约定**：`docs/代码结构.md`（目录职责、内容与数据约定、测试与质量闸）
 - **标包武将/卡牌定义**：`docs/标包武将.json`、`docs/标包卡牌.json`（唯一事实来源）
 - **牌堆数据**：`src/content/standardDeck.json`（108 张、32 种，与卡牌定义分离）
 - **测试辅助**：`src/test-utils.ts`（`freshGame` / `giveHand` / `makeUniqueCard` / `equipAt`）
 
-> 具体模块与机制约定（事件系统、移动模型、注册模式等）仍在演进，以源码和 TODO 为准；
-> 待稳定后另立专门文档，不在本文件维护。
+> 具体模块与机制约定以 `docs/adr/` 与源码为准；文档结构见 `docs/adr/README.md`，不在本文件维护。
 
 ## 常用命令
 

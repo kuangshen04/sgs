@@ -100,7 +100,7 @@ export class GameEvent<T = Record<string, unknown>> {
 
   /**
    * 执行事件：入史赋 id → before triggers → content → after triggers，
-   * finally 中 clear → 定稿 endId → 弹栈（演进 2.2/2.4）。
+   * finally 中 clear → 定稿 endId → 弹栈（adr/0001/2.4）。
    *
    * 只能在 created 阶段调用一次。重复调用抛出异常。
    * content/clear 抛出异常时仍保证 endId 定稿、事件栈正确弹出，异常向上传播。
@@ -134,7 +134,7 @@ export class GameEvent<T = Record<string, unknown>> {
     this._phase = 'executing';
     this.game.eventStack.push(this);
     // 入史：append 顺序 == id 顺序（id 赋为入史前的 history 长度；严格栈纪律保证
-    // 子树在数组中连续，是时间戳法 end_id 正确性的前提——见 演进与避坑 2.2 红线）。
+    // 子树在数组中连续，是时间戳法 end_id 正确性的前提——见 docs/adr/0001 红线）。
     this._id = this.game.history.length;
     this.game.history.push(this);
     const runTriggers = opts?.triggers !== false;

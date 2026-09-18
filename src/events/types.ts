@@ -16,7 +16,7 @@ export const EventType = {
   Judge: 'judge',
   Targeting: 'targeting',
   UseCard: 'useCard',
-  /** 单目标生效（本次使用 × 一个目标；时点 cardEffect.before/after，演进 3.6） */
+  /** 单目标生效（本次使用 × 一个目标；时点 cardEffect.before/after，adr/0006） */
   CardEffect: 'cardEffect',
   CardMove: 'cardMove',
   ShaCancelled: 'shaCancelled',
@@ -42,7 +42,7 @@ export interface DamageEventData {
   source?: Player;
   amount: number;
   /**
-   * 造成本次伤害的牌（演进 2.3 显式因果字段）。
+   * 造成本次伤害的牌（adr/0001 显式因果字段）。
    * 仅当伤害是某张【使用/打出】的牌直接造成时，由规则层（卡牌 content）显式赋值；
    * 技能伤害（刚烈反击、反间）、无来源伤害（闪电）不设——奸雄等"获得造成伤害的牌"
    * 类技能据此判断，不再经 getParent('useCard') 推断（避免嵌套伤害误归）。
@@ -90,25 +90,25 @@ export interface TargetingEventData {
 
 export interface UseCardEventData {
   player: Player;
-  /** 本次使用对应的 UC（规则身份 + 实体组成 + 容器位置；读规则读 UC，演进 3.5） */
+  /** 本次使用对应的 UC（规则身份 + 实体组成 + 容器位置；读规则读 UC，adr/0003） */
   card: UsedCardInstance;
   targets: Player[];
   /**
    * 整张牌**不可被无懈响应**（事件级，如离间的决斗）。
-   * 由构造本次使用的技能声明（演进 3.6 U2）。
+   * 由构造本次使用的技能声明（adr/0006）。
    */
   unoffsetable?: boolean;
   /** 内容层协作数据（如五谷丰登亮出的牌池；onAction 与逐目标 content 之间共享） */
   extra?: Record<string, unknown>;
   /**
    * 本次使用是"对某次生效"的响应（如无懈可击抵消一次生效）。
-   * 响应关系显式记录，取代"沿事件栈反查父事件"（演进 3.6 U2）。
+   * 响应关系显式记录，取代"沿事件栈反查父事件"（adr/0006）。
    */
   responseTo?: CardEffectEventData;
 }
 
 /**
- * 单目标生效事件（本次使用 × 一个目标）—— 使用流程的第三段（演进 3.6）。
+ * 单目标生效事件（本次使用 × 一个目标）—— 使用流程的第三段（adr/0006）。
  * 时点：`cardEffect.before` → 内容（`CardDef.content`）→ `cardEffect.after`。
  * 引擎在内容前只检查 `nullified` / `cancelled`：已置位则跳过内容（= 无效 / 抵消）。
  */

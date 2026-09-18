@@ -55,7 +55,7 @@ export function computeCardOptions(
 /**
  * 计算某张效果牌（可能是虚拟牌）的合法目标（规则：targetFilter + 距离/免疫等）。
  * 延时锦囊另加一条通用限制：目标必须**可以放置该延时牌**（判定区同名 UC 只能存在 1 张；
- * 读规则读 UC，见演进 3.5）。
+ * 读规则读 UC，见adr/0003）。
  */
 export function computeTargetOptions(
   game: Game,

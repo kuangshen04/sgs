@@ -54,7 +54,7 @@ function hasLijianPair(game: Game, player: Player): boolean {
  * 离间：出牌阶段限一次。弃置一张牌，视为一名男性角色对另一名男性角色使用一张【决斗】。
  * - **0 牌转化**：决斗 UC 没有实体牌（弃置的牌只是 cost，不进处理区当决斗的实体牌）；
  * - **视为他人使用**：`useCard` 的 player = 被指定的男性角色 A（伤害来源、技能归属都随 A）；
- * - **不可被无懈可击响应**：`unoffsetable`（事件级，演进 3.6 U2）；
+ * - **不可被无懈可击响应**：`unoffsetable`（事件级，adr/0006）；
  * - **限一次**：`ctx.usedSkills`（playPhase 记名，越过则不可用）。
  */
 const lijianEffect: ActivatedEffect = {

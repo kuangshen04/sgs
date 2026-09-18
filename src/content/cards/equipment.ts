@@ -197,7 +197,7 @@ cardRegistry.register({
 
 // 仁王盾：黑色杀对其无效 —— 在**该目标生效前**（cardEffect.before）把这一次生效置为无效。
 // 不放在 targeting 阶段取消目标：那是"目标不合法/被取消"的语义，会让青釭剑（targeting.after
-// 才失效防具）来不及生效；按规则"对你无效"属生效阶段的判定（演进 3.6 U3）。
+// 才失效防具）来不及生效；按规则"对你无效"属生效阶段的判定（adr/0006）。
 registerBareEffect({
   form: 'triggered',
   equipType: CardType.RenWangDun,
@@ -348,7 +348,7 @@ function isLastHandCards(owner: Player, uc: UsedCardInstance): boolean {
  * 青釭剑：锁定技，当你使用【杀】指定一名目标角色后，你令其防具技能无效
  * 直到此【杀】被抵消或造成伤害。
  *
- * 实现要点（演进 9.5）：
+ * 实现要点（adr/0003）：
  * - 失效 = 目标**防具槽那条 UC** 的 `disabled`；装备效果归属每次查询重算，
  *   于是该防具的一切效果（仁王盾的 targeting 取消、八卦阵的响应判定…）即刻不再归属；
  * - 期限 = **本条【杀】使用事件的收尾**（`event.onClear`）：规则文本的

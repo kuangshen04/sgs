@@ -1,475 +1,151 @@
-# 三国杀标包实现 TODO
+# TODO（只放还没落地的东西）
 
-> 需求清单，先列需求不做具体设计。
-> 参考数据：`docs/标包卡牌.json`、`docs/标包武将.json`
-> 选择/响应窗口的设计结论见 [选择系统设计.md](选择系统设计.md)。
-> 演进与避坑（参考无名杀/FreeKill 经验）见 [演进与避坑.md](演进与避坑.md)。
+> - 已落地的系统决策 → `adr/`（索引与"旧编号对照"见 `adr/README.md`）
+> - 参照项目的经验与红线 → `经验与红线.md`
+> - 代码导览、内容与数据约定、测试与质量闸 → `代码结构.md`
+>
+> 标包（32 张牌 / 25 位武将，含 4 件套用牌流程语义）已全部落地，因此这里不再列已完成项。
 
-## 一、引擎基础能力（结构性需求）
+## 一、实施路线（剩余阶段）
 
-### 1. 判定系统
+### 阶段 4 · 内容包雏形（军争 / 神话再临）
 
-- [x] 判定原语：亮出牌堆顶一张牌，按花色/点数判定
-- [x] 判定区：延时锦囊的放置与结算（乐不思蜀已实现）
-- [x] 判定牌去向：默认进弃牌堆，可被技能获取（天妒）
-- [x] 判定可被替换（鬼才）
-- 解锁：乐不思蜀、闪电、八卦阵、天妒、鬼才、刚烈、铁骑、洛神
+- 内容包 = manifest（id / version / 依赖）+ TS 内容 + **轻量注册边界**（先不做完整 DI 容器——
+  第一个真实用例只要"包边界"，模块替换语义等第二个用例，见阶段 5）。
+- **军争**（`docs/军争篇卡牌.json`、`docs/军争篇牌堆.json`）：属性伤害（火/雷）、酒、铁索连环、
+  兵粮寸断、火攻、重铸；**神话再临**（`docs/神话再临武将.json`）作为第二批。
+  牌堆纯数据随包（沿用 `standardDeck.json` 模式）。
+- **身份场**作为第一个模式用例：`lord` 底座已实现（主公技门槛），差身份分配 + 身份胜负。
+- 新机制用例（属性伤害、横置/重置、标记）先记入本文件"写死清单"，按"有例子再抽象"提炼。
 
-### 2. 装备区与距离
+### 阶段 5 · DI 插件机制（第一个"模块替换"用例出现时）
 
-- [x] 装备区：武器/防具/防御马/进攻马槽位（含顶掉）
-- [x] 距离计算：座位距离 + 距离修正（马术/进攻马/防御马，effectRegistry kind: offensiveDistance/defensiveDistance）
-- [x] 攻击范围：武器决定能杀到谁（attackRange + 杀 targetFilter 接入）
-- [x] "区域"概念：手牌区/装备区/判定区（areas.ts：cardsInAreas / takeCardFromAreas / selectCardFromAreas）
-- 解锁：17 张装备牌、马术、奇才、借刀杀人、流离
+- 服务契约（TS 类型即接口）+ inject 声明依赖 + **整体替换**（不做字段级 merge）+
+  可逆注册（disposer 齐全）+ 配置清单（可序列化、可溯源、fail-loud 装载报告）。
+- 触发候选：decision（前端接入）/ rng（种子回放）/ victory（新模式替换）。
+- 同批收口：公共 API 冻结/版本化策略（semver？弃用期？）+ 容器粒度（应用级容器 + 每局实例）。
 
-### 3. 转化牌系统
+### 阶段 6 · 前端接入 → 回放 → 编辑器（长线）
 
-- [x] 1 牌转化：一张牌视为另一张使用/打出（武圣、龙胆①、奇袭、倾国、急救；国色判定区类待）
-- [x] 多牌转化：丈八蛇矛（两张手牌当杀）
-- [x] 0 牌转化：八卦阵（判定红视为虚拟闪，0 实体牌；判定失败可再出真闪）
-- [x] 转化语义：区分"使用"与"打出"，同一转化在出牌阶段 useWindow 与响应窗口分别注册
-- [ ] 离间（0 牌转化 + 不可被无懈）、国色（判定区持久化身份）待
-- 解锁：关羽、赵云、甘宁、甄宓·倾国、华佗·急救、丈八蛇矛、八卦阵
-- 依赖：选择系统（选择原语 + useWindow）+ 处理区/虚拟牌身份——已就绪
+- `DecisionRequest` 可序列化（命令 + 按玩家的 data + default_reply + timeout）；
+  会话快照（断点续答）——我们的会话本就是纯数据，快照天然干净。
+- 选择日志 + RNG 种子化 + **确定性重演**（回放，见 `经验与红线.md` 2.7）。
+- 内置编辑器（依赖全部前置；L0 载体 = 代码生成器还是运行时数据，届时讨论）。
 
-### 4. 常驻效果
+## 二、未落地的机制（按主题，含"何时做"的判据）
 
-- [x] 距离修正（坐骑、马术、绝影）
-- [x] 无距离限制（奇才，effectRegistry kind: noTrickDistance）
-- [x] 杀使用次数限制修改（咆哮、诸葛连弩，effectRegistry kind: unlimitedSha）
-- [x] 目标合法性限制（空城/谦逊：targetFilter 排除，effectRegistry kind: immuneSha/immuneJueDou/immuneShunShou/immuneLeBu）
-- [x] 响应要求修改（无双：需两张闪/杀，依赖杀响应流程）
-- [x] 防具效果：仁王盾（targeting 时取消目标，equipTrigger 置 targeting.data.cancelled，不依赖杀响应流程）
-- [x] 防具效果：八卦阵（判定红视为闪、黑可再出闪；以 responseRule 实现）
-- [x] 发动词汇三轴（勿混为一谈，详见演进 9.2）：
-  - effect 级 `auto`（自动发动，即 frequency.auto 的占位字段）：绑 effect，作用 = 前端多一个"自动发动"按钮
-    （**现在不做**；引擎不消费，仅保留词汇位置）；
-  - effect 级 `forced`（强制发动）：绑触发技的 effect，作用 = 不进行"是否发动"的询问
-    （已接线：`installEffects` 按 `!effect.forced` 决定是否询问；`effects.test.ts` 打桩断言验证）；
-  - skill 级 `Compulsory`（锁定技抗性标签）：绑技能，供"令其他武将技能失效"类效果在失效判断前查抗性
-    （字段就位；查询入口等阶段 3 第 3 项"技能失效/复原"作为真实消费者时再提炼）；
-  - 规则文本的"锁定技" = 内容层组合（技能打 `Compulsory` + 其触发效果打 `forced`）；引擎不推导。
-    标包 6 个锁定技（咆哮/马术/奇才/谦逊/无双/空城）已带 `meta.compulsory`，且当前**全为常驻效果**，
-    暂无需 `forced` 的内容用例（真实触发型锁定技待军争/神话再临）
+### 事件系统
 
-### 5. 势力 / 性别 / 主公
+- 事件**结果收据**与 `modify/transfer` 协议（订阅者改写数值可追溯；当前 handler 直接改 `data` 的过渡方案继续用）。
+- 局内**中断结算链**（FreeKill 的 interrupted/killed 双标志 + 按栈序自动清理）：等真实用例。
+- 按类型索引 / 二分查询（全量历史下的性能议题，与阶段 5 性能基准一起评估）。
+- 历史序列化与哨兵条目：仅"存局快照"需要时再议（回放 = 确定性重演，不序列化历史）。
 
-- [x] `HeroDef` 增加 `sex` / `group` 字段
-- [x] 主公概念底座：`SkillDef.lordSkill` / `HeroDef.isLord` / `GameState.lord` + 注册门槛；救援已实现
-- [x] 性别相关效果：雌雄双股剑（异性目标触发）
-- [x] 性别相关效果：离间（0 牌转化 + 视为他人使用 + 不可被无懈；阶段 3 U4）
-- [x] 技能定义增加 `info` 规则文本（来自标包数据；见阶段 3 第 7 项）
+### 位置与移动
 
-### 6. 游戏流程补全
+- **void / 移出游戏** zone：等真实用例（`CardLocation` 加一个 union 分支即可）。
+- **CardArea 内部结构自定义**（子类 or 注入：牌堆顶底、装备区、判定区顺序）：触发任一条件再开设计——
+  ① 2–3 个"某区需要不同进出/排序语义"的真实用例；② 同一件事出现两处特判需统一；
+  ③ 序列化 / DI / 回放要求统一区域接口；④ 性能信号。
+- 区域进入/离开的**通用钩子**抽象：目前只有"离开驻留区"一个钩子（UC 层需要），等第二、三处。
 
-- [x] 准备阶段（洛神、观星）
-- [x] 判定阶段（延时锦囊结算：乐不思蜀/闪电）
-- [x] 结束阶段（闭月已从 turn.after 迁移到 endPhase.before）
-- [x] 回合外响应：求桃按座次、无懈响应链（求桃/无懈走使用型响应窗口 + 响应规则注册表）
-- [x] 失去体力原语（loseHp，黄盖苦肉已实现）
-- [x] 失去牌触发（连营：失去最后手牌；枭姬：失去装备区内的牌，基于 CardMove 事件）
+### UsedCard（UC）
 
-### 7. 事件历史查询
+- **UC 授予技能（grants）**：升级判据（任一成为真实需求）——① 装备效果需要"是否发动"的询问；
+  ② `compulsory` 抗性有消费者；③ 需要把装备技能当名字引用/合并（如"视为装备着【八卦阵】"，
+  倾向用零牌驻留 UC 表达）。届时两条路：UC 即实例（无同步）或 UC 进出时 grant/revoke 到 `Player.skills`。
+- **UC storage**（木牛流马）：等第二个用例；优先"按需查询"（如 `effectStorage(game, owner, effect)`），
+  不为此给所有效果加 shell 参数。
+- **UC 迁移时的重新归属**（storage / grants 随牌走）：同木牛流马。
+- 多牌驻留 UC 的**真实内容**用例（机制已按多牌实现 + 合成测试）。
+- 延时锦囊的**判定阶段无懈窗口**（judgePhase 自建 targeting 的遗留分支）：随延时锦囊一起收口。
 
-- [x] 事件时间线：`Game.history` append-only 数组，事件在 `execute` 入史，id == 下标；
-  `finally` 定稿 `endId`（子树跨度，叶子事件 == id）——FreeKill DFS 时间戳模型（演进 2.2）
-- [x] 范围查询：`findEventSince(game, boundary, predicate)`（`src/events/history.ts`）——
-  边界（回合/轮次/阶段/整局）本身是事件，由调用方 `getParent` 定位后传入；boundary=null 从局首扫
-- 注：FreeKill（全局时间线 + end_id）与无名杀（按角色历史）模型不同 → 已定 DFS 时间戳；
-  克己已迁移为第一个真实消费者；无双/裸衣等仍用特判/栈查询，未迁移（无行为需求，避免空转）
-- 注：触发不产生子事件（演进 5.2）→ 历史只记真实事件；全量历史不做活窗口裁剪
+### 技能与效果
 
-### 8. 事件清理钩子
+- **技能次数机制**：目前只有出牌阶段的 `ctx.usedSkills`（按技能名、本回合一次）与常驻查询；
+  通用"每阶段 / 每轮 / 每局限 N 次"未做（FreeKill 的 `max_use_time` 四层时间范围可作为元数据候选）。
+- **`compulsory` 抗性的消费者**："令其他武将技能失效"类效果出现时接（当前只有青釭剑的 UC 失效）。
+- onGain / onLose 生命周期钩子；技能临时数据（`storage`）的通用承载。
+- **裸触发效果的所有者语义**：当前每个存活玩家都算归属（会重复执行 N 次，今天无此内容）。
+- **SkillUse 锚点事件**（触发技/主动技统一发动时点、打断语义、次数与日志挂点）。
+- 可组合谓词层（现在是 `subjectIsOwner` 这类组件 + 各效果自写条件）。
+- `firstDo/lastDo/getIndex` 与 FreeKill 式**显式优先级表**：等真实"优先级技能"。
+- 隐藏/展示（国战暗置）：等模式系统。
 
-- [x] 事件级 clear 收尾钩子：`execute(content, { clear })`，挂 `finally`，执行序
-  clear → 定稿 endId → 弹栈（FreeKill 同款）；正常/被取消/抛错/GameOver 解卷全路径覆盖
-  （`src/events/GameEvent.ts`，引擎级测试在 `GameEvent.test.ts`）
-- [x] clear 自身抛错也保证 endId/弹栈/完成态落地（嵌套 try/finally），异常向上传播
-- 注：现有归位 try/finally（useCard 处理区结算 / judge 判定牌归位）本阶段未迁移——
-  迁移会改变 settle 与 after-trigger 的相对时序，风险大于收益；真实消费等事件定义方有需要时再挂
-  （临时状态/临时 handler 清理与裸衣可逆注册话题联动）
+### 用牌流程
 
-### 9. 牌堆顶操作原语
+（以下都只在借刀/酒/少数武将用到，等真实用例）
+副目标 `subTos`（借刀式）、额外结算次数（`additionalEffect`/`changeEffectTimes`）、
+加伤/减伤（酒/裸衣式）、`prohibitedCardNames`、`aboutToEffect`（生效前置跳过）、
+实体牌标记查询（`getMark`/`hasMark`）、打出后的 `skipDrop`、目标四阶段
+（指定时 / 成为目标时 / 指定后 / 成为目标后——目前是 before/after 两阶段）。
 
-- [x] 牌堆原语层：方向概念化（顶 = 数组尾），`peekTop` / `takeTop` / `putTop` / `putBottom` / `takeBottom` 已封装，技能不直接碰 `deck.pop()`
-- [x] 搜索：牌堆中第一张符合条件的牌（`findInDeck`，从顶往下）
-- [x] 搜索：牌堆 + 弃牌堆中所有符合条件的牌（`findInDeckAndDiscard`）
-- [x] 观星：查看并排序牌堆顶 N 张，可置于牌堆顶或牌堆底（顶/底各自排序）
-- [x] 从牌堆底摸牌（`takeBottom`）
-- [x] 立即触发洗牌：弃牌堆洗回牌堆（`reshuffle` 已为公共原语）
-- [x] 统一移动模型：牌堆/弃牌堆并入 moveCards（`CardLocation` 位置句柄；顶/底是取放策略不是位置；摸牌/判定/取回/洗牌都走移动事件；处理区已并入）
-- 注：与 TODO #10 位置追踪的关系——CardMoveEvent 是位置变化的记录，处理区将来只是新增一个 zone
+### 决策与 AI
 
-### 10. 卡牌位置追踪（处理区）
+- **真人/前端接入**（`DecisionRequest` 形态与注入点）+ 决策日志（"谁发动了什么"）。
+- **AI 策略增强**：无懈（保护他人 / 反无懈）、突袭/洛神/遗计等写死策略改为可注入。
+- 烧绳/托管（timeout + default_reply + 托管 AI）语义。
+- `askTo*` 工厂膨胀的防线：新业务优先组合既有 `SelectionPlan` 步骤，禁止单技能专属引擎原语。
 
-- [x] 处理区：使用的牌在结算中的位置（useCard/judge 已接入 processing 区；奸雄已改为从处理区取源牌）
-- [x] 卡牌位置追踪（FreeKill 式 CardLocation / getCardArea）：统一查询任意牌所在位置（含处理区）
-- [x] 阶段 2 位置模型收口（演进 3.2/3.4 落地，`src/position/cardArea.ts`）：
-  - **受控容器 CardArea**：手牌/判定区/牌堆/弃牌/处理区改为容器（读 = `.cards` 视图；写只走容器方法），
-    唯一性由物理结构保证（一牌一位置，重复入区运行时抛错）；
-  - **API 精简（去数组伪装）**：删除 length/只读委托/迭代器/isEmpty/has/toArray 等一切"把容器当数组用"的成员，
-    读面一律 `.cards`（含 `.cards.length`）；受控写方法（add/addAll/insertAt/removeById/removeLast/removeFirst/clear/replaceAll）保留；
-    容器内部结构与"每区自管存储/排序"（牌堆/装备区的继承或注入机制）待后续设计（开放问题）；
-  - **引擎级集中索引** `Game.cardIndex`（FreeKill card_place 等价物）：`getCardArea` 改为索引查询，由容器/装备写点同步；
-  - **toPosition 剥离**：`CardMoveSpec`/`CardMoveEventData` 去掉 toPosition，牌堆顶/底收敛进 `putTop`/`putBottom`；
-  - **对账不变量**：`verifyCardState`/`assertCardState`（`src/position/cardAreaCheck.ts`）+ `cardArea.test.ts`；
-  - 测试/测试辅助机械更新走容器方法（freshGame/giveHand/equipAt），装备槽位写也经索引同步；
-  - 遗留：createGame 初始发牌与测试置场仍绕过移动事件（局首/置场直放，属预期）
-- 注：与规则术语"区域"（玩家三区）是两回事；位置追踪是引擎的位置模型，将来与区域并行
-- 注：统一移动模型重构见 [移动模型重构TODO.md](移动模型重构TODO.md)（CardMove 事件是位置变化的记录，本项是它的下游）
+### 游戏流程
 
-### 11. 选择系统（玩家决策层）
+- 模式 / 身份场（身份分配 + 身份胜负）；胜利条件可配置（`victoryCheck` 注入点已有）。
+- 回合外计时类概念（若有需要）：目前没有"计时"用例。
 
-- [x] 响应牌询问：闪/杀/桃/无懈 的"是否响应、出哪张"（响应窗口 + 响应规则注册表，含转化/放弃）
-- [ ] 区域选牌策略：顺手牵羊/过河拆桥/寒冰剑/反馈 的选牌（askFromAreas 默认随机）
-- [x] 主动技能目标选择：仁德/反间/青囊/突袭 的目标（迁移到技能 select/execute + factories）
-- [x] 发动询问：触发技能"你可以"的发动与否（askYesNo 已转为选择原语）
-- [x] 回合外响应框架：求桃按座次、无懈响应链（使用型响应窗口）
-- [x] 杀响应流程骨架：能否响应（铁骑）、响应修改（无双杀部分）、抵消时点（shaCancelled，青龙偃月刀/贯石斧）——见 `respond.ts`
-- [x] 杀响应完整化：响应询问窗口（玩家选择）+ 八卦阵（虚拟闪 + retry）
-- 注：出牌阶段用 `useWindow`，响应窗口用 `ResponseRequest` + `responseRuleRegistry`；`findResponse`/`selectCardFromAreas`/`chooseCardAndTargets` 已删除
+### 内容与数据
 
-### 12. 响应窗口 / ask 系统（玩家决策层重构）
+- **i18n**：单语先行；真有需求时参考 FreeKill 的按包翻译表。
+- **L0 / 内置编辑器载体**（代码生成器 vs 运行时数据）：做编辑器时定。
+- 内容包与前端 UI 的边界（FreeKill `customPages` 让内容耦合前端的反面）：前端架构讨论时定。
+- 军争 / 神话再临以 TS 内容包接入时的具体组织（与阶段 4 联动）。
 
-- 现状：出牌阶段用 `useWindow`（`chooseUseAction` + `UseAction`）；ask 家族（`askForCard`/`askFromAreas`/`askForTargets`/`askYesNo`）已转为异步选择原语；
-  响应窗口统一走 `ResponseRequest` + `responseRuleRegistry`（`buildResponseActions`/`executeResponse`），`findResponse`/`selectCardFromAreas`/`chooseCardAndTargets` 已删除
-- 相关模块：`src/decision/selection.ts`（选择原语）、`src/decision/useWindow.ts`（用牌窗口）、`src/decision/responses.ts`（响应规则注册表）、`src/decision/choose.ts`（规则层/工厂/异步 ask）
-- 设计原则：
-  - 暂不设计注入接口：compute→decide→validate 三段式与通用规则引擎目前只有默认 AI 一个实现、无生产注入方，属过度设计——先合并为直接流程；AI 决策点收敛为函数内唯一决策处并注释标明"真人/前端接入时的注入点"，接口设计等出现真实消费者再做
-  - 语义分层保留：牌的 `canUse`（规则）与 `ai.shouldUse`（AI）不合并（这是真实区分）；合并的是 choose 层面的机械流程（不再导出可插拔的 compute/validate、不建规则对象）
-  - ask 只做决策不执行牌：打出/使用仍由调用方（`playFromHand` / `useCard`）负责
-  - `game.deciders` 移除；暂不引入 decider 参数（含"直接传参"也延后）；现有自定义 decider / 全局注入测试随合并删除或改写为测默认 AI 行为
-  - ask 暂不事件化：目前没有技能需要挂在 ask 时点；转化牌/八卦阵是"修改可选集"，接入 options 计算即可，事件化等转化牌阶段再评估
-- 阶段计划：
-  - [x] A. 合并实现（行为保持）：
-    - 出牌阶段：`choose()` 简化为 `chooseCardAndTargets(game, player, shaUsed)`——可选牌 → AI 选牌（隔离）→ 该牌合法目标 → AI 选目标（隔离）；`computeCardOptions`/`computeTargetOptions`/validate 收为内部辅助，导出面缩小
-    - ask 家族（并入 `src/decision/choose.ts`）：`askForCard({ types })`（闪/杀/桃/无懈；`findResponse` 收编为默认行为"有就出第一张"）、`askFromAreas({ areas? })`（顺手/过河/寒冰/反馈/麒麟弓）、`askForTargets(candidates, { min/max })`（技能目标）、`askYesNo(prompt)`（发动）——直接实现，AI 决策一行隔离 + 注释
-  - [x] B. 接入现有写死点（行为保持，逐处替换 `TODO(玩家选择)`）：
-    - 响应牌：闪响应/决斗响应（逐张）、南蛮/万箭、濒死自救、无懈（简化 AI）、借刀杀人、青龙偃月刀
-    - 区域选牌：过河拆桥/顺手牵羊/寒冰剑/反馈/麒麟弓/贯石斧弃牌
-    - 技能目标：仁德/反间/青囊/突袭/结姻/遗计/鬼才；制衡弃牌、结姻弃牌
-    - 发动询问：触发技能"你可以"（洛神继续判定等），接入 registerSkills 分发
-  - [x] C. 回合外响应框架（ask 原语的上层应用）：
-    - [x] 求桃按座次：从当前回合角色起按行动顺序询问桃；有人用桃后不重置回开头，指针停在用桃者身上（可连续用桃），一整轮无人响应才死亡
-    - [x] 无懈响应链：机制已由 `wuxieContent` 置 targeting.data.cancelled + targeting 递归实现（后手无懈抵消先手），无需另建显式链；仅剩 AI 策略（只保护自己、不反无懈）写在 trigger 内，真人/前端接入时改为决策注入
-  - 已完成：八卦阵（判定红视为闪，黑 retry 后可再出真闪）；离间 / 国色仍待
-- 下游（依赖本项，不并入本 todo）：主公技（护驾/激将/救援）、五谷丰登亮牌选择、转化牌选源牌/目标（#3）
+## 三、写死 / 单例特判清单（剩余未收口）
 
-## 二、卡牌（标包 32 种，已全部注册；牌堆由 `src/standardDeck.json` 数据驱动，108 张）
+> 已收口的四条（铁骑 → 每目标 `disresponsive`、无双 → 常驻查询、方天画戟 → `useCard.before` 触发、
+> 仁王盾 → `cardEffect.before` 置 `nullified`）见 `adr/0006`。
 
-### 基本牌（3/3）
+### 响应 / 杀
 
-- [x] 杀、闪、桃（桃支持濒死救人，求桃按座次）
+- 青龙偃月刀 / 贯石斧：`shaCancelled.after` 装备触发（再出杀 / 弃两张牌）——属正常触发效果，是否抽象待定。
+- 雌雄双股剑：`targeting.after` 异性目标触发。
+- 寒冰剑 / 麒麟弓：`damage.before/after` 内判定"造成伤害的牌是杀"。
 
-### 锦囊牌（12/12）
+### 锦囊 / 延时锦囊
 
-- [x] 无中生有、决斗、南蛮入侵、万箭齐发、桃园结义、顺手牵羊、过河拆桥、借刀杀人、无懈可击、乐不思蜀、闪电
-- [x] 五谷丰登（简化：每人摸 1 张）
-
-### 装备牌（17/17，全部注册）
-
-- 有实际效果：诸葛连弩、仁王盾、麒麟弓、寒冰剑、雌雄双股剑、青龙偃月刀、贯石斧、八卦阵（判定出闪）、丈八蛇矛（两张手牌当杀）、方天画戟（最后一张手牌杀可三目标）、6 匹马（槽位距离修正）
-- 白板（效果待对应系统）：
-  - 青釭剑（无视防具，依赖防具模型）
-
-### 待完善（简化改真版）
-
-- [x] 五谷丰登：亮出牌堆顶 N 张，按座次每人选一张（依赖 #9 牌堆原语 + askFromCards）
-- [x] 借刀杀人：借刀使用者在其攻击范围内指定杀目标（复用杀 targetFilter，不选使用者本人）
-  + 被借刀者"对指定目标出杀 / 交出武器"选择会话（默认 AI：指定第一个合法目标、出杀保武器；行为保持）
-- [x] 无懈可击：响应策略显式化为 `wuxieGuardPolicy`（行为保持：只保护自己、不反无懈）
-- [x] 方天画戟：改挂 `useCard.before` 触发追加 0–2 个合法目标（条件读 UC 实体牌 == 手牌）；
-  选择层不再特判（阶段 3 U5）
-
-## 三、武将（标包 25 位）
-
-### 已实现（25/25）
-
-- 曹操（奸雄/护驾）、刘备（仁德/激将）、关羽（武圣）、赵云（龙胆①）、甘宁（奇袭）、夏侯惇（刚烈）、司马懿（反馈/鬼才）、郭嘉（遗计/天妒）、甄宓（洛神/倾国）、张辽（突袭）、黄月英（集智/奇才）、华佗（青囊/急救）、孙权（制衡/救援）、周瑜（英姿/反间）、貂蝉（闭月）、张飞（咆哮）、许褚（裸衣）、马超（马术/铁骑）、诸葛亮（空城/观星）、陆逊（谦逊/连营）、黄盖（苦肉）、孙尚香（结姻/枭姬）、吕布（无双）、大乔（流离）、吕蒙（克己）
-
-### 未注册武将（0/25，全部注册）
-
-- 无
-
-### 已注册武将的未实现技能
-
-- 转化类：大乔·国色（判定区持久化身份）、貂蝉·离间（0 牌转化、不可被无懈）
-
-### 已实现但与标包有差距（简化版说明）
-
-- 突袭/洛神等：AI 策略写死（选择系统接入 ask 后统一改为决策注入）
-
-## 四、写死/特判清单（待标包完成后统一清理）
-
-> 这些是已实现但仍是“规则级特判 / 单例写死”的地方，按项目“有例子再抽象”的约定先保留，
-> 等整个标包跑通后再决定哪些值得抽成通用机制。
-
-### 响应/杀相关
-
-- ~~铁骑：`RespondMarks.unavoidable`~~ → 已收口为**每目标 `disresponsive`**（目标阶段置位、生效事件继承；
-  `RespondMarks` 已删除）
-- ~~无双：`RespondMarks.shanRequired = 2`~~ → 已收口为**常驻查询**（`shaRequired` / `juedouShaRequired`）
-- ~~方天画戟：`playChoices.fangtianMaxTargets`~~ → 已收口为 **`useCard.before` 触发**追加合法目标（U5）
-- 青龙偃月刀 / 贯石斧：`shaCancelled.after` 装备 trigger，分别再出杀 / 弃两张牌
-- ~~仁王盾：`targeting.before` 黑色杀置 targeting.data.cancelled~~ → 已收口为 **`cardEffect.before` 置 `nullified`**（U3）
-- 雌雄双股剑：`targeting.after` 异性目标触发
-- 寒冰剑 / 麒麟弓：`damage.before/after`，判定 useCard 是杀
-
-### 锦囊/延时锦囊
-
-- 借刀杀人：决策已收口为选择会话（使用者指定杀目标 + 被借刀者选“出杀/交武器”），默认 AI 保持旧行为；
-  “不选使用者当杀目标”沿用旧简化（规则文本待核）
-- 决斗：循环内无双特判；响应杀不产生 useCard（奸雄只拿决斗）
-- 无懈可击：默认 AI“只保护自己、不反无懈”显式化为 `wuxieGuardPolicy`（`trick.ts`），行为保持
-- 乐不思蜀 / 闪电：各自 `delayContent` 写死；闪电按点数/花色特判转移
-- 五谷丰登：简化版每人摸 1 张，未实现真“亮牌选牌”
+- 借刀杀人：决策已收口为选择会话；"不选使用者当杀目标"沿用旧简化（规则文本待核）。
+- 决斗：响应中打出的杀不产生 `useCard`（奸雄只拿决斗）。
+- 无懈可击：默认 AI "只保护自己、不反无懈" 写死为 `wuxieGuardPolicy`（真人接入时注入）。
+- 乐不思蜀 / 闪电：各自 `delayContent` 写死（闪电按花色点数特判转移——这是规则本身，非特判）。
 
 ### 武将技能
 
-- 鬼才：`judge.judging` 任意手牌替换判定
-- 反馈 / 天妒：`askFromAreas` / 拿判定牌
-- 遗计：AI 默认全给自己（分配任意角色已实现）
-- 洛神：`preparePhase` 里 judge 循环 + `askYesNo` 写死“继续判定”
-- 突袭：`drawPhase.before` shuffle + `askForTargets` 抢牌
-- 裸衣：`drawPhase.before` 减摸牌 + 临时 `damage.before` handler（手动注册/注销，无通用临时标记）
-- 观星：`zhugeliang` 里两步“选顶子集 → 排底顺序”的选择计划（单例）
-- 遗计：`guojia` 里逐张 `targetsStep` 分配（单例）
-- 救援：`useCard.after` 判定“吴势力桃对孙权（主公）”→ 回复 +1（单例）
-- 护驾 / 激将（响应）：`ResponseRule.resolve` 轮询同势力盟友 `resolvePlayResponse`（借牌，单例）
-- 激将（出牌阶段）：`playChoices.lordShaActions` 走 `group:'lord'` 特判，仅蜀盟友真杀（单例）
-- 克己：`skipDiscardPhase` 标记（触发判定已迁移为历史查询 `findEventSince`：本回合是否 useCard 过杀；
-  语义 = 旧 `usedShaThisTurn`，只计"使用"不计"打出"——响应打出不产生 useCard 事件，修正需先补"打出"记录）
+- 克己：判据为"本回合是否 useCard 过杀"（历史查询）；**只计"使用"不计"打出"** ——
+  修正需先补"打出"记录。
+- 裸衣：临时 `damage.before` handler 手动注册/注销（无通用临时标记）。
+- 鬼才 / 反馈 / 天妒 / 遗计 / 洛神 / 突袭 / 观星 / 救援 / 护驾 / 激将：AI 策略与选择计划为单例实现
+  （接入真人决策后统一评估）。
 
-### 系统级“单例特判”结构（刻意保留）
+### 系统级"单例特判"结构（刻意保留）
 
-- `RespondMarks { shanRequired, unavoidable }`：挂在 useCard 上的响应状态（无双/铁骑用）
-- `TargetingEventData.judging`：判定阶段无懈窗口标记（判定区延时牌用）
-- `shaCancelled` 时点：目前青龙/贯石斧监听
-- `judge.judging`：鬼才替换判定牌
+- `TargetingEventData.judging`：判定阶段无懈窗口标记。
+- `shaCancelled` 时点：目前青龙偃月刀 / 贯石斧监听。
+- `judge.judging`：鬼才替换判定牌。
 
-### 尚未实现（白板/待做，不属于“写死”但要一起清）
+## 四、开放问题（实现时再讨论）
 
-- 青釭剑（无视防具）、离间、国色
+- **事件**：收据与 modify/transfer 形态；中断结算链的真实用例；全量历史的内存与序列化形态。
+- **位置**：void zone 的引入时机；CardArea 内部结构的四个触发条件。
+- **UC**：grants 的三条升级判据；storage 的第二个用例。
+- **技能**：次数机制的通用形态；`compulsory` 抗性消费者；SkillUse 锚点细节；可组合谓词层形态。
+- **用牌流程**：副目标 / 额外结算次数 / 加伤减伤的真实用例。
+- **决策**：`DecisionRequest` 形态与注入点；烧绳语义（P2P 议题）；会话快照格式。
+- **多人 / 回放**：重演的版本管理（内容版本锁定、apiVersion）；引擎确定性的验证手段（双跑一致性）；
+  玩家/角色分离（旁观、切换控制、一控多）；存局快照形态；记牌器。
+- **数据**：L0 载体；内容包与前端 UI 的边界。
+- **测试**：重演一致性测试形态；e2e 框架选型（webworker 落地后）；dev 模式调试面。
 
-## 五、阶段 3 拆解与依赖（技能与效果建模）
+## 五、已知问题
 
-> 依据：《演进与避坑》第九节（技能建模：结论 + 开放问题）与第十节阶段 3。
-> 本节只列**需求 / 依赖 / 验收 / 触碰的开放问题**，不做具体设计；每项开始前按"先讨论后实现"
-> 过对应开放问题，达成一致后再动手。顺序基本即依赖序，可分批验收（每批全量测试绿）。
-
-1. [x] **effect 统一收口（地基）**——效果 = 一等公民（时点 + 条件 + 行为），技能 = 效果的命名集合 + 元数据。
-   - 落地（`src/effects/effects.ts`）：`Effect` 五形态（triggered / persistent / activated / response / conversion），
-     共同字段 `skill?`（归属技能）/ `equipType?`（装备归属）/ `name?`；技能 = `defineSkill({name, meta, effects})`
-     （元数据 `info/lord/compulsory`）；裸效果 = `registerBareEffect`；**唯一注册面**。
-   - 装载：`installEffects(game)` 单分发器（回合内按座次；技能来源询问"是否发动"——`forced` 已留挂点；
-     装备/裸效果不询问）；查询面 `effectRegistry.sum/has`（常驻）、`skillRegistry.get/all`（技能）形态不变。
-   - 迁移：26 触发技 + 6 主动技 + 8 响应规则 + 4 转化 + 10 常驻 + 6 `equipTrigger` 全部归位；
-     旧注册面（`skillRegistry.register`/`activeSkillRegistry`/`responseRuleRegistry.register`/
-     `conversionRegistry.register`/`effectRegistry.register`/`CardDef.equipTrigger`）已删除，无兼容壳。
-   - 顺带清理（本次实现）：无双①② 由 `RespondMarks.shanRequired` + 决斗 content 特判 →
-     带归属的常驻查询 `shaRequired` / `juedouShaRequired`；激将出牌阶段由 `playChoices.lordShaActions`
-     特判 → `activated` 效果（逻辑等价搬运；借杀消耗"本阶段杀次数"通过 activated 回执
-     `usedShaLimit` 表达，行为与旧 `kind:'card'` 路径一致）。
-   - 验收：tsc 无错 + 全量测试绿（45 文件 / 403 用例，与基线一致）+ 行为保持（无双/激将仅结构变化，语义不变）。
-   - 注：装备效果本次只做**结构迁移**（`equipType` 归属 + 触发/响应/转化/常驻形态）；
-     装备技能建模（生命周期 / 局内存储 / 青釭剑）仍按第 8 项延后。
-   - 开放问题（第九节）：1 效果收口形态（本项为轻量形态，模块化/DI 收口留阶段 5）、4 可组合谓词层形态。
-2. [x] **发动词汇三轴落地**（原"锁定技标记"，TODO #4）——三件事分属三类对象，勿混为一谈：
-   - effect 级 `auto`（自动发动，绑 effect）：前端多一个"自动发动"按钮，**现在不做**，
-     仅加占位字段（`EffectCommon.auto?: boolean`，引擎不消费）；
-   - effect 级 `forced`（强制发动，绑触发技的 effect）：不进行"是否发动"的询问
-     （机制已接线 + 引擎级测试 `effects.test.ts` 验证；标包无触发型锁定技，内容用例待后续）；
-   - skill 级 `Compulsory`（锁定技抗性标签，绑技能）：字段就位、6 个锁定技已标；
-     查询入口等第 3 项（真实消费者）出现再提炼（有例子再抽象）；
-   - 规则文本的"锁定技" = 内容层组合（技能打 `Compulsory` + 其触发效果打 `forced`）；引擎不推导（演进 9.2）。
-   - 验收：tsc 无错 + 全量测试绿（46 文件 / 409 用例）；第 6 项排序依赖本项已就绪。
-3. [x] **技能实例化**（定义静态 + 局内实例；演进 9.2 已确认方向）——提前到本位置，因为"失效/复原"需要挂点：
-   - `Player.skills: Map<string, SkillInstance>`（`{ def: Skill; disabled: boolean }`）= 局内权威；
-     `hero.skills` 退为"初始技能清单"内容数据；`createGame` 建局按它建立实例（同名武将各自独立）。
-   - 归属判定 `effectOwnedBy` 改查实例（存在且未失效）——**获得/失去技能即时生效、无需注销 handler**。
-   - API：`skillInstance / playerHasSkill / playerSkillDisabled`（查询）、`gainSkill / loseSkill`
-     （获得/失去：仅实例增删，**不带 onGain/onLose 钩子**，等真实用例再加）。
-   - 本轮不含：装备实例化（留第 4 项"驻留 UsedCard"）、次数/临时数据字段（等真实需求）。
-   - 验收：`skillInstance.test.ts` 4 例（开局建实例 / 同名武将独立 / 获得即时生效 / 失去即时失效 / 错误语义）
-     + 全量测试绿。
-   - **伴生：游戏初始化整理**——`createGame` 显式命名步骤：建容器 → 建玩家（hero 副本 + 容器 + 技能实例）
-     → 备牌堆（shuffle）→ 起始发牌（事件外直放；`initialHandSize` 可配，默认 4）→ 初始状态 →
-     **装载效果**（`installEffects` 内置且幂等，index.ts 与测试不再手动调用）。
-     注释已标接入点：阶段 4 身份场/模式在此分配、阶段 5 rng service 在此替换洗牌。
-4. **驻留 UsedCard（UC）建模**（合并原"技能失效/复原"、"判定区转化身份/国色"、"装备技能建模"三项）：
-   装备效果建模为**装备赋予的技能**（演进 9.5 两项目先例）；其生命周期 = 牌的驻留，因此与判定区转化
-   同属一套"长生命周期 UsedCard"。**两层边界契约（判据 + 六条契约 + 推论）见演进 3.5**，落地拆 R1–R4。
-   - **4.1 [x] 模型落地**：`position/usedCards.ts` 注册表 + 实体牌互绑 + 破坏倒查 + 对账不变量
-     + `usedCards.test.ts` 9 例。（回顾：登记塞在物理写点、UC 无身份、位置从"首张实体牌"派生
-     —— 正是 3.5 要修的三处边界模糊。）
-   - **R1 [x] 边界重构（行为保持）**：UC 表换 `ucId` 主键 + `loc`/`seq` 状态；UC 层四动作
-     `create/enter/move/exit`（+ `settle` = 清理处理区）；公开 `moveCards` 到装备槽/判定区**硬报错**
-     （内部通道 `movePhysical`）；物理层只留"离开驻留区"钩子（`installUsedCardHooks`），
-     删除 `handleIdentityLeave` 与 `putCardToLocation` 里的 UC 登记；`useCard` 移入 `flow/useCard.ts`、
-     装备操作移入 `position/usedCardActions.ts`；对账改"装备/判定双向、处理区单向"；
-     测试置场 `equipAt`/`placeJudgment` 走 UC 层。
-     - 新增/重写：`position/move.ts`（低层物理移动 + 钩子）、`position/usedCardActions.ts`（UC 层业务）、
-       `flow/useCard.ts`（使用牌流程）；`usedCards.test.ts` 重写为 14 例（含 UC 迁移同一条 UC、
-       处理区单向约束、驻留区终点硬报错）。
-     - **不兼容（显式声明）**：UC 存储 API（`register/remove/ofPhysical/inZone/inSlot` →
-       `create/bind/unbind/ofCard/at`）、`ResidentUsedCard`/`residentUsedCardOf` 删除、
-       `moveCards` 到驻留区终点抛错、`CardDef.delayContent` 第 4 参数由 `Card` 改为 `UsedCardInstance`、
-       `useCard`/`equipCard` 的导入路径变更（无兼容壳）。
-     - 行为保持：全量 428 例绿（原 422 + 净增 6），`tsc` 干净，整局冒烟跑通。
-   - **R2 [x] 使用流程统一（行为变化）**：`flow/useCard.ts` = ① UC 进处理区（实体牌跟随）→
-     ② 逐目标响应窗口 → ③ 效果（延时锦囊/装备 = `moveUsedCard`，其余 = `def.content`）→
-     ④ 清理处理区（`settleUsedCard`）。`UseCardEventData.card` 改为 `UsedCardInstance`。
-     打出（响应窗口）走 `usedCardActions.playUsedCard` = UC 进处理区 → 收尾（含转化与多牌源）；
-     删除死代码 `playFromHand`。奸雄改"读 UC → `exitUsedCard(uc, {to: 手牌})`"（多牌杀的实体牌整条获得）。
-     判定牌 / 鬼才替换牌 / 观星亮出仍为**无 UC 的实体牌**（处理区单向约束）。
-     - **行为变化（显式声明）**：① 延时锦囊在使用时也走统一窗口 → **可被无懈可击抵消**（标包规则；
-       原先"使用时不能被无懈"）；② 打出的牌经处理区再进弃牌堆（多一次 CardMove，语义不变）；
-       ③ 多牌源的杀被奸雄获得时不再被"取走一张即破坏"截断。
-     - **规则身份推导（本批补完）**：`usedCards.deriveCardFace` 唯一实现"单牌继承 / 无牌全无 /
-       多牌无花色点数且同色才有颜色 / 特殊声明逐字段优先"；`UsedCard.suit|number|color` 可省略、
-       UC 实例上为推导结果（可为 null）；显示走 `cardFaceText`。读取方按颜色判定（仁王盾 = `card.color === 'black'`，
-       顺带修掉丈八蛇矛"两张牌当杀却抄第一张的花色点数"的旧写法）；响应型效果声明 `virtualCard`
-       即产出零牌虚拟 UC（八卦阵的闪）。
-     - 验收：436 例绿，`tsc` 干净，整局冒烟通过。
-   - **R3 [x] 装备技能 + 失效/复原（青釭剑）** —— 接缝决策见演进 9.5（**UC 只做裸效果归属 + 失效位，
-     不绑技能语义**；何时升级的三条判据也记在那里）：
-     - **归属经 UC**：`equippedUsedCard(game, player, type)` = 该玩家装备区里未失效的那条 UC；
-       `effectOwnedBy(game, effect, owner)` 的装备分支据此判定（归属每次查询重算 ⇒
-       装备进出/失效/复原即时生效，无需 grant/revoke 同步）。
-     - **失效位**：`UsedCardInstance.disabled`，唯一写点 `disableUsedCard` / `restoreUsedCard`。
-     - **时限**：`GameEvent.onClear`（执行期可登记的事件收尾钩子，与 `opts.clear` 同时机、之前/异常路径都执行）
-       —— 青釭剑"直到此【杀】被抵消或造成伤害"= 本条【杀】使用事件的收尾。
-     - **青釭剑本体**：`targeting.after` 触发（装备效果本就不询问，锁定技语义由定义承载）；
-       `condition` 要求目标防具槽有未失效 UC；`run` 失效该 UC 并在杀的 useCard 事件 onClear 复原。
-     - **规则层查询统一带 game**（本项机械代价，独立提交 410ad7f）：`CardDef.canUse/targetFilter`、
-       `distanceTo/attackRange`、`effectRegistry.sum/has`、`collectConversionEffects` 全部带上 game。
-     - 未引入 `Compulsory` 抗性（青釭剑按原文即能废掉仁王盾这类锁定技）。
-     - 验收：454 例绿（青釭剑 4 例 + onClear 3 例），`tsc` 干净。
-   - **R3 遗留（记录在案，需后续裁决）**：**青釭剑 vs 仁王盾 的时点顺序**。仁王盾当前建模为
-     `targeting.before` 取消目标，而 `useCard` 在 cancelled 时跳过 `targeting.after` ⇒
-     青釭剑（`targeting.after`）来不及失效，黑色杀被仁王盾拦下 —— 与官方裁决
-     （青釭剑使防具无效 ⇒ 仁王盾无效 ⇒ 黑色杀命中）不符。三条候选路线：
-     ① 青釭剑改挂 `targeting.before` 并靠注册序先于仁王盾（依赖注册序，脆弱）；
-     ② 把仁王盾的"黑色【杀】对你无效"从 targeting 取消改为**结算期无效判定**（更贴规则文本，
-        但要改既有行为与测试）；③ 交给第 6 项"排序显式化"统一裁决。
-   - **R4 [x] 判定区转化身份（国色）**：大乔·国色 = `conversion` 效果（`toType: LeBu`），源牌 = 方片手牌，
-     目标规则直接复用【乐不思蜀】（含陆逊·谦逊 `immuneLeBu` 与同名 UC 限制）；花色/点数由 `deriveCardFace`
-     单牌继承 —— 引擎侧**零特判**（判定阶段、无懈窗口、被拆/被顺全按 UC 身份走）。
-     - 同批落地的规则：**判定区同名 UC 只能存在 1 张**（`hasJudgmentUsedCardNamed`；`computeTargetOptions`
-       经 `canPlaceDelayOn` 对延时锦囊统一过滤）；**闪电转移**按座位顺序找"可以放置该闪电"的角色
-       （判定区无同名 UC，**可绕回自己**——自己的判定区此刻已空出），所有角色都不是它的合法目标才进弃牌堆；
-       **闪电被无懈抵消**时未执行效果，但依然流向合法下家（规则集：把收尾"置入弃牌堆"的移动目标区改为下家判定区）。
-       为此 `CardDef.delayContent` 的 `judgeCard` 允许为 `null`（= 本次被抵消、无判定牌）。
-     - **选择语义定死**（演进 3.5）：区域内的"选一张牌"= 选**实体牌**，UC 仅作前端提示。
-     - **不做（记录在案）**：部分版本的国色"出牌阶段限一次"涉及技能使用次数机制（演进 9.4 第 3 条），
-       标包原文无此限制，暂不实现。
-     - 验收：447 例绿（国色 7 例 + 闪电 4 例），`tsc` 干净，含大乔的整局冒烟跑通且对账零问题。
-     - **注**：闪电"所有角色都不是合法目标 → 进弃牌堆"这条分支在标包内容下无法自然构造
-       （需免疫类效果，如规则集左慈例子的【帷幕】），以直接调用 `delayContent` 的单元测试锁定。
-   - 延后（记录在案）：UC storage（木牛流马）与"迁移时 grants 重新归属"；通用"区域进入/离开钩子"抽象
-     （等第二、第三处需要）；多牌驻留 UC 的真实内容用例（机制已按多牌实现 + 合成测试）。
-   - 依赖 1、2、3（技能实例化与 Compulsory 已就位）。验收：各子项完成时全量测试绿。
-5. **0 牌转化 + 不可被无懈（离间）**——依赖转化系统与无懈窗口；标包收尾内容。
-6. **排序显式化 [x]**（演进 5.2 红线）——`effects/skills.ts` 的 `dispatchTriggered`：
-   ① **座次主排序**：从当前回合角色起按行动顺序（逆时针）逐个存活角色处理（原先是从 0 号位、
-   且外层是"效果"而非"角色"）；② 同一角色**强制发动先行**，可选候选逐个询问，**多个候选由该角色
-   选择先发动哪个**（新原语 `askOption`；放弃 = 本次时点剩余候选不再发动）；③ 每次询问前重算
-   归属/门槛/条件；④ 候选默认序 = 技能 → 装备 → 裸效果，各自按定义序。
-   - **行为变化（显式声明）**：① 多角色同一时点触发的**结算顺序**改为从当前回合角色起的座次序
-     （原先按"效果注册序 × 座次"）；② 同角色多候选不再逐个问"是否发动"，而是问"先发动哪个"
-     （AI 默认取候选序第一个且不放弃 ⇒ 结果集合与原先一致）。
-   - 验收：460 例绿（新增 `effects/triggerOrder.test.ts` 6 例：座次主排序两种起点 / 死亡不参与 /
-     强制先行 / 放弃分支 / 条件重算），`tsc` 干净，整局冒烟跑通。
-   - 未做（记录在案）：`firstDo/lastDo/getIndex` 与 `skill_priority_table` 显式优先级表（等真实
-     "优先级技能"用例）；**裸触发效果的所有者语义**（当前每个存活玩家都算归属 → 会重复执行，今天无此内容）。
-7. **技能 info 规则文本 [x]**——**只有技能与卡牌需要**（effect 不需要），字段与 `name` **同级**：
-   `Skill.info` / `CardDef.info`（`SkillMeta` 不再带 info）。数据源 = `docs/标包武将.json` 与
-   `docs/标包卡牌.json`（唯一事实来源，不落副本、避免漂移）：`content/info.ts` 建名字→info 的查询，
-   `defineSkill` / `cardRegistry.register` 在未显式给出时自动填充。
-   测试 `content/info.test.ts` 锁**覆盖**（每个已注册技能/卡牌都必须有 info 且与数据源一致）——
-   新增内容忘了在 docs 补 info 时立刻红。验收：478 例绿。
-8. **用牌流程：目标阶段 + 单目标生效事件**（演进 3.6，已确认；吸收原第 5 项"离间"）：
-   - **U1 [x] 行为保持（纯结构）**：新增 `cardEffect` 事件（`cardEffect.before` / 内容 / `cardEffect.after`，
-     逐目标依次创建）+ `CardEffectEventData`（含 `to / nullified / unoffsetable / disresponsive /
-     cancelled / cardsResponded`，引擎在内容前只检查 `nullified|cancelled`）；`CardDef.content` 改
-     **单目标结算**（`data.to`）；新增 `CardDef.onAction(before|after)`（五谷丰登亮牌一次，牌池放
-     `use.extra`；南蛮/万箭/桃园只喊一次口号）；无目标牌走单独分支（U1 过渡期仍跑一次"target = 使用者"
-     的窗口，U2 与该窗口搬家一起删）。
-     - 验收：465 例绿（新增 `flow/useCard.test.ts` 5 例：逐目标 cardEffect 时序 / 内容在 before-after 之间 /
-       `nullified` 跳过内容 / `cancelled` 跳过内容 / 五谷亮牌一次 + 逐目标各取一张），`tsc` 干净，
-       整局冒烟跑通（五谷/南蛮/桃园均正常）。
-   - **U2 [x] 无懈与无目标流程（行为变化）**：去掉"`targets` 为空 ⇒ target = 使用者自己"的伪造，
-     无目标牌走单独流程且**不产生 targeting 事件**；无懈的窗口从 `targeting.before` 移到
-     **它自己的 `cardEffect.before`**（无懈抵消的是"一张牌对某个目标的效果"），无懈自身也是一次
-     无目标使用 ⇒ 反无懈由递归自然形成；响应关系显式记录：`ResponseRequest.respondTo` →
-     `UseCardEventData.responseTo`（无懈 content 据此置 `cancelled`）+ `effect.cardsResponded`
-     （响应了哪些牌）；支持**事件级** `unoffsetable`（整条牌不可被无懈响应 → 不开窗）。
-     判定阶段窗口（judgePhase 自建 targeting + `judging`）保留为**冻结**遗留分支。
-     - **行为变化（显式声明）**：① 无目标使用不再产生伪造的 targeting 事件（无懈的"反无懈窗口"
-       改挂在它自己的 cardEffect.before）；② 无懈窗口从"目标指定阶段（全部目标先问）"移到
-       "逐目标生效前"（与该目标的结算交错，顺序更贴规则）；③ 响应关系不再靠事件栈反查。
-     - 验收：467 例绿（改写 3 例旧行为测试 + 新增 unoffsetable/cardsResponded 2 例），`tsc` 干净，
-       整局冒烟跑通（无懈大量触发且日志正常）。
-   - **U3 [x] 仁王盾改 `nullified`（行为变化）**：仁王盾从 `targeting.before` 取消目标改为
-     **`cardEffect.before` 置 `nullified`**（"黑色【杀】对你无效"是生效阶段的判定，不是目标不合法）——
-     **青釭剑 vs 仁王盾 由此自然正确**（青釭剑在 `targeting.after` 令防具失效 → 生效阶段仁王盾
-     不再归属 → 黑色杀命中），不再依赖任何排序。装备牌 / 延时锦囊的落地本就在生效事件内，
-     受 `nullified` 约束（新增测试：被无效的延时锦囊不落地、进弃牌堆）。
-     同批收口：**`disresponsive` 取代跨目标 `marks.unavoidable`** —— 目标阶段在 `TargetingEventData`
-     上置位、生效事件继承（`AimResult`），修掉"多目标杀里铁骑对一人生效却让所有目标都不可闪避"的
-     污染；`RespondMarks` 随之删除（无其他使用者）。
-     - **行为变化（显式声明）**：① 仁王盾的无效判定从目标指定移到效果生效（`cancelled` → `nullified`）；
-     ② 不可响应改为每目标位（多目标杀行为修正）；③ `RespondMarks`/`marks` 字段移除。
-     - 验收：470 例绿（新增 青釭剑 vs 仁王盾、nullified 延时锦囊不落地、多目标 disresponsive 3 例），
-       `tsc` 干净，整局冒烟跑通。
-   - **U4 [x] 引擎级合法性校验 + 离间**：新增 `flow/useCard.ts` 的 **`useVirtualCard`** —— 技能构造
-     "视为使用一张牌"的引擎级入口：先校验使用者 `canUse` + 逐目标 `targetFilter`（非法目标剔除、
-     无合法目标则不使用），再走 `useCard`（今天只有选择层校验，技能直接 `useCard` 会绕过规则）。
-     貂蝉·**离间** = `activated` 效果（同一技能内）：
-     - **0 牌转化**：决斗 UC 无实体牌（弃置的牌只是 cost，不充当决斗的实体牌）；
-     - **视为他人使用**：`useCard` 的 player = 被指定的男性角色 A（伤害来源、技能归属随 A）；
-     - **不可被无懈可击响应**：`unoffsetable`（事件级，U2 已就位）；
-     - **出牌阶段限一次**：`ctx.usedSkills`（playPhase 记名）；合法性组合复用【决斗】的目标规则
-       （空城/免疫随引擎校验自动排除）。
-     - 验收：475 例绿（离间 5 例：注册/发动含伤害来源与 0 牌 UC/不可被无懈/限一次/无合法组合），
-       `tsc` 干净，整局冒烟跑通（日志可见"貂蝉 发动【离间】！…视为 刘备 对 曹操 使用决斗"）。
-   - **U 系列收口**：用牌流程 = 目标阶段（targeting.before/after + 每目标位）→ 生效阶段
-     （逐目标 cardEffect.before → 单目标内容 → cardEffect.after）→ 清理处理区；
-     无目标使用单独分支（不伪造 target）。仁王盾/青釭剑/离间/无懈 四件套全部落在这条流程上。
-     **无懈可击机制随 U2 重设计完成**（窗口挂 `cardEffect.before`、响应关系显式记录、`unoffsetable`），
-     只剩判定阶段的 targeting 遗留窗口（冻结，等需要时随延时锦囊一起收）。
-   - **U5 [x] 方天画戟（标包最后一件内容）**：`useCard.before` 触发（`equipType: FangTianHuaJi`），
-     条件 = "本次使用的 UC 实体牌集合 == 使用者当前手牌且数量不为 0"（读规则读 UC；多牌转化
-     正好用完手牌时同样成立），效果 = 复用【杀】的 `targetFilter`（排除已有目标）追加 **0–2** 个
-     合法目标（总至多 3 个）。选择层不再特判（删除 `playChoices` 的 `fangtianMaxTargets`）。
-     - 验收：480 例绿（新增 2 例：多牌转化整手牌可加目标 / 无其他合法目标时不追加），`tsc` 干净，
-       整局冒烟可见"🔱夏侯惇 的方天画戟：额外指定 曹操、司马懿"。
-   - 不采纳（演进 3.6 记录）：副目标、额外结算次数、加伤/加回复、`prohibitedCardNames`、
-     `aboutToEffect`、实体牌标记查询、`skipDrop`、目标四阶段、FreeKill 三段固定时点。
-
-### 伴生事项：CardArea 内部结构自定义（不在本阶段单独开设计）
-
-- 牌堆顶/底（已由 `putTop/putBottom` 原语承担）、装备区（当前非 CardArea，4 槽位对象）、判定区顺序等
-  "每区自管存储/排序"的需求，**由本阶段真实用例触发**，触发任一条件再开设计（继承 or 注入）：
-  ① 出现 2–3 个"某区域需要不同进出/排序语义"的真实用例；② 同一件事出现两处特判需统一
-  （如装备区进出散在 moveCards 物理层与测试 helper）；③ 序列化 / DI / 回放要求统一区域接口；
-  ④ 出现性能信号。
-- 触发前的登记处：本节 + TODO #10 注 + 演进 3.4 开放问题。
-
-## 下一步（建议）
-
-> 实施顺序已整理进 [演进与避坑.md](演进与避坑.md) 第十节"实施路线"（七阶段）；阶段 3 的拆解见上一节。
-> 简要版：标包真收尾（奸雄修复 ✓）→ 事件历史 + clear 钩子（#7/#8 ✓，克己已迁移历史查询）→
-> CardArea 容器（阶段 2 ✓：受控容器 + 集中索引 + toPosition 剥离 + 对账不变量 + API 去数组伪装）→
-> 技能与效果建模（阶段 3 拆解见上：effect 收口 / 发动词汇 forced+Compulsory / 失效 / 国色 / 离间 /
-> 排序 / info；装备技能延后到武将技能迁移完成后评估）→
-> 军争/神话再临内容包 → DI 插件机制 → 前端/回放/编辑器。
-
-## 已知问题
-
-- [x] 奸雄的伤害因果归属：已修复——`DamageEventData` 增加显式因果字段 `card`（`src/events/types.ts`），
-  杀/决斗/南蛮/万箭/贯石斧在"牌直接造成伤害"处显式赋值，奸雄改读该字段；
-  刚烈等 `damage.after` 内的反击伤害（技能伤害、无 card）不再经 `getParent('useCard')` 误归原杀/决斗。
-- [ ] 无懈可击 AI 策略仍写死（只保护自己、不反无懈），真人/前端接入时改为决策注入
-  （策略已显式化为 `wuxieGuardPolicy`，`src/cards/trick.ts`，行为保持）
+- 无懈可击 AI 策略仍写死（只保护自己、不反无懈）——真人/前端接入时改为决策注入
+  （策略已显式化为 `wuxieGuardPolicy`，`src/content/cards/trick.ts`）。
+- 奸雄的伤害因果归属已修复（`DamageEventData.card` 显式赋值，`adr/0001`/`adr/0008`）。

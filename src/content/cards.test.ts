@@ -581,7 +581,7 @@ describe('无懈可击', () => {
     giveHand(p2, CardType.WuXie); // 无懈₂ — 反无懈
 
     // 手动注册 handler：无懈₁ 的**生效**（cardEffect，无目标）即将结算时，p2 出无懈反制。
-    // 响应对象随请求下传（respondTo）→ 无懈₂ 的 content 给无懈₁ 的生效置 cancelled（演进 3.6 U2）。
+    // 响应对象随请求下传（respondTo）→ 无懈₂ 的 content 给无懈₁ 的生效置 cancelled（adr/0006）。
     const counterHandler = async (e: any) => {
       const effect = e.data as { card: Card; to?: unknown; cancelled?: boolean };
       if (effect.card.type !== CardType.WuXie || effect.to !== undefined) return;

@@ -35,19 +35,19 @@ export interface Game {
   /** 本局的触发器注册表（随局隔离） */
   triggerSystem: TriggerSystem;
   /**
-   * 全量事件历史（演进 2.2 DFS 时间戳法）。
+   * 全量事件历史（adr/0001 DFS 时间戳法）。
    * append-only；append 顺序 == id 顺序（事件 id == 本数组下标）。
-   * 事件在 execute 入史，finally 定稿 endId（子树跨度终点）。回放不做历史序列化（演进 7.2）。
+   * 事件在 execute 入史，finally 定稿 endId（子树跨度终点）。回放不做历史序列化（TODO 阶段 6）。
    */
   history: GameEvent<any>[];
   /**
-   * 引擎级集中索引（演进 3.2 / FreeKill card_place 等价物）：cardId → 当前位置。
+   * 引擎级集中索引（adr/0002 / FreeKill card_place 等价物）：cardId → 当前位置。
    * 派生态：只由 CardArea 容器方法 / 装备槽位写点维护，不参与序列化（数组权威，加载重建）。
    */
   cardIndex: CardIndex;
   /**
    * UsedCard 层存储（UC = 一次使用/打出/驻留的"效果牌"，位置与顺序是 UC 的状态）。
-   * 与实体牌层的关系见演进 3.5：装备槽/判定区双向约束，处理区单向约束。
+   * 与实体牌层的关系见adr/0003：装备槽/判定区双向约束，处理区单向约束。
    */
   usedCards: UsedCardStore;
   /** 物理层 → UC 层的唯一钩子（实体牌离开驻留区时通知；installUsedCardHooks 装载） */

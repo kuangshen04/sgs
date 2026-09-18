@@ -228,7 +228,7 @@ const jiedaoContent: CardContentFn = async (game, data, _event) => {
 };
 
 /**
- * 无懈可击的 content：把它所**响应的那次生效**置为 cancelled（演进 3.6 U2：响应关系显式记录，
+ * 无懈可击的 content：把它所**响应的那次生效**置为 cancelled（adr/0006：响应关系显式记录，
  * 不再靠事件栈反查）。无懈本身也是一次"无目标使用"，因此它同样可以被响应（反无懈）——
  * 后出的无懈在前一个的 `cardEffect.before` 窗口里被使用，其 content 给前一个的生效事件置位。
  *
