@@ -77,6 +77,41 @@ export async function useCard(
     });
 }
 
+/**
+ * 技能构造"视为使用一张牌"的引擎级入口（演进 3.6 U4）。
+ *
+ * 先做**规则合法性校验**：使用者 `canUse` + 逐目标 `targetFilter`（非法目标剔除）；
+ * 不合法 / 无合法目标则不使用（返回 null）。校验通过后走 `useCard`。
+ * 虚拟牌的实体组成由调用方给定（`physicalCards: []` 即 0 牌转化，如离间的决斗）。
+ */
+export async function useVirtualCard(
+  game: Game,
+  opts: {
+    player: Player;
+    card: UsedCard;
+    targets: Player[];
+    /** 整条牌不可被无懈响应（如离间的决斗） */
+    unoffsetable?: boolean;
+    /** 校验 canUse 时的"本回合已使用杀"状态（默认 false） */
+    shaUsed?: boolean;
+  },
+): Promise<GameEvent<UseCardEventData> | null> {
+  const def = cardRegistry.get(opts.card.type);
+  if (!def) return null;
+  const all = game.state.players;
+  const legalTargets = new Set(def.targetFilter(game, opts.player, all));
+  const targets = opts.targets.filter((t) => legalTargets.has(t));
+  if (targets.length === 0) return null;
+  if (!def.canUse(game, opts.player, all, opts.shaUsed ?? false)) return null;
+
+  return useCard(game, {
+    player: opts.player,
+    card: opts.card,
+    targets,
+    unoffsetable: opts.unoffsetable,
+  });
+}
+
 /** 目标阶段产出：目标 + 该目标在目标阶段被置的位（随生效事件继承） */
 interface AimResult {
   target: Player;
