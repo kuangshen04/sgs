@@ -14,11 +14,13 @@ import { discardCards, drawCards, moveCards, judge } from '../../position/cardAc
 import { useCard } from '../../flow/useCard.js';
 import type {
   CardEffectEventData, DamageEventData, ShaCancelledEventData, TargetingEventData,
+  UseCardEventData,
 } from '../../events/index.js';
 import { EventType } from '../../events/index.js';
 import {
   askForCard,
   askFromAreas,
+  askForTargets,
   askYesNo,
   handCardsStep,
   targetsStep,
@@ -294,6 +296,53 @@ function registerBlankWeapon(
 registerBlankWeapon(CardType.QingGangJian, '青釭剑', '🗡️', 2);
 registerBlankWeapon(CardType.ZhangBaSheMao, '丈八蛇矛', '🔱', 3);
 registerBlankWeapon(CardType.FangTianHuaJi, '方天画戟', '🔱', 4);
+
+/**
+ * 方天画戟：当你使用【杀】时，若此【杀】是你最后的手牌，你可以额外选择至多两个合法目标
+ * （连同原本的一个，共至多 3 个）。
+ *
+ * - 判定条件（读规则读 UC）：本次使用的 UC 的**实体牌集合 == 使用者当前手牌**且数量不为 0 ——
+ *   用两张手牌当杀（丈八蛇矛）且它们是最后两张时同样成立；
+ * - 时机：`useCard.before`（内容执行前、目标阶段之前）→ 直接追加到 `use.targets`，
+ *   新增的目标会各自走完目标阶段与生效阶段；
+ * - 合法性：复用【杀】的 `targetFilter`（攻击范围/免疫等），并排除已有目标与使用者自己。
+ */
+registerBareEffect({
+  form: 'triggered',
+  equipType: CardType.FangTianHuaJi,
+  timing: 'useCard.before',
+  condition: (_game, event, owner) => {
+    const use = event.data as UseCardEventData;
+    if (use.player !== owner) return false;
+    if (use.card.type !== CardType.Sha) return false;
+    return isLastHandCards(owner, use.card);
+  },
+  run: async (game, event, owner) => {
+    const use = event.data as UseCardEventData;
+    const shaDef = cardRegistry.get(CardType.Sha)!;
+    const candidates = shaDef.targetFilter(game, owner, game.state.players)
+      .filter((p) => !use.targets.includes(p));
+    if (candidates.length === 0) return;
+
+    // askForTargets：额外指定 0~2 名（默认 AI 取满 2 名，候选已按座次）
+    const extra = await askForTargets(
+      game, owner, '方天画戟：额外目标（至多 2 名）', candidates, 2,
+    );
+    if (!extra || extra.length === 0) return;
+    use.targets.push(...extra);
+    console.log(
+      `  🔱${owner.name} 的方天画戟：额外指定 ${extra.map((p) => p.name).join('、')}`,
+    );
+  },
+});
+
+/** UC 的实体牌是否正好是使用者的全部手牌（"此【杀】是你最后的手牌"） */
+function isLastHandCards(owner: Player, uc: UsedCardInstance): boolean {
+  if (uc.physicalCards.length === 0) return false;
+  const hand = owner.hand.cards;
+  return hand.length === uc.physicalCards.length
+    && uc.physicalCards.every((c) => hand.some((h) => h.id === c.id));
+}
 
 /**
  * 青釭剑：锁定技，当你使用【杀】指定一名目标角色后，你令其防具技能无效

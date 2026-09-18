@@ -179,6 +179,8 @@
 - [x] 借刀杀人：借刀使用者在其攻击范围内指定杀目标（复用杀 targetFilter，不选使用者本人）
   + 被借刀者"对指定目标出杀 / 交出武器"选择会话（默认 AI：指定第一个合法目标、出杀保武器；行为保持）
 - [x] 无懈可击：响应策略显式化为 `wuxieGuardPolicy`（行为保持：只保护自己、不反无懈）
+- [x] 方天画戟：改挂 `useCard.before` 触发追加 0–2 个合法目标（条件读 UC 实体牌 == 手牌）；
+  选择层不再特判（阶段 3 U5）
 
 ## 三、武将（标包 25 位）
 
@@ -205,11 +207,12 @@
 
 ### 响应/杀相关
 
-- 铁骑：`RespondMarks.unavoidable`，马超 `targeting.after` 写死设置（唯一用例）
-- 无双：`RespondMarks.shanRequired = 2`；决斗 content 里 `hero.skills.includes('无双')` 特判
-- 方天画戟：`playChoices.fangtianMaxTargets`，按装备 + 最后一张手牌放宽目标上限到 3
+- ~~铁骑：`RespondMarks.unavoidable`~~ → 已收口为**每目标 `disresponsive`**（目标阶段置位、生效事件继承；
+  `RespondMarks` 已删除）
+- ~~无双：`RespondMarks.shanRequired = 2`~~ → 已收口为**常驻查询**（`shaRequired` / `juedouShaRequired`）
+- ~~方天画戟：`playChoices.fangtianMaxTargets`~~ → 已收口为 **`useCard.before` 触发**追加合法目标（U5）
 - 青龙偃月刀 / 贯石斧：`shaCancelled.after` 装备 trigger，分别再出杀 / 弃两张牌
-- 仁王盾：`targeting.before` 黑色杀置 targeting.data.cancelled
+- ~~仁王盾：`targeting.before` 黑色杀置 targeting.data.cancelled~~ → 已收口为 **`cardEffect.before` 置 `nullified`**（U3）
 - 雌雄双股剑：`targeting.after` 异性目标触发
 - 寒冰剑 / 麒麟弓：`damage.before/after`，判定 useCard 是杀
 
@@ -434,6 +437,14 @@
    - **U 系列收口**：用牌流程 = 目标阶段（targeting.before/after + 每目标位）→ 生效阶段
      （逐目标 cardEffect.before → 单目标内容 → cardEffect.after）→ 清理处理区；
      无目标使用单独分支（不伪造 target）。仁王盾/青釭剑/离间/无懈 四件套全部落在这条流程上。
+     **无懈可击机制随 U2 重设计完成**（窗口挂 `cardEffect.before`、响应关系显式记录、`unoffsetable`），
+     只剩判定阶段的 targeting 遗留窗口（冻结，等需要时随延时锦囊一起收）。
+   - **U5 [x] 方天画戟（标包最后一件内容）**：`useCard.before` 触发（`equipType: FangTianHuaJi`），
+     条件 = "本次使用的 UC 实体牌集合 == 使用者当前手牌且数量不为 0"（读规则读 UC；多牌转化
+     正好用完手牌时同样成立），效果 = 复用【杀】的 `targetFilter`（排除已有目标）追加 **0–2** 个
+     合法目标（总至多 3 个）。选择层不再特判（删除 `playChoices` 的 `fangtianMaxTargets`）。
+     - 验收：480 例绿（新增 2 例：多牌转化整手牌可加目标 / 无其他合法目标时不追加），`tsc` 干净，
+       整局冒烟可见"🔱夏侯惇 的方天画戟：额外指定 曹操、司马懿"。
    - 不采纳（演进 3.6 记录）：副目标、额外结算次数、加伤/加回复、`prohibitedCardNames`、
      `aboutToEffect`、实体牌标记查询、`skipDrop`、目标四阶段、FreeKill 三段固定时点。
 

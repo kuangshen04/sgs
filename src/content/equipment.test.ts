@@ -462,6 +462,41 @@ describe('方天画戟（多目标杀）', () => {
       expect(result.targets.length).toBe(1);
     }
   });
+
+  it('条件读 UC 的实体牌：多牌转化的杀正好是全部手牌时同样可加目标', async () => {
+    const g = freshGame({}, ['刘备', '孙权', '张辽', '黄盖']);
+    const attacker = g.state.players[0];
+    equipAt(g, attacker, makeUniqueCard(CardType.FangTianHuaJi));
+    const a = makeUniqueCard(CardType.Sha);
+    const b = makeUniqueCard(CardType.Tao);
+    attacker.hand.replaceAll([a, b]); // 两张手牌正好用完（多牌转化的杀）
+    const targets = g.state.players.slice(1);
+    const hpBefore = targets.map((p) => p.hp);
+
+    await useCard(g, {
+      player: attacker,
+      card: { type: CardType.Sha, name: '杀', physicalCards: [a, b] },
+      targets: [targets[0]],
+    });
+
+    // 三张牌全部造成伤害：原有 1 名 + 方天画戟额外 2 名
+    expect(targets.map((p) => p.hp)).toEqual(hpBefore.map((h) => h - 1));
+    expect(attacker.hand.cards.length).toBe(0);
+  });
+
+  it('没有其他合法目标 → 不追加（不报错）', async () => {
+    const g = freshGame({}, ['刘备', '孙权']); // 2 人局：除目标外无其他合法目标
+    const attacker = g.state.players[0];
+    const defender = g.state.players[1];
+    equipAt(g, attacker, makeUniqueCard(CardType.FangTianHuaJi));
+    const sha = makeUniqueCard(CardType.Sha);
+    attacker.hand.replaceAll([sha]);
+    const hpBefore = defender.hp;
+
+    await useCard(g, { player: attacker, card: sha, targets: [defender] });
+
+    expect(defender.hp).toBe(hpBefore - 1);
+  });
 });
 
 describe('八卦阵（响应规则）', () => {

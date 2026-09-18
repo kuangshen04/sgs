@@ -130,7 +130,11 @@ function buildPlayActions(
   return actions;
 }
 
-/** 普通牌的后续计划：按效果牌规则选目标 */
+/**
+ * 普通牌的后续计划：按效果牌规则选目标。
+ * 注：方天画戟的"额外目标"不在这里——它按规则文本是"使用【杀】时"的效果，
+ * 挂在 `useCard.before` 触发上追加目标（见 content/cards/equipment.ts）。
+ */
 function cardTargetPlan(
   game: Game,
   player: Player,
@@ -143,17 +147,6 @@ function cardTargetPlan(
       const targetOptions = computeTargetOptions(game, used, player);
       const tc = option.def.targetCount;
       const candidates = targetOptions.map((t) => t.player);
-      if (option.card.type === CardType.Sha) {
-        const multiMax = fangtianMaxTargets(player);
-        if (multiMax && targetOptions.length > 1) {
-          const max = Math.min(multiMax, targetOptions.length);
-          return targetsStep('target', player, candidates, {
-            min: 1,
-            max,
-            ai: (ctx) => ctx.step.options.slice(0, max),
-          });
-        }
-      }
       if (tc === 'all') {
         return targetsStep('target', player, candidates, {
           min: candidates.length,
@@ -163,11 +156,4 @@ function cardTargetPlan(
       return targetsStep('target', player, candidates, { min: tc, max: tc });
     },
   };
-}
-
-/** 方天画戟：最后一张手牌使用杀时可额外目标（至多 3），否则返回 null */
-function fangtianMaxTargets(player: Player): number | null {
-  if (player.equipment.weapon?.type !== CardType.FangTianHuaJi) return null;
-  if (player.hand.cards.length !== 1) return null;
-  return 3;
 }
