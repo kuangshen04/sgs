@@ -159,8 +159,8 @@ export type Effect =
 // 技能 = 效果的命名集合 + 元数据
 // ============================================================
 
+/** 技能元数据（技能身份是 `Skill.name`；这里只放规则标签） */
 export interface SkillMeta {
-  name: string;
   /** 主公技：身份场开启（state.lord 已设）且自己不是主公时不发动 */
   lord?: boolean;
   /**
@@ -188,7 +188,7 @@ export interface SkillInput {
   name: string;
   /** 规则文本；省略时由容器按技能名从数据源回填（见 content/info.ts） */
   info?: string;
-  meta?: Omit<SkillMeta, 'name'>;
+  meta?: SkillMeta;
   effects: Effect[];
 }
 
@@ -200,7 +200,7 @@ export function defineSkill(input: SkillInput): Skill {
   return {
     name: input.name,
     info: input.info,
-    meta: { name: input.name, ...input.meta },
+    meta: { ...input.meta },
     effects: input.effects.map((e) => ({ ...e, skill: e.skill ?? input.name })),
   };
 }

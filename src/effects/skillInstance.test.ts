@@ -18,7 +18,7 @@ describe('局内技能实例', () => {
 
     for (const p of [a, b]) {
       expect(playerHasSkill(p, '遗计')).toBe(true);
-      expect(skillInstance(p, '遗计')?.def.meta.name).toBe('遗计');
+      expect(skillInstance(p, '遗计')?.def.name).toBe('遗计');
     }
     expect(playerHasSkill(liubei, '遗计')).toBe(false); // 不同武将互不影响
 
