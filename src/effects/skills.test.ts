@@ -6,13 +6,12 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { freshGame, giveHand, makeUniqueCard } from '../test-utils.js';
+import { freshGame, giveHand, makeUniqueCard, standardRuleSet } from '../test-utils.js';
 
 import { damage, loseHp } from '../flow/life.js';
 import { playPhase } from '../flow/gameFlow.js';
 
 import { pickActiveEffect } from './skills.js';
-import { skillRegistry } from './effects.js';
 
 import { CardType } from '../types.js';
 
@@ -85,15 +84,15 @@ describe('pickActiveEffect', () => {
 // ============================================================
 
 describe('注册表完整性', () => {
-  it('skillRegistry 已注册所有触发技能', () => {
+  it('规则集已注册所有触发技能', () => {
     for (const name of ['遗计', '英姿', '闭月', '奸雄', '刚烈', '天妒', '鬼才', '洛神', '反馈', '集智', '突袭']) {
-      expect(skillRegistry.get(name)).toBeDefined();
+      expect(standardRuleSet().skills.get(name)).toBeDefined();
     }
   });
 
   it('已注册所有主动技能（activated 效果）', () => {
     for (const name of ['制衡', '仁德', '反间', '青囊']) {
-      expect(skillRegistry.get(name)?.effects.some((e) => e.form === 'activated')).toBe(true);
+      expect(standardRuleSet().skills.get(name)?.effects.some((e) => e.form === 'activated')).toBe(true);
     }
   });
 });

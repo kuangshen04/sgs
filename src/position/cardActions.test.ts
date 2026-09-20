@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { freshGame, giveHand, makeUniqueCard, equipAt, placeJudgment } from '../test-utils.js';
+import { freshGame, giveHand, makeUniqueCard, equipAt, placeJudgment, testGame, testDelayCard } from '../test-utils.js';
 
 import {
   discardCards, drawCards, getCardArea, giveCards, moveCards, peekTop, reshuffle,
@@ -314,12 +314,14 @@ describe('moveCards（统一移动）', () => {
   });
 
   it('位置确认由调用方负责：牌已不在原区域则不移动', async () => {
-    const g = freshGame();
+    // 场景用测试内容搭建：本用例测的是 UC 迁移 + 调用方位置确认，
+    // 与"哪张延时牌"无关（不需要标包的闪电）。
+    const g = testGame({ cards: [testDelayCard()] });
     const player = g.state.players[0];
     const other = g.state.players[1];
-    const card = makeUniqueCard(CardType.ShanDian);
+    const card = makeUniqueCard(CardType.LeBu);
     placeJudgment(g, player, card);
-    // 模拟闪电把牌转移到下家判定区（UC 迁移；判定区只能经 UC 层进入）
+    // 模拟延时牌把牌转移到下家判定区（UC 迁移；判定区只能经 UC 层进入）
     await moveUsedCard(
       g, g.usedCards.ofCard(card)!, { kind: 'judgment', player: other }, { reason: 'transfer' },
     );

@@ -16,12 +16,10 @@ import type { EventStack, GameEvent } from './events/index.js';
 import { createUsedCardStore } from './position/usedCards.js';
 import type { UsedCardHooks, UsedCardStore } from './position/usedCards.js';
 import { installUsedCardHooks } from './position/usedCardActions.js';
-import { shuffle } from './content/cardRegistry.js';
+import { shuffle } from './rules/random.js';
+import type { RuleSet } from './rules/ruleSet.js';
 import { gainSkill } from './effects/effects.js';
 import { installEffects } from './effects/skills.js';
-import { heroRegistry } from './content/heroRegistry.js';
-import './content/cards/index.js';  // 副作用：触发全部卡牌/装备效果注册
-import './content/heroes/index.js'; // 副作用：触发全部武将/技能注册
 
 // ============================================================
 // Game — 一局游戏的容器
@@ -30,6 +28,12 @@ import './content/heroes/index.js'; // 副作用：触发全部武将/技能注�
 
 export interface Game {
   state: GameState;
+  /**
+   * 本局的**规则集**（卡牌/技能/武将定义 + 内容提供的开局钩子）。
+   * 引用而非持有：生命周期属于装配方（容器），game 不构造、不释放，也不做动态查找。
+   * 当前取舍：DI 落地后服务（decision/rng/victory）同样在装配期解析后交给 game。
+   */
+  ruleSet: RuleSet;
   /** 本局的事件执行栈（随局隔离） */
   eventStack: EventStack;
   /** 本局的触发器注册表（随局隔离） */
@@ -70,6 +74,11 @@ export function lastManStanding(state: GameState): Player | null {
 
 /** createGame 的可选注入项 */
 export interface CreateGameOptions {
+  /**
+   * 本局的规则集（**必填**：不做隐式默认装配——"这局装了哪些内容"必须显式可见）。
+   * 装配期由容器提供：`createGame(deck, heroes, { ruleSet: container })`。
+   */
+  ruleSet: RuleSet;
   victoryCheck?: VictoryCondition;
   /** 起始手牌数（默认 4） */
   initialHandSize?: number;
@@ -78,16 +87,17 @@ export interface CreateGameOptions {
 export function createGame(
   deck: Card[],
   heroNames: string[],
-  options?: CreateGameOptions,
+  options: CreateGameOptions,
 ): Game {
+  const { ruleSet } = options;
   // ── 步骤 1：建容器与集中索引（内容无关的基础设施）────────────────
   const cardIndex = createCardIndex();
   const usedCards = createUsedCardStore();
 
   // ── 步骤 2：建玩家（hero 副本 + 空区域 + 局内技能实例表）──────────
   const players: Player[] = heroNames.map((name) => {
-    const hero = heroRegistry.get(name);
-    if (!hero) throw new Error(`Hero "${name}" not registered`);
+    const hero = ruleSet.heroes.get(name);
+    if (!hero) throw new Error(`Hero "${name}" is not in this rule set`);
     return {
       name: hero.name, hero: { ...hero }, // 副本：同名英雄各自独立
       hp: hero.maxHp, maxHp: hero.maxHp,
@@ -101,7 +111,11 @@ export function createGame(
     p.hand = new CardArea(cardIndex, { player: p, zone: 'hand' });
     p.judgment = new CardArea(cardIndex, { player: p, zone: 'judgment' });
     // 技能实例：按 hero.skills（内容层"初始技能清单"）建立局内实例
-    for (const skillName of p.hero.skills ?? []) gainSkill(p, skillName);
+    for (const skillName of p.hero.skills ?? []) {
+      const skill = ruleSet.skills.get(skillName);
+      if (!skill) throw new Error(`Skill "${skillName}" (hero ${p.name}) is not in this rule set`);
+      gainSkill(p, skill);
+    }
   }
 
   // ── 步骤 3：备牌堆（洗牌；阶段 5 换 rng service 的种子化实现）──────
@@ -129,8 +143,9 @@ export function createGame(
       currentIndex: 0,
       deck: deckArea, discardPile, processing,
       round: 1, gameOver: false, winner: null,
-      victoryCheck: options?.victoryCheck ?? lastManStanding,
+      victoryCheck: options.victoryCheck ?? lastManStanding,
     },
+    ruleSet,
     eventStack: createEventStack(),
     triggerSystem: new TriggerSystem(),
     history: [],

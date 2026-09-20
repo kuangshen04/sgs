@@ -10,15 +10,15 @@ import { damage } from '../../flow/life.js';
 import { judge } from '../../position/cardActions.js';
 
 import { installEffects } from '../../effects/skills.js';
-import { skillRegistry } from '../../effects/effects.js';
 
 import { CardType } from '../../types.js';
+import { standardRuleSet } from '../../test-utils.js';
 
 const guojiaHeroes = ['刘备', '郭嘉', '孙权'];
 
 describe('遗计（郭嘉技能）', () => {
-  it('skillRegistry 已注册遗计', () => {
-    expect(skillRegistry.get('遗计')).toBeDefined();
+  it('规则集已注册遗计', () => {
+    expect(standardRuleSet().skills.get('遗计')).toBeDefined();
   });
 
   it('郭嘉受到 1 点伤害 → 摸 2 张牌', async () => {
@@ -64,8 +64,8 @@ describe('遗计（郭嘉技能）', () => {
 });
 
 describe('天妒（郭嘉技能）', () => {
-  it('skillRegistry 已注册天妒', () => {
-    expect(skillRegistry.get('天妒')).toBeDefined();
+  it('规则集已注册天妒', () => {
+    expect(standardRuleSet().skills.get('天妒')).toBeDefined();
   });
 
   it('郭嘉判定后获得判定牌', async () => {

@@ -8,8 +8,8 @@
 
 import type { Card, Player, UsedCard } from '../types.js';
 import { CardTag, CardType } from '../types.js';
-import { cardRegistry, asUsedCard } from '../content/cardRegistry.js';
-import type { CardDef } from '../content/cardRegistry.js';
+import { asUsedCard } from '../rules/cardFace.js';
+import type { CardDef } from '../rules/cardDef.js';
 import { canPlaceDelayOn } from '../position/usedCardActions.js';
 import type { Game } from '../game.js';
 import type { AreaName } from '../position/areas.js';
@@ -47,7 +47,7 @@ export function computeCardOptions(
 ): CardOption[] {
   const allPlayers = game.state.players;
   return player.hand.cards
-    .map((card) => ({ card, def: cardRegistry.get(card.type) }))
+    .map((card) => ({ card, def: game.ruleSet.cards.get(card.type) }))
     .filter(({ def }) => def && def.canUse(game, player, allPlayers, shaUsed))
     .map(({ card, def }) => ({ card, def: def! }));
 }
@@ -62,7 +62,7 @@ export function computeTargetOptions(
   card: UsedCard,
   player: Player,
 ): TargetOption[] {
-  const def = cardRegistry.get(card.type);
+  const def = game.ruleSet.cards.get(card.type);
   if (!def) return [];
   let targets = def.targetFilter(game, player, game.state.players);
   if (def.tags.includes(CardTag.Delay)) {

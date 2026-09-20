@@ -1,38 +1,42 @@
 // ============================================================
 // 三国杀最小原型 — game.ts 单元测试
 // 引擎容器：游戏初始化 / 胜利条件
-// （卡牌注册、牌堆、体力操作、牌移动原语的测试已拆到对应模块：
-//   cardRegistry.test.ts / deck.test.ts / life.test.ts / cardActions.test.ts）
+// （标包装配、牌堆、体力操作、牌移动原语的测试已拆到对应模块：
+//   content/standardPack.test.ts / deck.test.ts / life.test.ts / cardActions.test.ts）
 // ============================================================
 
 import { describe, it, expect } from 'vitest';
 
-import './content/cards/index.js'; // 触发卡牌注册（side-effect import）
-import { STANDARD_DECK } from './content/cards/index.js';
-
 import { createGame, lastManStanding } from './game.js';
+import { createStandardContainer } from './content/standardPack.js';
+import { buildStandardDeck } from './content/deck.js';
 
-import { freshGame, DEFAULT_HEROES } from './test-utils.js';
+import { freshGame, DEFAULT_HEROES, standardRuleSet } from './test-utils.js';
 
-import { heroRegistry } from './content/heroRegistry.js';
 
 // ============================================================
 // 游戏初始化
 // ============================================================
 
 describe('createGame', () => {
-  it('heroRegistry 可查询已注册武将', () => {
-    expect(heroRegistry.get('刘备')?.skills).toContain('仁德');
-    expect(heroRegistry.get('郭嘉')?.maxHp).toBe(3);
-    expect(heroRegistry.get('刘备')?.sex).toBe('male');
-    expect(heroRegistry.get('刘备')?.group).toBe('蜀');
-    expect(heroRegistry.get('甄宓')?.sex).toBe('female');
-    expect(heroRegistry.get('貂蝉')?.group).toBe('群');
-    expect(heroRegistry.get('不存在')).toBeUndefined();
+  // 显式装配：容器 + 牌堆（没有隐式默认装配）
+  function newGame(heroNames: string[] = DEFAULT_HEROES) {
+    const ruleSet = createStandardContainer();
+    return createGame(buildStandardDeck(ruleSet), heroNames, { ruleSet });
+  }
+
+  it('规则集可查询已注册武将', () => {
+    expect(standardRuleSet().heroes.get('刘备')?.skills).toContain('仁德');
+    expect(standardRuleSet().heroes.get('郭嘉')?.maxHp).toBe(3);
+    expect(standardRuleSet().heroes.get('刘备')?.sex).toBe('male');
+    expect(standardRuleSet().heroes.get('刘备')?.group).toBe('蜀');
+    expect(standardRuleSet().heroes.get('甄宓')?.sex).toBe('female');
+    expect(standardRuleSet().heroes.get('貂蝉')?.group).toBe('群');
+    expect(standardRuleSet().heroes.get('不存在')).toBeUndefined();
   });
 
   it('创建指定数量的玩家', () => {
-    const g = createGame(STANDARD_DECK, DEFAULT_HEROES);
+    const g = newGame();
     expect(g.state.players.length).toBe(3);
     expect(g.state.players[0].name).toBe('刘备');
     expect(g.state.players[1].name).toBe('曹操');
@@ -40,14 +44,14 @@ describe('createGame', () => {
   });
 
   it('每个玩家初始 4 张手牌', () => {
-    const g = createGame(STANDARD_DECK, DEFAULT_HEROES);
+    const g = newGame();
     for (const p of g.state.players) {
       expect(p.hand.cards.length).toBe(4);
     }
   });
 
   it('初始状态正确', () => {
-    const g = createGame(STANDARD_DECK, DEFAULT_HEROES);
+    const g = newGame();
     expect(g.state.round).toBe(1);
     expect(g.state.currentIndex).toBe(0);
     expect(g.state.gameOver).toBe(false);
@@ -58,13 +62,13 @@ describe('createGame', () => {
   });
 
   it('局内牌 id 唯一', () => {
-    const g = createGame(STANDARD_DECK, DEFAULT_HEROES);
+    const g = newGame();
     const ids = new Set(g.state.deck.cards.map((c) => c.id));
     expect(ids.size).toBe(g.state.deck.cards.length);
   });
 
   it('同名英雄可重复（三个郭嘉）', () => {
-    const g = createGame(STANDARD_DECK, ['郭嘉', '郭嘉', '郭嘉']);
+    const g = newGame(['郭嘉', '郭嘉', '郭嘉']);
     expect(g.state.players.length).toBe(3);
     expect(g.state.players.every((p) => p.hero.name === '郭嘉')).toBe(true);
     expect(g.state.players.every((p) => p.hero.skills?.includes('遗计'))).toBe(true);
@@ -74,7 +78,7 @@ describe('createGame', () => {
   });
 
   it('未注册的英雄名 → 抛错', () => {
-    expect(() => createGame(STANDARD_DECK, ['不存在'])).toThrow(/not registered/);
+    expect(() => newGame(['不存在'])).toThrow(/not in this rule set/);
   });
 });
 

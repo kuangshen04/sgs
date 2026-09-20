@@ -8,15 +8,15 @@ import { freshGame, giveHand } from '../../test-utils.js';
 
 import { useCard } from '../../flow/useCard.js';
 
-import { skillRegistry } from '../../effects/effects.js';
 
 import { CardType } from '../../types.js';
+import { standardRuleSet } from '../../test-utils.js';
 
 const lvbuHeroes = ['吕布', '刘备', '孙权'];
 
 describe('无双（吕布锁定技）', () => {
-  it('skillRegistry 已注册无双', () => {
-    expect(skillRegistry.get('无双')).toBeDefined();
+  it('规则集已注册无双', () => {
+    expect(standardRuleSet().skills.get('无双')).toBeDefined();
   });
 
   it('吕布使用杀 → 目标需两张闪：只有一张则命中', async () => {

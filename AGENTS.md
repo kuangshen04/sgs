@@ -13,22 +13,30 @@
 - **规则层与 AI 层语义分离**：`canUse` / `targetFilter` / 常驻效果是规则；`ai.shouldUse`、选牌/选目标/发动与否是 AI。
 - **决策与执行分离**：ask/choose 只做决策不执行牌；打出/使用由调用方（`playFromHand` / `useCard`）负责。
 - **AI 决策点隔离**：当前 AI 全部写死为默认行为，决策点用注释标明"真人/前端接入时在此注入"；不提前设计注入接口。
-- **避免全局状态**：`game` 作为第一参数贯穿所有引擎函数；事件栈/触发器/技能注册随局隔离。
+- **避免全局状态**：`game` 作为第一参数贯穿所有引擎函数；事件栈/触发器随局隔离；
+  定义层**没有模块级注册表**——内容只在装配期注册进容器，运行期经 `game.ruleSet` 只读查询
+  （装配期/运行期分离见 `docs/adr/0009`）。
 
 ## 东西在哪找
 
 - **代码**：`src/`（TypeScript ESM，相对导入带 `.js` 后缀）；按角色分目录：
-  `events/`（事件）· `position/`（位置与移动）· `effects/`（效果与技能）· `decision/`（选择与窗口）·
-  `flow/`（流程与结算）· `content/`（卡牌/武将/牌堆等内容定义）；根目录只留 `index.ts` / `game.ts` /
-  `types.ts` / `test-utils.ts`。**导览见 `docs/代码结构.md`**
-- **测试**：与被测模块同目录（`src/<cluster>/xxx.test.ts`；`content/heroes/*.test.ts` 随武将）
+  `rules/`（规则集与叶子层助手）· `events/`（事件）· `position/`（位置与移动）· `effects/`（效果与技能）·
+  `decision/`（选择与窗口）· `flow/`（流程与结算）· `content/`（卡牌/武将/牌堆与**显式装配**）；
+  根目录只留 `index.ts` / `game.ts` / `types.ts` / `test-utils.ts`。**导览见 `docs/代码结构.md`**
+- **内容装配**：`content/standardPack.ts` → `installStandardPack` / `createStandardContainer`；
+  注册只在装配期（容器），运行期只经 `game.ruleSet`——没有 import 副作用、没有隐式默认装配
+  （`createGame` 的 `ruleSet` 必填）
+- **测试**：与被测模块同目录（`src/<cluster>/xxx.test.ts`；`content/heroes/*.test.ts` 随武将）。
+  下层模块的单元测试用 `testGame/testContainer` 现场注册测试内容、**不依赖标包**；
+  "内容 × 流程"的集成测试单独标注；断言标包内容用 `standardRuleSet()`
 - **需求与计划**：`docs/TODO.md`（**只放还没落地的**：剩余阶段、未落地机制、写死清单、开放问题）
 - **已落地系统的决策**：`docs/adr/`（一篇一系统；索引与"旧编号 演进 X.Y 对照"见 `docs/adr/README.md`）
 - **经验与红线**：`docs/经验与红线.md`（借鉴无名杀/FreeKill 的核对结论 + 写死的红线）
-- **代码导览 / 工程约定**：`docs/代码结构.md`（目录职责、内容与数据约定、测试与质量闸）
+- **代码导览 / 工程约定**：`docs/代码结构.md`（目录职责、内容与装配约定、测试与质量闸）
 - **标包武将/卡牌定义**：`docs/标包武将.json`、`docs/标包卡牌.json`（唯一事实来源）
 - **牌堆数据**：`src/content/standardDeck.json`（108 张、32 种，与卡牌定义分离）
-- **测试辅助**：`src/test-utils.ts`（`freshGame` / `giveHand` / `makeUniqueCard` / `equipAt`）
+- **测试辅助**：`src/test-utils.ts`（`freshGame` / `testGame` / `standardGame` / `testContainer` /
+  `standardRuleSet` / `giveHand` / `makeUniqueCard` / `testDelayCard` / `equipAt`）
 
 > 具体模块与机制约定以 `docs/adr/` 与源码为准；文档结构见 `docs/adr/README.md`，不在本文件维护。
 

@@ -8,13 +8,13 @@ import { freshGame, giveHand, makeUniqueCard } from '../../test-utils.js';
 
 import { playPhase } from '../../flow/gameFlow.js';
 
-import { skillRegistry } from '../../effects/effects.js';
 
 import { CardType } from '../../types.js';
+import { standardRuleSet } from '../../test-utils.js';
 
 describe('苦肉（黄盖主动技能）', () => {
-  it('skillRegistry 已注册苦肉（activated 效果）', () => {
-    expect(skillRegistry.get('苦肉')?.effects.some((e) => e.form === 'activated')).toBe(true);
+  it('规则集已注册苦肉（activated 效果）', () => {
+    expect(standardRuleSet().skills.get('苦肉')?.effects.some((e) => e.form === 'activated')).toBe(true);
   });
 
   it('出牌阶段失去 1 点体力摸 2 张牌（可连续发动至体力 1）', async () => {

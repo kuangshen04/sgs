@@ -8,15 +8,14 @@ import { freshGame } from '../../test-utils.js';
 
 import { playPhase } from '../../flow/gameFlow.js';
 import { choosePlayAction } from '../../decision/playChoices.js';
-import { skillRegistry } from '../../effects/effects.js';
-import { heroRegistry } from '../heroRegistry.js';
 
 import { CardType } from '../../types.js';
+import { standardRuleSet } from '../../test-utils.js';
 
 describe('武圣（关羽转化牌）', () => {
-  it('skillRegistry 已注册武圣（conversion 效果），heroRegistry 已注册关羽', () => {
-    expect(skillRegistry.get('武圣')?.effects.some((e) => e.form === 'conversion')).toBe(true);
-    expect(heroRegistry.get('关羽')?.skills).toContain('武圣');
+  it('规则集已注册武圣（conversion 效果），规则集已注册关羽', () => {
+    expect(standardRuleSet().skills.get('武圣')?.effects.some((e) => e.form === 'conversion')).toBe(true);
+    expect(standardRuleSet().heroes.get('关羽')?.skills).toContain('武圣');
   });
 
   it('choosePlayAction：红牌当杀，返回 UsedCard 与合法目标', async () => {

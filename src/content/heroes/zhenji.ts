@@ -4,15 +4,14 @@
 
 import { judge, takeFromDiscard } from '../../position/cardActions.js';
 import { playUsedCard } from '../../position/usedCardActions.js';
-import { cardEmoji, displayNumber, asUsedCard } from '../cardRegistry.js';
+import { cardEmoji, displayNumber, asUsedCard } from '../../rules/cardFace.js';
 import { askYesNo, handCardsStep, selectedCards } from '../../decision/choose.js';
 import { subjectIsOwner } from '../../effects/skills.js';
-import { defineSkill } from '../../effects/effects.js';
 import type { GameEvent } from '../../events/index.js';
-import { heroRegistry } from '../heroRegistry.js';
 import type { Game } from '../../game.js';
 import { CardType } from '../../types.js';
 import type { Player } from '../../types.js';
+import type { Container } from '../../rules/ruleSet.js';
 
 /** 洛神：准备阶段判定，黑色获得判定牌并继续，红色停止 */
 const luoshenContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
@@ -28,51 +27,54 @@ const luoshenContent = async (game: Game, event: GameEvent<any>, owner: Player):
     const found = await takeFromDiscard(game, owner, card);
     if (!found) break;
     console.log(
-      `  ${owner.name} 洛神获得 ${cardEmoji(found.type)} ` +
+      `  ${owner.name} 洛神获得 ${cardEmoji(game, found.type)} ` +
       `(${found.suit}${displayNumber(found.number)})`,
     );
   }
 };
 
-defineSkill({
-  name: '洛神',
-  effects: [{
-    form: 'triggered',
-    timing: 'preparePhase.before',
-    condition: subjectIsOwner,
-    run: luoshenContent,
-  }],
-});
+// ── 装配（显式注册进容器；参数 c = 装配期容器）──────────────────────
+export function installZhenji(c: Container): void {
+  c.skills.define({
+    name: '洛神',
+    effects: [{
+      form: 'triggered',
+      timing: 'preparePhase.before',
+      condition: subjectIsOwner,
+      run: luoshenContent,
+    }],
+  });
 
-defineSkill({
-  name: '倾国',
-  effects: [{
-    form: 'response',
-    name: '倾国·当闪',
-    respondsTo: CardType.Shan,
-    canUse: (_game, player) =>
-      player.hand.cards.some((c) => c.suit === '♠' || c.suit === '♣'),
-    selectionPlan: (_game, player) => ({
-      nextStep(answers) {
-        if (answers.source) return null;
-        return handCardsStep('source', player, {
-          prompt: '倾国：选择一张黑色牌当闪',
-          filter: (c) => c.suit === '♠' || c.suit === '♣',
-          min: 1,
-          max: 1,
-        });
+  c.skills.define({
+    name: '倾国',
+    effects: [{
+      form: 'response',
+      name: '倾国·当闪',
+      respondsTo: CardType.Shan,
+      canUse: (_game, player) =>
+        player.hand.cards.some((c) => c.suit === '♠' || c.suit === '♣'),
+      selectionPlan: (_game, player) => ({
+        nextStep(answers) {
+          if (answers.source) return null;
+          return handCardsStep('source', player, {
+            prompt: '倾国：选择一张黑色牌当闪',
+            filter: (c) => c.suit === '♠' || c.suit === '♣',
+            min: 1,
+            max: 1,
+          });
+        },
+      }),
+      resolve: async (game, player, _request, answers) => {
+        const source = selectedCards(answers, 'source')[0];
+        if (source) await playUsedCard(game, player, asUsedCard(source));
+        return 'done';
       },
-    }),
-    resolve: async (game, player, _request, answers) => {
-      const source = selectedCards(answers, 'source')[0];
-      if (source) await playUsedCard(game, player, asUsedCard(source));
-      return 'done';
-    },
-    ai: {
-      shouldUse: () => true,
-      priority: 50,
-    },
-  }],
-});
+      ai: {
+        shouldUse: () => true,
+        priority: 50,
+      },
+    }],
+  });
 
-heroRegistry.register({ name: '甄宓', maxHp: 3, sex: 'female', group: '魏', skills: ['洛神', '倾国'] });
+  c.heroes.register({ name: '甄宓', maxHp: 3, sex: 'female', group: '魏', skills: ['洛神', '倾国'] });
+}

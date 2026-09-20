@@ -9,13 +9,13 @@ import { freshGame, giveHand } from '../../test-utils.js';
 import { useCard } from '../../flow/useCard.js';
 import { drawPhase, turn } from '../../flow/gameFlow.js';
 
-import { skillRegistry } from '../../effects/effects.js';
 
 import { CardType } from '../../types.js';
+import { standardRuleSet } from '../../test-utils.js';
 
 describe('裸衣（许褚技能）', () => {
-  it('skillRegistry 已注册裸衣', () => {
-    expect(skillRegistry.get('裸衣')).toBeDefined();
+  it('规则集已注册裸衣', () => {
+    expect(standardRuleSet().skills.get('裸衣')).toBeDefined();
   });
 
   it('摸牌阶段少摸一张', async () => {

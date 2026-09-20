@@ -8,15 +8,15 @@ import { freshGame, giveHand } from '../../test-utils.js';
 
 import { drawPhase, playPhase } from '../../flow/gameFlow.js';
 
-import { skillRegistry } from '../../effects/effects.js';
 
 import { CardType } from '../../types.js';
+import { standardRuleSet } from '../../test-utils.js';
 
 const zhouyuHeroes = ['刘备', '周瑜', '孙权'];
 
 describe('英姿（周瑜技能）', () => {
-  it('skillRegistry 已注册英姿', () => {
-    expect(skillRegistry.get('英姿')).toBeDefined();
+  it('规则集已注册英姿', () => {
+    expect(standardRuleSet().skills.get('英姿')).toBeDefined();
   });
 
   it('摸牌阶段 → 正常 2 张 + 英姿 1 张', async () => {
@@ -41,8 +41,8 @@ describe('英姿（周瑜技能）', () => {
 });
 
 describe('反间（周瑜主动技能）', () => {
-  it('skillRegistry 已注册反间（activated 效果）', () => {
-    expect(skillRegistry.get('反间')?.effects.some((e) => e.form === 'activated')).toBe(true);
+  it('规则集已注册反间（activated 效果）', () => {
+    expect(standardRuleSet().skills.get('反间')?.effects.some((e) => e.form === 'activated')).toBe(true);
   });
 
   it('交给目标 1 张牌并造成 1 点伤害', async () => {

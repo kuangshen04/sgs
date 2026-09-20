@@ -13,7 +13,8 @@
 
 import { Card, Player } from '../types.js';
 import type { CardLocation, CardMoveReason } from '../types.js';
-import { cardEmoji, displayNumber, shuffle } from '../content/cardRegistry.js';
+import { cardEmoji, displayNumber } from '../rules/cardFace.js';
+import { shuffle } from '../rules/random.js';
 import { EventType, GameEvent } from '../events/index.js';
 import type { DrawEventData, JudgeEventData } from '../events/index.js';
 import { movePhysical } from './move.js';
@@ -123,7 +124,7 @@ export async function judge(game: Game, player: Player): Promise<Card> {
       if (!card) throw new Error('判定失败：牌堆和弃牌堆都为空');
       event.data.card = card;
       console.log(
-        `  ⚡${player.name} 判定：亮出 ${cardEmoji(card.type)} (${card.suit}${displayNumber(card.number)})`,
+        `  ⚡${player.name} 判定：亮出 ${cardEmoji(game, card.type)} (${card.suit}${displayNumber(card.number)})`,
       );
       // 判定牌生效前：鬼才等响应技能可替换判定牌
       await game.triggerSystem.trigger(`${EventType.Judge}.judging`, event);

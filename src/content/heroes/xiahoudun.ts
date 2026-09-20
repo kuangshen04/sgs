@@ -5,12 +5,11 @@
 import { discardCards, judge } from '../../position/cardActions.js';
 import { damage } from '../../flow/life.js';
 import { subjectIsOwner } from '../../effects/skills.js';
-import { defineSkill } from '../../effects/effects.js';
 import type { GameEvent } from '../../events/index.js';
 import type { DamageEventData } from '../../events/index.js';
-import { heroRegistry } from '../heroRegistry.js';
 import type { Game } from '../../game.js';
 import type { Player } from '../../types.js';
+import type { Container } from '../../rules/ruleSet.js';
 
 /** 刚烈：受到伤害后判定，非红桃则伤害来源弃两张手牌或受 1 点伤害 */
 const ganglieContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
@@ -28,14 +27,17 @@ const ganglieContent = async (game: Game, event: GameEvent<any>, owner: Player):
   }
 };
 
-defineSkill({
-  name: '刚烈',
-  effects: [{
-    form: 'triggered',
-    timing: 'damage.after',
-    condition: subjectIsOwner,
-    run: ganglieContent,
-  }],
-});
+// ── 装配（显式注册进容器；参数 c = 装配期容器）──────────────────────
+export function installXiahoudun(c: Container): void {
+  c.skills.define({
+    name: '刚烈',
+    effects: [{
+      form: 'triggered',
+      timing: 'damage.after',
+      condition: subjectIsOwner,
+      run: ganglieContent,
+    }],
+  });
 
-heroRegistry.register({ name: '夏侯惇', maxHp: 4, sex: 'male', group: '魏', skills: ['刚烈'] });
+  c.heroes.register({ name: '夏侯惇', maxHp: 4, sex: 'male', group: '魏', skills: ['刚烈'] });
+}

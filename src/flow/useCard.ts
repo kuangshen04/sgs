@@ -21,8 +21,8 @@ import { EventType, GameEvent } from '../events/index.js';
 import type {
   CardEffectEventData, TargetingEventData, UseCardEventData,
 } from '../events/index.js';
-import { cardRegistry, cardEmoji, cardFaceText } from '../content/cardRegistry.js';
-import type { CardDef } from '../content/cardRegistry.js';
+import { cardEmoji, cardFaceText } from '../rules/cardFace.js';
+import type { CardDef } from '../rules/cardDef.js';
 import {
   enterUsedCard, equipCard, materializeUsedCard, moveUsedCard, settleUsedCard,
 } from '../position/usedCardActions.js';
@@ -46,7 +46,7 @@ export async function useCard(
   };
   return new GameEvent<UseCardEventData>(EventType.UseCard, usedData, game)
     .execute(async (event) => {
-      const def = cardRegistry.get(uc.type);
+      const def = game.ruleSet.cards.get(uc.type);
 
       // ① 使用的牌先进处理区（结算中位置）
       await enterUsedCard(game, uc, { kind: 'processing' }, { reason: 'use' });
@@ -96,7 +96,7 @@ export async function useVirtualCard(
     shaUsed?: boolean;
   },
 ): Promise<GameEvent<UseCardEventData> | null> {
-  const def = cardRegistry.get(opts.card.type);
+  const def = game.ruleSet.cards.get(opts.card.type);
   if (!def) return null;
   const all = game.state.players;
   const legalTargets = new Set(def.targetFilter(game, opts.player, all));
@@ -179,7 +179,7 @@ async function runCardEffect(
         if (to) {
           await moveUsedCard(game, evt.data.card, { kind: 'judgment', player: to }, { reason: 'use' });
           console.log(
-            `  ${event.data.player.name} 使用了 ${cardEmoji(evt.data.card.type)}` +
+            `  ${event.data.player.name} 使用了 ${cardEmoji(game, evt.data.card.type)}` +
             `(${cardFaceText(evt.data.card)})，置入 ${to.name} 的判定区`,
           );
         }
@@ -189,9 +189,9 @@ async function runCardEffect(
         const owner = to ?? event.data.player;
         const replaced = await equipCard(game, owner, evt.data.card);
         console.log(
-          `  ${event.data.player.name} 装备了 ${cardEmoji(evt.data.card.type)}` +
+          `  ${event.data.player.name} 装备了 ${cardEmoji(game, evt.data.card.type)}` +
           `(${cardFaceText(evt.data.card)})` +
-          (replaced ? `，顶掉 ${cardEmoji(replaced.type)}` : ''),
+          (replaced ? `，顶掉 ${cardEmoji(game, replaced.type)}` : ''),
         );
         return;
       }

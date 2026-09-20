@@ -11,15 +11,14 @@ import { freshGame, giveHand } from '../../test-utils.js';
 import { discardPhase } from '../../flow/gameFlow.js';
 import { useCard } from '../../flow/useCard.js';
 import { GameEvent } from '../../events/index.js';
-import { skillRegistry } from '../../effects/effects.js';
-import { heroRegistry } from '../heroRegistry.js';
 
 import { CardType } from '../../types.js';
+import { standardRuleSet } from '../../test-utils.js';
 
 describe('克己（吕蒙）', () => {
-  it('skillRegistry 已注册克己，heroRegistry 已注册吕蒙', () => {
-    expect(skillRegistry.get('克己')).toBeDefined();
-    expect(heroRegistry.get('吕蒙')?.skills).toContain('克己');
+  it('规则集已注册克己，规则集已注册吕蒙', () => {
+    expect(standardRuleSet().skills.get('克己')).toBeDefined();
+    expect(standardRuleSet().heroes.get('吕蒙')?.skills).toContain('克己');
   });
 
   it('本回合未用杀 → 跳过弃牌阶段', async () => {

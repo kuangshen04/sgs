@@ -4,7 +4,9 @@
 // adr/0004：效果 = 时点 + 条件 + 行为；技能是包装器（元数据 + 效果集合）；
 // 裸效果是真实需求（常驻 kind 词汇、装备效果、临时效果、未来模式效果）。
 //
-// 本模块只有"注册面 + 查询面"，不含分发（分发在 skills.ts 的 installEffects）
+// 本模块 = 效果词汇（五种形态的类型）+ 技能定义构造 + 局内技能实例；
+// **不含**注册面与查询面（定义层的存放/查询在 `rules/ruleSet.ts` 的容器与规则集里，
+// 即 `game.ruleSet.skills`），也不含分发（分发在 skills.ts 的 installEffects）
 // 与窗口接线（响应/转化由 responses.ts / playChoices.ts 查询）。
 // 五种形态保留各自调用协议，但共享同一份"归属"信息（skill / equipType）。
 // ============================================================
@@ -12,7 +14,6 @@
 import { CardType } from '../types.js';
 import type { Player, UsedCard } from '../types.js';
 import { equippedUsedCard } from '../position/usedCardActions.js';
-import { skillInfo } from '../content/info.js';
 import type { Game } from '../game.js';
 import type { GameEvent } from '../events/index.js';
 import type { CardEffectEventData } from '../events/index.js';
@@ -179,102 +180,29 @@ export interface Skill {
 }
 
 // ============================================================
-// 注册面（唯一入口）
+// 定义构造（纯函数：不注册、不查数据源）
 // ============================================================
 
-const _skills = new Map<string, Skill>();
-const _bareEffects: Effect[] = [];
-
-/** 定义一个技能（技能 = 元数据 + 效果集合）；同名重复定义即抛错（防缝合式重复注册） */
-export function defineSkill(input: {
+/** 技能定义的构造输入（`defineSkill` / `container.skills.define`） */
+export interface SkillInput {
   name: string;
-  /** 规则文本；省略时按技能名从 docs 标包数据取（见 content/info.ts） */
+  /** 规则文本；省略时由容器按技能名从数据源回填（见 content/info.ts） */
   info?: string;
   meta?: Omit<SkillMeta, 'name'>;
   effects: Effect[];
-}): Skill {
-  if (_skills.has(input.name)) {
-    throw new Error(`Skill "${input.name}" is already defined`);
-  }
-  const skill: Skill = {
+}
+
+/**
+ * 定义一个技能（技能 = 元数据 + 效果集合）——**纯构造**：
+ * 注册到容器（`container.skills.register`）时才做同名查重与规则文本回填。
+ */
+export function defineSkill(input: SkillInput): Skill {
+  return {
     name: input.name,
-    info: input.info ?? skillInfo(input.name),
+    info: input.info,
     meta: { name: input.name, ...input.meta },
     effects: input.effects.map((e) => ({ ...e, skill: e.skill ?? input.name })),
   };
-  _skills.set(skill.name, skill);
-  return skill;
-}
-
-/** 注册裸效果（不归属任何技能：装备卡效果、未来模式/全局效果） */
-export function registerBareEffect(effect: Effect): void {
-  _bareEffects.push(effect);
-}
-
-// ============================================================
-// 查询面
-// ============================================================
-
-export const skillRegistry = {
-  get(name: string): Skill | undefined {
-    return _skills.get(name);
-  },
-  all(): IterableIterator<Skill> {
-    return _skills.values();
-  },
-};
-
-/** 全部效果（技能效果按技能定义序，随后裸效果） */
-export function allEffects(): Effect[] {
-  const out: Effect[] = [];
-  for (const skill of _skills.values()) out.push(...skill.effects);
-  out.push(..._bareEffects);
-  return out;
-}
-
-/** 某时点的触发型效果（技能来源在前、装备来源在后、裸效果最后；保持各自注册序） */
-export function triggeredEffectsAt(timing: string): TriggeredEffect[] {
-  const skills: TriggeredEffect[] = [];
-  const equips: TriggeredEffect[] = [];
-  const bare: TriggeredEffect[] = [];
-  for (const e of allEffects()) {
-    if (e.form !== 'triggered' || e.timing !== timing) continue;
-    if (e.skill) skills.push(e);
-    else if (e.equipType) equips.push(e);
-    else bare.push(e);
-  }
-  return [...skills, ...equips, ...bare];
-}
-
-/** 全部触发型时点（installEffects 用） */
-export function triggeredTimings(): string[] {
-  const timings: string[] = [];
-  for (const e of allEffects()) {
-    if (e.form === 'triggered' && !timings.includes(e.timing)) timings.push(e.timing);
-  }
-  return timings;
-}
-
-/** 某键的全部常驻效果 */
-export function persistentEffectsOf(key: string): PersistentEffect[] {
-  return allEffects().filter((e): e is PersistentEffect => e.form === 'persistent' && e.key === key);
-}
-
-/** 所有响应型效果（respondsTo 过滤由调用方或本函数参数完成） */
-export function responseEffectsFor(cardType?: CardType): ResponseEffect[] {
-  return allEffects().filter(
-    (e): e is ResponseEffect => e.form === 'response' && (cardType === undefined || e.respondsTo === cardType),
-  );
-}
-
-/** 全部转化型效果 */
-export function conversionEffects(): ConversionEffect[] {
-  return allEffects().filter((e): e is ConversionEffect => e.form === 'conversion');
-}
-
-/** 全部主动型效果 */
-export function activatedEffects(): ActivatedEffect[] {
-  return allEffects().filter((e): e is ActivatedEffect => e.form === 'activated');
 }
 
 // ============================================================
@@ -309,13 +237,17 @@ export function playerSkillDisabled(player: Player, name: string): boolean {
   return !!inst && inst.disabled;
 }
 
-/** 获得技能：创建局内实例（未定义的技能名抛错；已拥有则抛错，防内容重复获得） */
-export function gainSkill(player: Player, name: string): SkillInstance {
-  const def = _skills.get(name);
-  if (!def) throw new Error(`gainSkill: skill "${name}" is not defined`);
-  if (player.skills.has(name)) throw new Error(`gainSkill: ${player.name} already has skill "${name}"`);
-  const inst: SkillInstance = { def, disabled: false };
-  player.skills.set(name, inst);
+/**
+ * 获得技能：按定义创建局内实例（已拥有则抛错，防内容重复获得）。
+ * 定义由调用方给出（`player.hero.skills` 的解析在 createGame 里做）——
+ * 本函数不查注册表，故不需要 game。
+ */
+export function gainSkill(player: Player, skill: Skill): SkillInstance {
+  if (player.skills.has(skill.name)) {
+    throw new Error(`gainSkill: ${player.name} already has skill "${skill.name}"`);
+  }
+  const inst: SkillInstance = { def: skill, disabled: false };
+  player.skills.set(skill.name, inst);
   return inst;
 }
 
@@ -343,7 +275,7 @@ export function effectOwnedBy(game: Game, effect: EffectCommon, owner: Player): 
 
 /** 主公门槛：归属技能标了 lord 时，身份场开启且自己不是主公则不成立 */
 export function effectLordGate(game: Game, owner: Player, effect: EffectCommon): boolean {
-  const skill = effect.skill ? _skills.get(effect.skill) : undefined;
+  const skill = effect.skill ? game.ruleSet.skills.get(effect.skill) : undefined;
   if (!skill?.meta.lord) return true;
   return !game.state.lord || owner === game.state.lord;
 }

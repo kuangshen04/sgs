@@ -9,7 +9,7 @@ import type { Card, Player, UsedCard } from '../types.js';
 import type { Game } from '../game.js';
 import { EventType, GameEvent } from '../events/index.js';
 import type { ShaCancelledEventData } from '../events/index.js';
-import { cardEmoji, asUsedCard } from '../content/cardRegistry.js';
+import { asUsedCard, cardEmoji } from '../rules/cardFace.js';
 import { chooseUseAction } from '../decision/useWindow.js';
 import { buildResponseActions, executeResponse } from '../decision/responses.js';
 import type { ResponseRequest } from '../decision/responses.js';
@@ -57,7 +57,7 @@ export async function resolveShaResponse(
         continue;
       }
       if (outcome === 'done') {
-        console.log(`  ${defender.name} 使用了 ${cardEmoji(CardType.Shan)}，抵消了攻击`);
+        console.log(`  ${defender.name} 使用了 ${cardEmoji(game, CardType.Shan)}，抵消了攻击`);
         break;
       }
       return false;
@@ -128,7 +128,7 @@ export async function resolveJueDouResponse(
       console.log(`  ${player.name} 无法打出杀！`);
       return false;
     }
-    console.log(`  ${player.name} 打出了 ${cardEmoji(CardType.Sha)}`);
+    console.log(`  ${player.name} 打出了 ${cardEmoji(game, CardType.Sha)}`);
   }
   return true;
 }

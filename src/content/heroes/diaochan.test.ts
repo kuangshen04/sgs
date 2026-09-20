@@ -9,9 +9,9 @@ import { freshGame, giveHand, makeUniqueCard } from '../../test-utils.js';
 import { endPhase, turn } from '../../flow/gameFlow.js';
 import { choosePlayAction } from '../../decision/playChoices.js';
 
-import { skillRegistry } from '../../effects/effects.js';
 import { EventType } from '../../events/index.js';
 import { CardType } from '../../types.js';
+import { standardRuleSet } from '../../test-utils.js';
 
 // 闭月测试的阵容：只有女性角色（离间无合法组合 → 出牌阶段不会发动技能，摸牌数确定）
 const diaochanHeroes = ['大乔', '貂蝉', '甄宓'];
@@ -23,8 +23,8 @@ const diaochanHeroes = ['大乔', '貂蝉', '甄宓'];
 describe('离间（貂蝉技能）', () => {
   const heroes = ['貂蝉', '刘备', '曹操']; // 两名男性角色：刘备 / 曹操
 
-  it('skillRegistry 已注册离间；貂蝉拥有离间', () => {
-    expect(skillRegistry.get('离间')).toBeDefined();
+  it('规则集已注册离间；貂蝉拥有离间', () => {
+    expect(standardRuleSet().skills.get('离间')).toBeDefined();
     expect(freshGame({}, heroes).state.players[0].skills.has('离间')).toBe(true);
   });
 
@@ -77,7 +77,7 @@ describe('离间（貂蝉技能）', () => {
     const g = freshGame({}, heroes);
     const diaochan = g.state.players[0];
     giveHand(diaochan, CardType.Tao);
-    const effect = skillRegistry.get('离间')!.effects[0];
+    const effect = standardRuleSet().skills.get('离间')!.effects[0];
     if (effect.form !== 'activated') throw new Error('离间应为主动效果');
 
     const base = { shaUsed: false, hasCardOption: false };
@@ -89,7 +89,7 @@ describe('离间（貂蝉技能）', () => {
     const g = freshGame({}, ['貂蝉', '诸葛亮']); // 诸葛亮空手 → 空城：不能成为决斗目标
     const diaochan = g.state.players[0];
     giveHand(diaochan, CardType.Tao);
-    const effect = skillRegistry.get('离间')!.effects[0];
+    const effect = standardRuleSet().skills.get('离间')!.effects[0];
     if (effect.form !== 'activated') throw new Error('离间应为主动效果');
 
     // 唯一男性诸葛亮能对谁决斗？只剩貂蝉（女性）→ 无 "男性对男性" 的组合
@@ -100,8 +100,8 @@ describe('离间（貂蝉技能）', () => {
 });
 
 describe('闭月（貂蝉技能）', () => {
-  it('skillRegistry 已注册闭月', () => {
-    expect(skillRegistry.get('闭月')).toBeDefined();
+  it('规则集已注册闭月', () => {
+    expect(standardRuleSet().skills.get('闭月')).toBeDefined();
   });
 
   it('结束阶段 → 摸 1 张牌', async () => {

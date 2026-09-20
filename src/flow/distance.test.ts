@@ -6,10 +6,10 @@ import { describe, it, expect } from 'vitest';
 
 import { freshGame, makeUniqueCard, equipAt } from '../test-utils.js';
 
-import { cardRegistry } from '../content/cardRegistry.js';
 import { seatDistance, distanceTo, attackRange } from './distance.js';
 
 import { CardType } from '../types.js';
+import { standardRuleSet } from '../test-utils.js';
 
 const fourPlayers = ['刘备', '曹操', '孙权', '郭嘉'];
 
@@ -96,7 +96,7 @@ describe('attackRange', () => {
 describe('杀的 targetFilter 与攻击范围', () => {
   const fourPlayers = ['刘备', '曹操', '孙权', '郭嘉'];
 
-  const shaDef = () => cardRegistry.get(CardType.Sha)!;
+  const shaDef = () => standardRuleSet().cards.get(CardType.Sha)!;
 
   it('无武器（攻击范围 1）：杀不到对位（距离 2）目标', () => {
     const g = freshGame({}, fourPlayers);
@@ -134,7 +134,7 @@ describe('杀的 targetFilter 与攻击范围', () => {
     c.hand.replaceAll([makeUniqueCard(CardType.Sha)]); // 区域内有牌
     equipAt(g, a, makeUniqueCard(CardType.QiLinGong));
 
-    const targets = cardRegistry.get(CardType.ShunShou)!.targetFilter(g, a, g.state.players);
+    const targets = standardRuleSet().cards.get(CardType.ShunShou)!.targetFilter(g, a, g.state.players);
 
     expect(targets.map((p) => p.name)).not.toContain(c.name); // 距离 2 > 1，麒麟弓不生效
   });

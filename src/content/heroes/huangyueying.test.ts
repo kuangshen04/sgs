@@ -8,16 +8,16 @@ import { freshGame, giveHand } from '../../test-utils.js';
 
 import { computeTargetOptions } from '../../decision/choose.js';
 import { useCard } from '../../flow/useCard.js';
-import { asUsedCard } from '../cardRegistry.js';
+import { asUsedCard } from '../../rules/cardFace.js';
 
 import { effectRegistry } from '../../effects/persistentEffects.js';
-import { skillRegistry } from '../../effects/effects.js';
 
 import { CardType } from '../../types.js';
+import { standardRuleSet } from '../../test-utils.js';
 
 describe('集智（黄月英技能）', () => {
-  it('skillRegistry 已注册集智', () => {
-    expect(skillRegistry.get('集智')).toBeDefined();
+  it('规则集已注册集智', () => {
+    expect(standardRuleSet().skills.get('集智')).toBeDefined();
   });
 
   it('使用普通锦囊 → 摸 1 张牌', async () => {

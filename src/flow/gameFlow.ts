@@ -17,7 +17,7 @@ import type {
 import { drawCards, discardCards, judge } from '../position/cardActions.js';
 import { moveUsedCard, settleUsedCard } from '../position/usedCardActions.js';
 import { useCard } from './useCard.js';
-import { cardRegistry, cardEmoji, displayNumber } from '../content/cardRegistry.js';
+import { cardEmoji, displayNumber } from '../rules/cardFace.js';
 import { printState } from './display.js';
 import type { Game } from '../game.js';
 import { choosePlayAction } from '../decision/playChoices.js';
@@ -91,7 +91,7 @@ export async function judgePhase(
       // 快照：判定区里的 UC 按**进入顺序**结算（结算过程中判定区会变化）
       const ucs = game.usedCards.at({ kind: 'judgment', player });
       for (const uc of ucs) {
-        const def = cardRegistry.get(uc.type);
+        const def = game.ruleSet.cards.get(uc.type);
         if (!def?.tags.includes(CardTag.Delay)) continue; // 非延时牌（理论上不会出现）
 
         // 延时牌（UC 迁移）：判定区 → 处理区
@@ -113,7 +113,7 @@ export async function judgePhase(
           // （闪电按规则集依然流向合法下家；其余牌不处理 → 收尾进弃牌堆）
           const judgeCard = windowEvent.data.cancelled ? null : await judge(game, player);
           if (!judgeCard) {
-            console.log(`  🚫${player.name} 判定区的 ${cardEmoji(uc.type)} 被无懈可击抵消`);
+            console.log(`  🚫${player.name} 判定区的 ${cardEmoji(game, uc.type)} 被无懈可击抵消`);
           }
           await def.delayContent?.(game, player, judgeCard, uc);
         } finally {
@@ -193,12 +193,12 @@ export async function discardPhase(
 
       // 按 discardPriority 升序排列（越小越先弃）
       const sorted = [...player.hand.cards].sort(
-        (a, b) => (cardRegistry.get(a.type)?.ai.discardPriority ?? 0)
-                - (cardRegistry.get(b.type)?.ai.discardPriority ?? 0),
+        (a, b) => (game.ruleSet.cards.get(a.type)?.ai.discardPriority ?? 0)
+                - (game.ruleSet.cards.get(b.type)?.ai.discardPriority ?? 0),
       );
       const discarded = await discardCards(game, player, sorted.slice(0, excess));
       for (const c of discarded) {
-        console.log(`  弃置了 ${cardEmoji(c.type)} (${c.suit}${displayNumber(c.number)})`);
+        console.log(`  弃置了 ${cardEmoji(game, c.type)} (${c.suit}${displayNumber(c.number)})`);
       }
     });
 }
@@ -241,7 +241,7 @@ export async function round(
         } else {
           console.log(`\n━━━ 第 ${data.round} 轮 · ${player.name} 的回合 ━━━`);
           await turn(game, { player });
-          printState(state);
+          printState(game);
         }
       }
     });

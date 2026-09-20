@@ -1,20 +1,21 @@
 // ============================================================
-// 三国杀最小原型 — 显示
+// 三国杀最小原型 — 显示（读规则集渲染牌面：需要 game，故带 game 参数）
 // ============================================================
 
-import { Card, GameState } from '../types.js';
+import type { Card } from '../types.js';
+import type { Game } from '../game.js';
 import type { PlayerEquipment } from '../types.js';
-import { cardRegistry, cardEmoji, displayNumber } from '../content/cardRegistry.js';
+import { cardEmoji, displayNumber } from '../rules/cardFace.js';
 
-function handDisplay(hand: readonly Card[]): string {
+function handDisplay(game: Game, hand: readonly Card[]): string {
   if (hand.length === 0) return '（空）';
   const sorted = [...hand].sort((a, b) => {
-    const pa = cardRegistry.get(a.type)?.ai.discardPriority ?? 0;
-    const pb = cardRegistry.get(b.type)?.ai.discardPriority ?? 0;
+    const pa = game.ruleSet.cards.get(a.type)?.ai.discardPriority ?? 0;
+    const pb = game.ruleSet.cards.get(b.type)?.ai.discardPriority ?? 0;
     return pa - pb;
   });
   return sorted
-    .map((c) => `${cardEmoji(c.type)}${c.suit}${displayNumber(c.number)}`)
+    .map((c) => `${cardEmoji(game, c.type)}${c.suit}${displayNumber(c.number)}`)
     .join(' ');
 }
 
@@ -25,16 +26,17 @@ export function hpBar(current: number, max: number): string {
   return '❤️'.repeat(hearts) + '🖤'.repeat(blacks) + ` (${current}/${max})`;
 }
 
-function equipDisplay(e: PlayerEquipment): string {
+function equipDisplay(game: Game, e: PlayerEquipment): string {
   const parts: string[] = [];
-  if (e.weapon) parts.push(`武器:${cardEmoji(e.weapon.type)}`);
-  if (e.armor) parts.push(`防具:${cardEmoji(e.armor.type)}`);
-  if (e.defensiveHorse) parts.push(`防御马:${cardEmoji(e.defensiveHorse.type)}`);
-  if (e.offensiveHorse) parts.push(`进攻马:${cardEmoji(e.offensiveHorse.type)}`);
+  if (e.weapon) parts.push(`武器:${cardEmoji(game, e.weapon.type)}`);
+  if (e.armor) parts.push(`防具:${cardEmoji(game, e.armor.type)}`);
+  if (e.defensiveHorse) parts.push(`防御马:${cardEmoji(game, e.defensiveHorse.type)}`);
+  if (e.offensiveHorse) parts.push(`进攻马:${cardEmoji(game, e.offensiveHorse.type)}`);
   return parts.length > 0 ? parts.join(' ') : '（无）';
 }
 
-export function printState(state: GameState): void {
+export function printState(game: Game): void {
+  const state = game.state;
   const alive = state.players.filter((p) => p.alive).length;
   const W = 42; // 内容区宽度
 
@@ -44,8 +46,8 @@ export function printState(state: GameState): void {
     const nameCol = padEnd(`${marker}${p.name}`, 5);
     const hpCol = hpBar(p.hp, p.maxHp);
     body += `║ ${nameCol} ${padEnd(hpCol, W - 7 - 5)}║\n`;
-    body += `║   手牌: ${padEnd(handDisplay(p.hand.cards), W - 10)}║\n`;
-    body += `║   装备: ${padEnd(equipDisplay(p.equipment), W - 10)}║\n`;
+    body += `║   手牌: ${padEnd(handDisplay(game, p.hand.cards), W - 10)}║\n`;
+    body += `║   装备: ${padEnd(equipDisplay(game, p.equipment), W - 10)}║\n`;
     body += `║${' '.repeat(W)}║\n`;
   }
 

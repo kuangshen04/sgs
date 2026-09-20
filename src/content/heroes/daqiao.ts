@@ -3,20 +3,18 @@
 // ============================================================
 
 import { discardCards } from '../../position/cardActions.js';
-import { cardRegistry } from '../cardRegistry.js';
 import {
   askFromAreas, askForTargets, computeTargetOptions, handCardsStep, selectedCards,
   selectedPlayers, targetsStep,
 } from '../../decision/choose.js';
-import { defineSkill } from '../../effects/effects.js';
 import type { GameEvent } from '../../events/index.js';
 import type { TargetingEventData } from '../../events/index.js';
 import { distanceTo, attackRange } from '../../flow/distance.js';
-import { heroRegistry } from '../heroRegistry.js';
 import { CardType } from '../../types.js';
 import type { Card, UsedCard } from '../../types.js';
 import type { Game } from '../../game.js';
 import type { Player } from '../../types.js';
+import type { Container } from '../../rules/ruleSet.js';
 
 /** 方片牌（国色的转化来源） */
 function isDiamond(card: Card): boolean {
@@ -72,72 +70,76 @@ function makeVirtualLeBu(sources: Card[]): UsedCard {
  * 判定阶段、无懈窗口、被拆/被顺都按 UC 身份走（adr/0003），引擎侧无需特判。
  * 注：部分版本有"出牌阶段限一次"，涉及技能使用次数机制，暂不实现（见 TODO 阶段 3 第 6 项）。
  */
-defineSkill({
-  name: '国色',
-  effects: [{
-    form: 'conversion',
-    toType: CardType.LeBu,
-    canUse: (game, player) => {
-      const def = cardRegistry.get(CardType.LeBu)!;
-      return player.hand.cards.some(isDiamond)
-        && def.canUse(game, player, game.state.players, false)
-        && lebuTargets(game, player).length > 0; // 有合法目标才可选（含同名 UC / 谦逊限制）
-    },
-    selectionPlan: (game, player) => ({
-      nextStep(answers) {
-        if (!answers.source) {
-          return handCardsStep('source', player, {
-            prompt: '国色：选择一张方片牌当乐不思蜀',
-            filter: isDiamond,
-            min: 1,
-            max: 1,
-          });
-        }
-        if (!answers.target) {
-          const candidates = lebuTargets(game, player);
-          return targetsStep('target', player, candidates, {
-            prompt: '国色：选择乐不思蜀的目标',
-            min: 1,
-            max: 1,
-          });
-        }
-        return null;
+
+// ── 装配（显式注册进容器；参数 c = 装配期容器）──────────────────────
+export function installDaqiao(c: Container): void {
+  c.skills.define({
+    name: '国色',
+    effects: [{
+      form: 'conversion',
+      toType: CardType.LeBu,
+      canUse: (game, player) => {
+        const def = game.ruleSet.cards.get(CardType.LeBu)!;
+        return player.hand.cards.some(isDiamond)
+          && def.canUse(game, player, game.state.players, false)
+          && lebuTargets(game, player).length > 0; // 有合法目标才可选（含同名 UC / 谦逊限制）
       },
-    }),
-    resolve: (answers) => ({
-      card: makeVirtualLeBu(selectedCards(answers, 'source')),
-      targets: selectedPlayers(answers, 'target'),
-    }),
-    ai: {
-      shouldUse: () => true,
-      usePriority: cardRegistry.get(CardType.LeBu)!.ai.usePriority,
-    },
-  }],
-});
+      selectionPlan: (game, player) => ({
+        nextStep(answers) {
+          if (!answers.source) {
+            return handCardsStep('source', player, {
+              prompt: '国色：选择一张方片牌当乐不思蜀',
+              filter: isDiamond,
+              min: 1,
+              max: 1,
+            });
+          }
+          if (!answers.target) {
+            const candidates = lebuTargets(game, player);
+            return targetsStep('target', player, candidates, {
+              prompt: '国色：选择乐不思蜀的目标',
+              min: 1,
+              max: 1,
+            });
+          }
+          return null;
+        },
+      }),
+      resolve: (answers) => ({
+        card: makeVirtualLeBu(selectedCards(answers, 'source')),
+        targets: selectedPlayers(answers, 'target'),
+      }),
+      ai: {
+        shouldUse: () => true,
+        usePriority: c.cards.get(CardType.LeBu)!.ai.usePriority,
+      },
+    }],
+  });
 
-defineSkill({
-  name: '流离',
-  effects: [{
-    form: 'triggered',
-    timing: 'targeting.before',
-    condition: (game, event, owner) => {
-      const { user, card, target } = event.data as TargetingEventData;
-      if (target !== owner) return false;          // 大乔成为杀的目标时
-      if (card.type !== CardType.Sha) return false;
-      // 需有牌可弃（手牌/装备区）
-      if (owner.hand.cards.length === 0
-        && !owner.equipment.weapon && !owner.equipment.armor
-        && !owner.equipment.defensiveHorse && !owner.equipment.offensiveHorse) return false;
-      // 需有合法转移目标（攻击范围内、非使用者、非自己）
-      return game.state.players.some(
-        (p) => p.alive && p !== owner && p !== user
-          && distanceTo(game, owner, p) <= attackRange(game, owner),
-      );
-    },
-    run: liuliContent,
-  }],
-});
+  c.skills.define({
+    name: '流离',
+    effects: [{
+      form: 'triggered',
+      timing: 'targeting.before',
+      condition: (game, event, owner) => {
+        const { user, card, target } = event.data as TargetingEventData;
+        if (target !== owner) return false;          // 大乔成为杀的目标时
+        if (card.type !== CardType.Sha) return false;
+        // 需有牌可弃（手牌/装备区）
+        if (owner.hand.cards.length === 0
+          && !owner.equipment.weapon && !owner.equipment.armor
+          && !owner.equipment.defensiveHorse && !owner.equipment.offensiveHorse) return false;
+        // 需有合法转移目标（攻击范围内、非使用者、非自己）
+        return game.state.players.some(
+          (p) => p.alive && p !== owner && p !== user
+            && distanceTo(game, owner, p) <= attackRange(game, owner),
+        );
+      },
+      run: liuliContent,
+    }],
+  });
 
-heroRegistry.register({
-  name: '大乔', maxHp: 3, sex: 'female', group: '吴', skills: ['国色', '流离'],
-});
+  c.heroes.register({
+    name: '大乔', maxHp: 3, sex: 'female', group: '吴', skills: ['国色', '流离'],
+  });
+}

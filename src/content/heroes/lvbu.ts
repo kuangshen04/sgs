@@ -6,16 +6,18 @@
 // 不再用 RespondMarks.shanRequired 标记，也不在决斗 content 里特判技能名。
 // ============================================================
 
-import { defineSkill } from '../../effects/effects.js';
-import { heroRegistry } from '../heroRegistry.js';
+import type { Container } from '../../rules/ruleSet.js';
 
-defineSkill({
-  name: '无双',
-  meta: { compulsory: true }, // 锁定技（抗性标签；语义落地见阶段 3 第 2 项）
-  effects: [
-    { form: 'persistent', key: 'shaRequired', value: () => 1 },
-    { form: 'persistent', key: 'juedouShaRequired', value: () => 1 },
-  ],
-});
+// ── 装配（显式注册进容器；参数 c = 装配期容器）──────────────────────
+export function installLvbu(c: Container): void {
+  c.skills.define({
+    name: '无双',
+    meta: { compulsory: true }, // 锁定技（抗性标签；语义落地见阶段 3 第 2 项）
+    effects: [
+      { form: 'persistent', key: 'shaRequired', value: () => 1 },
+      { form: 'persistent', key: 'juedouShaRequired', value: () => 1 },
+    ],
+  });
 
-heroRegistry.register({ name: '吕布', maxHp: 4, sex: 'male', group: '群', skills: ['无双'] });
+  c.heroes.register({ name: '吕布', maxHp: 4, sex: 'male', group: '群', skills: ['无双'] });
+}

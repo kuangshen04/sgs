@@ -8,13 +8,13 @@ import { freshGame, giveHand } from '../../test-utils.js';
 
 import { playPhase } from '../../flow/gameFlow.js';
 
-import { skillRegistry } from '../../effects/effects.js';
 
 import { CardType } from '../../types.js';
+import { standardRuleSet } from '../../test-utils.js';
 
 describe('青囊（华佗主动技能）', () => {
-  it('skillRegistry 已注册青囊（activated 效果）', () => {
-    expect(skillRegistry.get('青囊')?.effects.some((e) => e.form === 'activated')).toBe(true);
+  it('规则集已注册青囊（activated 效果）', () => {
+    expect(standardRuleSet().skills.get('青囊')?.effects.some((e) => e.form === 'activated')).toBe(true);
   });
 
   it('自己受伤时出牌阶段 → 弃 1 张手牌回复 1 点体力', async () => {

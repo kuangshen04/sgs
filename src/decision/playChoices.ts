@@ -15,7 +15,7 @@ import {
   targetsStep,
 } from './choose.js';
 import type { CardOption } from './choose.js';
-import { asUsedCard } from '../content/cardRegistry.js';
+import { asUsedCard } from '../rules/cardFace.js';
 import { collectConversionEffects } from '../effects/conversions.js';
 import { collectActiveEffects } from '../effects/skills.js';
 import type { ActiveContext, ActivatedEffect, ConversionEffect } from '../effects/effects.js';

@@ -4,14 +4,13 @@
 
 import { askYesNo } from '../../decision/choose.js';
 import { subjectIsOwner } from '../../effects/skills.js';
-import { defineSkill } from '../../effects/effects.js';
 import { findEventSince } from '../../events/index.js';
 import type { UseCardEventData } from '../../events/index.js';
 import { CardType } from '../../types.js';
-import { heroRegistry } from '../heroRegistry.js';
 import type { Game } from '../../game.js';
 import type { GameEvent } from '../../events/index.js';
 import type { Player } from '../../types.js';
+import type { Container } from '../../rules/ruleSet.js';
 
 /**
  * 本回合是否使用过【杀】（克己判定，阶段 1 从 usedShaThisTurn 标记迁移为历史查询）。
@@ -29,25 +28,28 @@ function usedShaThisTurn(game: Game, current: GameEvent<any>, owner: Player): bo
   }) !== null;
 }
 
-defineSkill({
-  name: '克己',
-  effects: [{
-    form: 'triggered',
-    timing: 'discardPhase.before',
-    condition: (game, event, owner, subject) =>
-      subject === owner && !usedShaThisTurn(game, event, owner),
-    run: async (game, event, owner) => {
-      if (!(await askYesNo(game, owner, '克己：是否跳过弃牌阶段', true))) return;
-      owner.skipDiscardPhase = true;
-      console.log(`  ✨${owner.name} 发动【克己】！跳过弃牌阶段`);
-    },
-  }],
-});
+// ── 装配（显式注册进容器；参数 c = 装配期容器）──────────────────────
+export function installLvmeng(c: Container): void {
+  c.skills.define({
+    name: '克己',
+    effects: [{
+      form: 'triggered',
+      timing: 'discardPhase.before',
+      condition: (game, event, owner, subject) =>
+        subject === owner && !usedShaThisTurn(game, event, owner),
+      run: async (game, event, owner) => {
+        if (!(await askYesNo(game, owner, '克己：是否跳过弃牌阶段', true))) return;
+        owner.skipDiscardPhase = true;
+        console.log(`  ✨${owner.name} 发动【克己】！跳过弃牌阶段`);
+      },
+    }],
+  });
 
-heroRegistry.register({
-  name: '吕蒙',
-  maxHp: 4,
-  sex: 'male',
-  group: '吴',
-  skills: ['克己'],
-});
+  c.heroes.register({
+    name: '吕蒙',
+    maxHp: 4,
+    sex: 'male',
+    group: '吴',
+    skills: ['克己'],
+  });
+}

@@ -1,17 +1,15 @@
 // ============================================================
-// 三国杀最小原型 — 卡牌定义、注册表与牌堆
+// 卡牌定义契约（内容 → 引擎的接口）
+//
+// 定义**长什么样**属于引擎侧契约：内容文件提供定义，引擎按定义驱动结算。
+// 定义层的存放与查询在 `rules/ruleSet.ts`（容器 / 规则集），
+// 具体内容住在 `content/`。
 // ============================================================
 
-import { Card, CardTag, CardType, Player, colorOfSuit } from '../types.js';
-import type { UsedCard } from '../types.js';
+import type { Card, CardTag, CardType, Player } from '../types.js';
 import type { UsedCardInstance } from '../position/usedCards.js';
-import { cardInfo } from './info.js';
 import type { Game } from '../game.js';
-import type { GameEvent, CardEffectEventData, UseCardEventData } from '../events/index.js';
-
-// ============================================================
-// 卡牌定义接口 & 注册表
-// ============================================================
+import type { CardEffectEventData, GameEvent, UseCardEventData } from '../events/index.js';
 
 /** 卡牌效果函数：**对该目标**结算（单目标生效事件的内容，adr/0006） */
 export type CardContentFn = (
@@ -28,7 +26,7 @@ export type CardActionFn = (
   phase: 'before' | 'after',
 ) => Promise<void>;
 
-/** 一张牌的完整定义（由 cards.ts 注册） */
+/** 一张牌的完整定义（由 content/cards/ 下各文件装配时注册） */
 export interface CardDef {
   type: CardType;
   name: string;
@@ -65,73 +63,4 @@ export interface CardDef {
     usePriority: number;     // AI 使用优先级（越大越优先）
     discardPriority: number; // 弃牌优先级（越小越先弃）
   };
-}
-
-// --- 注册表 ---
-
-const _defs = new Map<CardType, CardDef>();
-
-export const cardRegistry = {
-  register(def: CardDef): void {
-    // 规则文本：未显式给出时按卡牌名从 docs 标包数据取（见 content/info.ts）
-    _defs.set(def.type, { ...def, info: def.info ?? cardInfo(def.name) });
-  },
-  get(type: CardType): CardDef | undefined {
-    return _defs.get(type);
-  },
-  /** 遍历所有已注册的 CardDef */
-  all(): IterableIterator<CardDef> {
-    return _defs.values();
-  },
-};
-
-// --- 从注册表派生的工具函数 ---
-
-/** 卡牌类型 → emoji */
-export function cardEmoji(type: CardType): string {
-  return cardRegistry.get(type)?.emoji ?? '❓';
-}
-
-/** 卡牌点数 → 显示字符 */
-export function displayNumber(n: number): string {
-  switch (n) {
-    case 1:  return 'A';
-    case 11: return 'J';
-    case 12: return 'Q';
-    case 13: return 'K';
-    default: return String(n);
-  }
-}
-
-/**
- * 效果牌身份的显示文本（花色 + 点数）；无花色/无点数时对应部分留空。
- * 虚拟牌可能既无花色也无点数（无牌/多牌转化），避免打印成 "nullnull"。
- */
-export function cardFaceText(card: { suit?: string | null; number?: number | null }): string {
-  if (card.suit == null && card.number == null) return '';
-  const num = card.number == null ? '' : displayNumber(card.number);
-  return `${card.suit ?? ''}${num}`;
-}
-
-/** 把物理牌包装成 UsedCard（非转化牌：physicalCards = [card]，身份按实体牌推导）；已是 UsedCard 则原样返回 */
-export function asUsedCard(card: Card | UsedCard): UsedCard {
-  if ('physicalCards' in card) return card;
-  return {
-    type: card.type,
-    name: card.name,
-    suit: card.suit,
-    number: card.number,
-    color: colorOfSuit(card.suit),
-    physicalCards: [card],
-  };
-}
-
-/** Fisher-Yates 洗牌 */
-export function shuffle<T>(deck: T[]): T[] {
-  const arr = [...deck];
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
 }

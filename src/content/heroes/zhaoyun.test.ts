@@ -8,15 +8,14 @@ import { freshGame } from '../../test-utils.js';
 
 import { playPhase } from '../../flow/gameFlow.js';
 import { choosePlayAction } from '../../decision/playChoices.js';
-import { skillRegistry } from '../../effects/effects.js';
-import { heroRegistry } from '../heroRegistry.js';
 
 import { CardType } from '../../types.js';
+import { standardRuleSet } from '../../test-utils.js';
 
 describe('龙胆①（赵云转化牌）', () => {
-  it('skillRegistry 已注册龙胆（conversion 效果），heroRegistry 已注册赵云', () => {
-    expect(skillRegistry.get('龙胆')?.effects.some((e) => e.form === 'conversion')).toBe(true);
-    expect(heroRegistry.get('赵云')?.skills).toContain('龙胆');
+  it('规则集已注册龙胆（conversion 效果），规则集已注册赵云', () => {
+    expect(standardRuleSet().skills.get('龙胆')?.effects.some((e) => e.form === 'conversion')).toBe(true);
+    expect(standardRuleSet().heroes.get('赵云')?.skills).toContain('龙胆');
   });
 
   it('choosePlayAction：闪当杀，返回 UsedCard 与合法目标', async () => {

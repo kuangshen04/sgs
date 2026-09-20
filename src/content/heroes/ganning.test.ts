@@ -8,15 +8,14 @@ import { freshGame } from '../../test-utils.js';
 
 import { playPhase } from '../../flow/gameFlow.js';
 import { choosePlayAction } from '../../decision/playChoices.js';
-import { skillRegistry } from '../../effects/effects.js';
-import { heroRegistry } from '../heroRegistry.js';
 
 import { CardType } from '../../types.js';
+import { standardRuleSet } from '../../test-utils.js';
 
 describe('奇袭（甘宁转化牌）', () => {
-  it('skillRegistry 已注册奇袭（conversion 效果），heroRegistry 已注册甘宁', () => {
-    expect(skillRegistry.get('奇袭')?.effects.some((e) => e.form === 'conversion')).toBe(true);
-    expect(heroRegistry.get('甘宁')?.skills).toContain('奇袭');
+  it('规则集已注册奇袭（conversion 效果），规则集已注册甘宁', () => {
+    expect(standardRuleSet().skills.get('奇袭')?.effects.some((e) => e.form === 'conversion')).toBe(true);
+    expect(standardRuleSet().heroes.get('甘宁')?.skills).toContain('奇袭');
   });
 
   it('choosePlayAction：黑牌当过河拆桥，返回 UsedCard 与合法目标', async () => {

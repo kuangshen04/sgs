@@ -3,14 +3,13 @@
 // ============================================================
 
 import { giveCards } from '../../position/cardActions.js';
-import { shuffle } from '../cardRegistry.js';
+import { shuffle } from '../../rules/random.js';
 import { askForTargets } from '../../decision/choose.js';
-import { defineSkill } from '../../effects/effects.js';
 import type { GameEvent } from '../../events/index.js';
 import type { DrawPhaseEventData } from '../../events/index.js';
-import { heroRegistry } from '../heroRegistry.js';
 import type { Game } from '../../game.js';
 import type { Player } from '../../types.js';
+import type { Container } from '../../rules/ruleSet.js';
 
 /** 突袭：摸牌阶段，改为获得至多两名其他角色的各一张手牌（摸牌数改为 0） */
 const tuxiContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
@@ -30,16 +29,19 @@ const tuxiContent = async (game: Game, event: GameEvent<any>, owner: Player): Pr
   }
 };
 
-defineSkill({
-  name: '突袭',
-  effects: [{
-    form: 'triggered',
-    timing: 'drawPhase.before',
-    condition: (game, _event, owner, subject) =>
-      subject === owner &&
-      game.state.players.some((p) => p !== owner && p.alive && p.hand.cards.length > 0),
-    run: tuxiContent,
-  }],
-});
+// ── 装配（显式注册进容器；参数 c = 装配期容器）──────────────────────
+export function installZhangliao(c: Container): void {
+  c.skills.define({
+    name: '突袭',
+    effects: [{
+      form: 'triggered',
+      timing: 'drawPhase.before',
+      condition: (game, _event, owner, subject) =>
+        subject === owner &&
+        game.state.players.some((p) => p !== owner && p.alive && p.hand.cards.length > 0),
+      run: tuxiContent,
+    }],
+  });
 
-heroRegistry.register({ name: '张辽', maxHp: 4, sex: 'male', group: '魏', skills: ['突袭'] });
+  c.heroes.register({ name: '张辽', maxHp: 4, sex: 'male', group: '魏', skills: ['突袭'] });
+}

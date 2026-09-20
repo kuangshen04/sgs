@@ -11,15 +11,8 @@
 import type { Player } from '../types.js';
 import type { Game } from '../game.js';
 import type { GameEvent } from '../events/index.js';
-import { installWuxieTrigger } from '../content/cards/trick.js';
 import { askOption, askYesNo } from '../decision/choose.js';
-import {
-  activatedEffects,
-  effectLordGate,
-  effectOwnedBy,
-  triggeredEffectsAt,
-  triggeredTimings,
-} from './effects.js';
+import { effectLordGate, effectOwnedBy } from './effects.js';
 import type { ActiveContext, ActivatedEffect, TriggeredEffect } from './effects.js';
 
 export type { ActiveContext } from './effects.js';
@@ -48,15 +41,16 @@ export function installEffects(game: Game): void {
   if (_installedGames.has(game)) return; // 幂等：重复调用无副作用
   _installedGames.add(game);
 
-  for (const timing of triggeredTimings()) {
-    const effects = triggeredEffectsAt(timing); // 静态快照；归属/门槛/条件在运行期重算
+  const { skills, setupHooks } = game.ruleSet;
+  for (const timing of skills.timings()) {
+    const effects = skills.triggeredAt(timing); // 静态快照；归属/门槛/条件在运行期重算
     game.triggerSystem.on(timing, async (event: GameEvent<any>) => {
       await dispatchTriggered(event, effects);
     });
   }
 
-  // 无懈可击响应（卡牌响应机制）
-  installWuxieTrigger(game);
+  // 内容提供的开局钩子（如无懈可击的响应窗口）：content → 引擎，方向不倒置
+  for (const hook of setupHooks) hook(game);
 }
 
 // ============================================================
@@ -165,7 +159,7 @@ export function collectActiveEffects(
   ctx: ActiveContext,
 ): ActivatedEffect[] {
   if (!player.alive) return [];
-  return activatedEffects().filter((e) =>
+  return game.ruleSet.skills.activated().filter((e) =>
     effectOwnedBy(game, e, player)
     && effectLordGate(game, player, e)
     && e.canUse(game, player, ctx)

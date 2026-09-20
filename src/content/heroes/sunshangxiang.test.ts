@@ -11,16 +11,16 @@ import { playPhase } from '../../flow/gameFlow.js';
 import { discardCards, moveCards } from '../../position/cardActions.js';
 import { equipCard } from '../../position/usedCardActions.js';
 
-import { skillRegistry } from '../../effects/effects.js';
 import type { ActivatedEffect } from '../../effects/effects.js';
 
 import { CardType } from '../../types.js';
+import { standardRuleSet } from '../../test-utils.js';
 
 const sunshangxiangHeroes = ['孙尚香', '刘备', '孙权'];
 
 describe('结姻（孙尚香主动技能）', () => {
-  it('skillRegistry 已注册结姻（activated 效果）', () => {
-    expect(skillRegistry.get('结姻')?.effects.some((e) => e.form === 'activated')).toBe(true);
+  it('规则集已注册结姻（activated 效果）', () => {
+    expect(standardRuleSet().skills.get('结姻')?.effects.some((e) => e.form === 'activated')).toBe(true);
   });
 
   it('弃两张手牌，自己与受伤的男性目标各回复 1 点体力', async () => {
@@ -41,7 +41,7 @@ describe('结姻（孙尚香主动技能）', () => {
   it('没有受伤的男性角色 → 规则不允许发动', async () => {
     const g = freshGame({}, sunshangxiangHeroes);
     const sun = g.state.players[0];
-    const effect = skillRegistry.get('结姻')!.effects
+    const effect = standardRuleSet().skills.get('结姻')!.effects
       .find((e) => e.form === 'activated') as ActivatedEffect;
     giveHand(sun, CardType.Shan, CardType.Shan);
     const ctx = { shaUsed: false, usedSkills: new Set<string>(), hasCardOption: false };
@@ -54,7 +54,7 @@ describe('结姻（孙尚香主动技能）', () => {
     const sun = g.state.players[0];
     g.state.players[1].hp = 2; // 制造合法目标
     giveHand(sun, CardType.Shan, CardType.Shan);
-    const effect = skillRegistry.get('结姻')!.effects
+    const effect = standardRuleSet().skills.get('结姻')!.effects
       .find((e) => e.form === 'activated') as ActivatedEffect;
 
     expect(
@@ -68,7 +68,7 @@ describe('结姻（孙尚香主动技能）', () => {
     const target = g.state.players[1];
     target.hp = 2;
     giveHand(sun, CardType.Shan, CardType.Shan);
-    const effect = skillRegistry.get('结姻')!.effects
+    const effect = standardRuleSet().skills.get('结姻')!.effects
       .find((e) => e.form === 'activated') as ActivatedEffect;
 
     expect(effect.canUse(g, sun, { shaUsed: false, usedSkills: new Set<string>(), hasCardOption: false })).toBe(true);

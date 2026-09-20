@@ -45,7 +45,7 @@ describe('局内技能实例', () => {
     const liubei = g.state.players[0];
     expect(playerHasSkill(liubei, '遗计')).toBe(false);
 
-    gainSkill(liubei, '遗计');
+    gainSkill(liubei, g.ruleSet.skills.get('遗计')!);
     const before = liubei.hand.cards.length;
 
     await damage(g, { target: liubei, source: g.state.players[1], amount: 1 });
@@ -53,12 +53,11 @@ describe('局内技能实例', () => {
     expect(liubei.hand.cards.length).toBe(before + 2); // 遗计：1 点伤害摸 2 张
   });
 
-  it('gainSkill 未定义技能抛错、重复获得抛错；loseSkill 未拥有为 no-op', () => {
+  it('gainSkill 重复获得抛错；loseSkill 未拥有为 no-op', () => {
     const g = freshGame({}, ['刘备', '曹操', '孙权']);
     const p = g.state.players[0];
 
-    expect(() => gainSkill(p, '不存在的技能')).toThrow(/not defined/);
-    expect(() => gainSkill(p, '仁德')).toThrow(/already has/);
+    expect(() => gainSkill(p, g.ruleSet.skills.get('仁德')!)).toThrow(/already has/);
     expect(() => loseSkill(p, '无双')).not.toThrow();
     expect(playerHasSkill(p, '无双')).toBe(false);
   });

@@ -8,13 +8,13 @@ import { freshGame, giveHand } from '../../test-utils.js';
 
 import { drawPhase } from '../../flow/gameFlow.js';
 
-import { skillRegistry } from '../../effects/effects.js';
 
 import { CardType } from '../../types.js';
+import { standardRuleSet } from '../../test-utils.js';
 
 describe('突袭（张辽技能）', () => {
-  it('skillRegistry 已注册突袭', () => {
-    expect(skillRegistry.get('突袭')).toBeDefined();
+  it('规则集已注册突袭', () => {
+    expect(standardRuleSet().skills.get('突袭')).toBeDefined();
   });
 
   it('摸牌阶段：摸牌数改为 0，随机获得其他角色手牌', async () => {

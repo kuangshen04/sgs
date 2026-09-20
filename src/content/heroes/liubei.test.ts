@@ -9,16 +9,16 @@ import { freshGame, giveHand, makeUniqueCard, equipAt } from '../../test-utils.j
 import { playPhase } from '../../flow/gameFlow.js';
 import { useCard } from '../../flow/useCard.js';
 
-import { skillRegistry } from '../../effects/effects.js';
 import type { ActivatedEffect } from '../../effects/effects.js';
 
 import { CardType } from '../../types.js';
+import { standardRuleSet } from '../../test-utils.js';
 
 const liubeiHeroes = ['刘备', '曹操', '孙权'];
 
 describe('仁德（刘备主动技能）', () => {
-  it('skillRegistry 已注册仁德（activated 效果）', () => {
-    expect(skillRegistry.get('仁德')?.effects.some((e) => e.form === 'activated')).toBe(true);
+  it('规则集已注册仁德（activated 效果）', () => {
+    expect(standardRuleSet().skills.get('仁德')?.effects.some((e) => e.form === 'activated')).toBe(true);
   });
 
   it('交给目标 2 张牌并回复 1 点体力', async () => {
@@ -42,7 +42,7 @@ describe('仁德（刘备主动技能）', () => {
     const g = freshGame({}, liubeiHeroes);
     const liubei = g.state.players[0];
     giveHand(liubei, CardType.Shan, CardType.WuXie);
-    const effect = skillRegistry.get('仁德')!.effects
+    const effect = standardRuleSet().skills.get('仁德')!.effects
       .find((e) => e.form === 'activated') as ActivatedEffect;
     const ctx = { shaUsed: false, usedSkills: new Set<string>(), hasCardOption: false };
 

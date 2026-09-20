@@ -5,10 +5,13 @@
 
 import { describe, it, expect } from 'vitest';
 
-import './cards/index.js'; // 触发卡牌注册（side-effect import）
-import { STANDARD_DECK } from './cards/index.js';
+import { createStandardContainer } from './standardPack.js';
+import { buildStandardDeck } from './deck.js';
 
 import { CardType } from '../types.js';
+
+// 牌堆是装配产物：装好标包 → 按牌堆数据生成（不再是模块级常量）
+const STANDARD_DECK = buildStandardDeck(createStandardContainer());
 
 describe('STANDARD_DECK', () => {
   it('标准版牌堆共 108 张', () => {

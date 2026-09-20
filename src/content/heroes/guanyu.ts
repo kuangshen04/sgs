@@ -3,13 +3,12 @@
 // ① 出牌阶段：红色牌当杀；② 响应方向：打出杀（武圣·当杀）
 // ============================================================
 
-import { cardRegistry, asUsedCard } from '../cardRegistry.js';
+import { asUsedCard } from '../../rules/cardFace.js';
 import { handCardsStep, targetsStep, computeTargetOptions, selectedCards, selectedPlayers } from '../../decision/choose.js';
 import { playUsedCard } from '../../position/usedCardActions.js';
-import { defineSkill } from '../../effects/effects.js';
-import { heroRegistry } from '../heroRegistry.js';
 import { CardType } from '../../types.js';
 import type { Card, UsedCard } from '../../types.js';
+import type { Container } from '../../rules/ruleSet.js';
 
 function isRed(card: Card): boolean {
   return card.suit === '♥' || card.suit === '♦';
@@ -26,86 +25,89 @@ function makeVirtualSha(sources: Card[]): UsedCard {
   };
 }
 
-defineSkill({
-  name: '武圣',
-  effects: [
-    {
-      form: 'conversion',
-      toType: CardType.Sha,
-      canUse: (game, player, shaUsed) => {
-        const def = cardRegistry.get(CardType.Sha)!;
-        return player.hand.cards.some(isRed)
-          && def.canUse(game, player, game.state.players, shaUsed);
+// ── 装配（显式注册进容器；参数 c = 装配期容器）──────────────────────
+export function installGuanyu(c: Container): void {
+  c.skills.define({
+    name: '武圣',
+    effects: [
+      {
+        form: 'conversion',
+        toType: CardType.Sha,
+        canUse: (game, player, shaUsed) => {
+          const def = game.ruleSet.cards.get(CardType.Sha)!;
+          return player.hand.cards.some(isRed)
+            && def.canUse(game, player, game.state.players, shaUsed);
+        },
+        selectionPlan: (game, player) => ({
+          nextStep(answers) {
+            if (!answers.source) {
+              return handCardsStep('source', player, {
+                prompt: '武圣：选择一张红色牌当杀',
+                filter: isRed,
+                min: 1,
+                max: 1,
+              });
+            }
+            if (!answers.target) {
+              const sources = selectedCards(answers, 'source');
+              const used = makeVirtualSha(sources);
+              const targetOptions = computeTargetOptions(game, used, player);
+              return targetsStep('target', player, targetOptions.map((t) => t.player), {
+                prompt: '武圣：选择杀的目标',
+                min: 1,
+                max: 1,
+              });
+            }
+            return null;
+          },
+        }),
+        resolve: (answers) => ({
+          card: makeVirtualSha(selectedCards(answers, 'source')),
+          targets: selectedPlayers(answers, 'target'),
+        }),
+        ai: {
+          shouldUse: (game, player, shaUsed) => {
+            const def = game.ruleSet.cards.get(CardType.Sha)!;
+            return def.ai.shouldUse(player, shaUsed);
+          },
+          usePriority: c.cards.get(CardType.Sha)!.ai.usePriority,
+        },
       },
-      selectionPlan: (game, player) => ({
-        nextStep(answers) {
-          if (!answers.source) {
+      {
+        form: 'response',
+        name: '武圣·当杀',
+        respondsTo: CardType.Sha,
+        canUse: (_game, player, request) =>
+          request.type === 'play' && player.hand.cards.some(isRed),
+        selectionPlan: (_game, player) => ({
+          nextStep(answers) {
+            if (answers.source) return null;
             return handCardsStep('source', player, {
               prompt: '武圣：选择一张红色牌当杀',
               filter: isRed,
               min: 1,
               max: 1,
             });
-          }
-          if (!answers.target) {
-            const sources = selectedCards(answers, 'source');
-            const used = makeVirtualSha(sources);
-            const targetOptions = computeTargetOptions(game, used, player);
-            return targetsStep('target', player, targetOptions.map((t) => t.player), {
-              prompt: '武圣：选择杀的目标',
-              min: 1,
-              max: 1,
-            });
-          }
-          return null;
+          },
+        }),
+        resolve: async (game, player, _request, answers) => {
+          const source = selectedCards(answers, 'source')[0];
+          if (source) await playUsedCard(game, player, asUsedCard(source));
+          return 'done';
         },
-      }),
-      resolve: (answers) => ({
-        card: makeVirtualSha(selectedCards(answers, 'source')),
-        targets: selectedPlayers(answers, 'target'),
-      }),
-      ai: {
-        shouldUse: (game, player, shaUsed) => {
-          const def = cardRegistry.get(CardType.Sha)!;
-          return def.ai.shouldUse(player, shaUsed);
+        ai: {
+          shouldUse: () => true,
+          priority: 50,
         },
-        usePriority: cardRegistry.get(CardType.Sha)!.ai.usePriority,
       },
-    },
-    {
-      form: 'response',
-      name: '武圣·当杀',
-      respondsTo: CardType.Sha,
-      canUse: (_game, player, request) =>
-        request.type === 'play' && player.hand.cards.some(isRed),
-      selectionPlan: (_game, player) => ({
-        nextStep(answers) {
-          if (answers.source) return null;
-          return handCardsStep('source', player, {
-            prompt: '武圣：选择一张红色牌当杀',
-            filter: isRed,
-            min: 1,
-            max: 1,
-          });
-        },
-      }),
-      resolve: async (game, player, _request, answers) => {
-        const source = selectedCards(answers, 'source')[0];
-        if (source) await playUsedCard(game, player, asUsedCard(source));
-        return 'done';
-      },
-      ai: {
-        shouldUse: () => true,
-        priority: 50,
-      },
-    },
-  ],
-});
+    ],
+  });
 
-heroRegistry.register({
-  name: '关羽',
-  maxHp: 4,
-  sex: 'male',
-  group: '蜀',
-  skills: ['武圣'],
-});
+  c.heroes.register({
+    name: '关羽',
+    maxHp: 4,
+    sex: 'male',
+    group: '蜀',
+    skills: ['武圣'],
+  });
+}

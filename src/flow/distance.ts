@@ -6,7 +6,6 @@
 // （装备失效/进出即时生效），因此不再从参数里传 players 数组。
 // ============================================================
 
-import { cardRegistry } from '../content/cardRegistry.js';
 import { effectRegistry } from '../effects/persistentEffects.js';
 import type { Game } from '../game.js';
 import type { Player } from '../types.js';
@@ -37,5 +36,5 @@ export function distanceTo(game: Game, from: Player, to: Player): number {
 export function attackRange(game: Game, player: Player): number {
   const weapon = player.equipment.weapon;
   if (!weapon) return 1;
-  return cardRegistry.get(weapon.type)?.range ?? 1;
+  return game.ruleSet.cards.get(weapon.type)?.range ?? 1;
 }

@@ -2,7 +2,7 @@
 // 规则文本（info）数据源 — 直接取自 docs 的标包数据（唯一事实来源）
 //
 // 只有**技能**与**卡牌**需要规则文本（effect 不需要）：字段与 `name` 同级
-// （`Skill.info` / `CardDef.info`），由 `defineSkill` / `cardRegistry.register`
+// （`Skill.info` / `CardDef.info`），由容器的 register 在装配期按名字自动填充
 // 在未显式给出时按名字自动填充。
 //
 // 数据源 = `docs/标包武将.json`（技能的 info）与 `docs/标包卡牌.json`（卡牌的 info）。

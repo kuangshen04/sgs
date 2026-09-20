@@ -3,16 +3,15 @@
 // ============================================================
 
 import { moveCards } from '../../position/cardActions.js';
-import { cardEmoji, displayNumber } from '../cardRegistry.js';
+import { cardEmoji, displayNumber } from '../../rules/cardFace.js';
 import { askForCard, askFromAreas } from '../../decision/choose.js';
 import { subjectIsOwner } from '../../effects/skills.js';
-import { defineSkill } from '../../effects/effects.js';
 import type { GameEvent } from '../../events/index.js';
 import type { DamageEventData, JudgeEventData } from '../../events/index.js';
-import { heroRegistry } from '../heroRegistry.js';
 import type { Game } from '../../game.js';
 import { CardType } from '../../types.js';
 import type { Player } from '../../types.js';
+import type { Container } from '../../rules/ruleSet.js';
 
 /** 反馈：受到伤害后，获得伤害来源区域内的一张牌 */
 const fankuiContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
@@ -46,30 +45,33 @@ const guicaiContent = async (game: Game, event: GameEvent<any>, owner: Player): 
   });
   judgeEvent.data.card = card;
   console.log(
-    `  ✨${owner.name} 发动【鬼才】！打出 ${cardEmoji(card.type)} ` +
+    `  ✨${owner.name} 发动【鬼才】！打出 ${cardEmoji(game, card.type)} ` +
     `(${card.suit}${displayNumber(card.number)}) 代替判定牌`,
   );
 };
 
-defineSkill({
-  name: '反馈',
-  effects: [{
-    form: 'triggered',
-    timing: 'damage.after',
-    condition: subjectIsOwner,
-    run: fankuiContent,
-  }],
-});
+// ── 装配（显式注册进容器；参数 c = 装配期容器）──────────────────────
+export function installSimayi(c: Container): void {
+  c.skills.define({
+    name: '反馈',
+    effects: [{
+      form: 'triggered',
+      timing: 'damage.after',
+      condition: subjectIsOwner,
+      run: fankuiContent,
+    }],
+  });
 
-defineSkill({
-  name: '鬼才',
-  effects: [{
-    form: 'triggered',
-    timing: 'judge.judging',
-    // 响应型：任何角色的判定都可响应，不看事件主体
-    condition: (_game, _event, owner) => owner.hand.cards.length > 0,
-    run: guicaiContent,
-  }],
-});
+  c.skills.define({
+    name: '鬼才',
+    effects: [{
+      form: 'triggered',
+      timing: 'judge.judging',
+      // 响应型：任何角色的判定都可响应，不看事件主体
+      condition: (_game, _event, owner) => owner.hand.cards.length > 0,
+      run: guicaiContent,
+    }],
+  });
 
-heroRegistry.register({ name: '司马懿', maxHp: 3, sex: 'male', group: '魏', skills: ['反馈', '鬼才'] });
+  c.heroes.register({ name: '司马懿', maxHp: 3, sex: 'male', group: '魏', skills: ['反馈', '鬼才'] });
+}

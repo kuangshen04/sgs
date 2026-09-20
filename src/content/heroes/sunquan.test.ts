@@ -9,23 +9,23 @@ import { freshGame, giveHand, makeUniqueCard } from '../../test-utils.js';
 import { playPhase } from '../../flow/gameFlow.js';
 import { useCard } from '../../flow/useCard.js';
 
-import { skillRegistry } from '../../effects/effects.js';
 import type { ActivatedEffect } from '../../effects/effects.js';
 
 import { CardType } from '../../types.js';
+import { standardRuleSet } from '../../test-utils.js';
 
 const sunquanHeroes = ['刘备', '孙权', '曹操'];
 
 describe('制衡（孙权主动技能）', () => {
-  it('skillRegistry 已注册制衡（activated 效果）', () => {
-    expect(skillRegistry.get('制衡')?.effects.some((e) => e.form === 'activated')).toBe(true);
+  it('规则集已注册制衡（activated 效果）', () => {
+    expect(standardRuleSet().skills.get('制衡')?.effects.some((e) => e.form === 'activated')).toBe(true);
   });
 
   it('规则与 AI 分层：有牌可出时规则允许、AI 不使用', () => {
     const g = freshGame({}, sunquanHeroes);
     const sunquan = g.state.players[1];
     giveHand(sunquan, CardType.Sha);
-    const effect = skillRegistry.get('制衡')!.effects
+    const effect = standardRuleSet().skills.get('制衡')!.effects
       .find((e) => e.form === 'activated') as ActivatedEffect;
     const ctx = { shaUsed: false, usedSkills: new Set<string>(), hasCardOption: true };
 
@@ -37,7 +37,7 @@ describe('制衡（孙权主动技能）', () => {
     const g = freshGame({}, sunquanHeroes);
     const sunquan = g.state.players[1];
     giveHand(sunquan, CardType.Shan);
-    const effect = skillRegistry.get('制衡')!.effects
+    const effect = standardRuleSet().skills.get('制衡')!.effects
       .find((e) => e.form === 'activated') as ActivatedEffect;
     const ctx = { shaUsed: false, usedSkills: new Set<string>(), hasCardOption: false };
 
@@ -49,7 +49,7 @@ describe('制衡（孙权主动技能）', () => {
     const g = freshGame({}, sunquanHeroes);
     const sunquan = g.state.players[1];
     giveHand(sunquan, CardType.Shan);
-    const effect = skillRegistry.get('制衡')!.effects
+    const effect = standardRuleSet().skills.get('制衡')!.effects
       .find((e) => e.form === 'activated') as ActivatedEffect;
 
     expect(

@@ -3,12 +3,13 @@
 // ============================================================
 
 import { CardTag, CardType } from '../../types.js';
-import type { CardContentFn } from '../cardRegistry.js';
-import { cardRegistry, cardEmoji, cardFaceText } from '../cardRegistry.js';
+import type { CardContentFn } from '../../rules/cardDef.js';
+import { cardEmoji, cardFaceText } from '../../rules/cardFace.js';
 import { damage, recover } from '../../flow/life.js';
 import { distanceTo, attackRange } from '../../flow/distance.js';
 import { effectRegistry } from '../../effects/persistentEffects.js';
 import { resolveShaResponse } from '../../flow/respond.js';
+import type { Container } from '../../rules/ruleSet.js';
 
 /**
  * 杀：对**该目标**结算（逐目标由引擎驱动）。
@@ -42,58 +43,61 @@ const taoContent: CardContentFn = async (game, data, _event) => {
   );
 };
 
-cardRegistry.register({
-  type: CardType.Sha,
-  name: '杀',
-  emoji: '🗡️',
-  content: shaContent,
-  tags: [CardTag.Basic],
-  canUse: (game, player, _allPlayers, shaUsed) =>
-    // 规则：每回合限一次（咆哮/诸葛连弩可无视），且存在攻击范围内目标
-    (!shaUsed || effectRegistry.has(game, player, 'unlimitedSha')) &&
-    _allPlayers.some((p) => p !== player && p.alive
-      && distanceTo(game, player, p) <= attackRange(game, player)
-      && !effectRegistry.has(game, p, 'immuneSha')), // 空城等：不能成为杀的目标
-  targetFilter: (game, user, allPlayers) =>
-    allPlayers.filter((p) => p !== user && p.alive
-      && distanceTo(game, user, p) <= attackRange(game, user)
-      && !effectRegistry.has(game, p, 'immuneSha')),
-  targetCount: 1,
-  ai: {
-    shouldUse: () => true,
-    usePriority: 60,
-    discardPriority: 0,
-  },
-});
+// ── 装配（显式注册进容器；参数 c = 装配期容器）──────────────────────
+export function installBasicCards(c: Container): void {
+  c.cards.register({
+    type: CardType.Sha,
+    name: '杀',
+    emoji: '🗡️',
+    content: shaContent,
+    tags: [CardTag.Basic],
+    canUse: (game, player, _allPlayers, shaUsed) =>
+      // 规则：每回合限一次（咆哮/诸葛连弩可无视），且存在攻击范围内目标
+      (!shaUsed || effectRegistry.has(game, player, 'unlimitedSha')) &&
+      _allPlayers.some((p) => p !== player && p.alive
+        && distanceTo(game, player, p) <= attackRange(game, player)
+        && !effectRegistry.has(game, p, 'immuneSha')), // 空城等：不能成为杀的目标
+    targetFilter: (game, user, allPlayers) =>
+      allPlayers.filter((p) => p !== user && p.alive
+        && distanceTo(game, user, p) <= attackRange(game, user)
+        && !effectRegistry.has(game, p, 'immuneSha')),
+    targetCount: 1,
+    ai: {
+      shouldUse: () => true,
+      usePriority: 60,
+      discardPriority: 0,
+    },
+  });
 
-cardRegistry.register({
-  type: CardType.Shan,
-  name: '闪',
-  emoji: '🛡️',
-  content: async () => {}, // 闪不主动使用
-  tags: [CardTag.Basic],
-  canUse: () => false, // 规则：闪不可在出牌阶段主动使用
-  targetFilter: () => [],
-  targetCount: 0,
-  ai: {
-    shouldUse: () => false,
-    usePriority: 0,
-    discardPriority: 1,
-  },
-});
+  c.cards.register({
+    type: CardType.Shan,
+    name: '闪',
+    emoji: '🛡️',
+    content: async () => {}, // 闪不主动使用
+    tags: [CardTag.Basic],
+    canUse: () => false, // 规则：闪不可在出牌阶段主动使用
+    targetFilter: () => [],
+    targetCount: 0,
+    ai: {
+      shouldUse: () => false,
+      usePriority: 0,
+      discardPriority: 1,
+    },
+  });
 
-cardRegistry.register({
-  type: CardType.Tao,
-  name: '桃',
-  emoji: '🍑',
-  content: taoContent,
-  tags: [CardTag.Basic],
-  canUse: (_game, player) => player.hp < player.maxHp, // 规则：桃需受伤才能用
-  targetFilter: (_game, user) => [user],
-  targetCount: 1,
-  ai: {
-    shouldUse: () => true,
-    usePriority: 90,
-    discardPriority: 3,
-  },
-});
+  c.cards.register({
+    type: CardType.Tao,
+    name: '桃',
+    emoji: '🍑',
+    content: taoContent,
+    tags: [CardTag.Basic],
+    canUse: (_game, player) => player.hp < player.maxHp, // 规则：桃需受伤才能用
+    targetFilter: (_game, user) => [user],
+    targetCount: 1,
+    ai: {
+      shouldUse: () => true,
+      usePriority: 90,
+      discardPriority: 3,
+    },
+  });
+}

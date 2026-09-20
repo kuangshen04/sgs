@@ -8,13 +8,13 @@ import { freshGame, giveHand, makeUniqueCard, equipAt } from '../../test-utils.j
 
 import { damage } from '../../flow/life.js';
 
-import { skillRegistry } from '../../effects/effects.js';
 
 import { CardType } from '../../types.js';
+import { standardRuleSet } from '../../test-utils.js';
 
 describe('反馈（司马懿技能）', () => {
-  it('skillRegistry 已注册反馈', () => {
-    expect(skillRegistry.get('反馈')).toBeDefined();
+  it('规则集已注册反馈', () => {
+    expect(standardRuleSet().skills.get('反馈')).toBeDefined();
   });
 
   it('受到伤害后获得伤害来源的一张手牌', async () => {
@@ -53,8 +53,8 @@ describe('反馈（司马懿技能）', () => {
 });
 
 describe('鬼才（司马懿技能）', () => {
-  it('skillRegistry 已注册鬼才', () => {
-    expect(skillRegistry.get('鬼才')).toBeDefined();
+  it('规则集已注册鬼才', () => {
+    expect(standardRuleSet().skills.get('鬼才')).toBeDefined();
   });
 
   it('打出一张手牌代替判定牌（响应型：任何角色的判定都可替换）', async () => {

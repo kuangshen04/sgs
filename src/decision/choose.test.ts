@@ -8,7 +8,7 @@ import { describe, it, expect } from 'vitest';
 
 import { freshGame, giveHand, makeUniqueCard, equipAt } from '../test-utils.js';
 
-import { cardRegistry, asUsedCard } from '../content/cardRegistry.js';
+import { asUsedCard } from '../rules/cardFace.js';
 
 import {
   computeCardOptions,
@@ -16,6 +16,7 @@ import {
 } from './choose.js';
 
 import { CardType } from '../types.js';
+import { standardRuleSet } from '../test-utils.js';
 
 // ============================================================
 // computeCardOptions — 规则层：选牌
@@ -59,7 +60,7 @@ describe('computeCardOptions', () => {
   it('规则与 AI 分层：决斗无杀在手时规则允许、AI 不使用', () => {
     const g = freshGame();
     const player = g.state.players[0];
-    const def = cardRegistry.get(CardType.JueDou)!;
+    const def = standardRuleSet().cards.get(CardType.JueDou)!;
 
     expect(def.canUse(g, player, g.state.players, false)).toBe(true);        // 规则：合法
     expect(def.ai.shouldUse(player, false)).toBe(false);                  // AI：没杀垫底不用
@@ -69,7 +70,7 @@ describe('computeCardOptions', () => {
     const g = freshGame();
     const player = g.state.players[0];
     giveHand(player, CardType.Sha);
-    const def = cardRegistry.get(CardType.JueDou)!;
+    const def = standardRuleSet().cards.get(CardType.JueDou)!;
 
     expect(def.ai.shouldUse(player, false)).toBe(true);
   });
@@ -78,7 +79,7 @@ describe('computeCardOptions', () => {
     const g = freshGame();
     const player = g.state.players[0];
     player.hp = player.maxHp;
-    const def = cardRegistry.get(CardType.Tao)!;
+    const def = standardRuleSet().cards.get(CardType.Tao)!;
 
     expect(def.canUse(g, player, g.state.players, false)).toBe(false);
   });

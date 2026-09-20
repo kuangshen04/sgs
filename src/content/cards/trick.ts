@@ -4,8 +4,8 @@
 
 import { CardTag, CardType } from '../../types.js';
 import type { Card, Player } from '../../types.js';
-import type { CardActionFn, CardContentFn } from '../cardRegistry.js';
-import { cardRegistry, cardEmoji, cardFaceText } from '../cardRegistry.js';
+import type { CardActionFn, CardContentFn } from '../../rules/cardDef.js';
+import { cardEmoji, cardFaceText } from '../../rules/cardFace.js';
 import { drawCards, moveCards, takeTop } from '../../position/cardActions.js';
 import { useCard } from '../../flow/useCard.js';
 import { damage, recover } from '../../flow/life.js';
@@ -18,6 +18,7 @@ import { effectRegistry } from '../../effects/persistentEffects.js';
 import { otherAlive, allAlive } from './helpers.js';
 import type { Game } from '../../game.js';
 import { resolveJueDouResponse, resolvePlayResponse, resolveUseResponse } from '../../flow/respond.js';
+import type { Container } from '../../rules/ruleSet.js';
 
 const wuzhongContent: CardContentFn = async (game, data, _event) => {
   const player = data.use.player;
@@ -105,7 +106,7 @@ const revealWugu: CardActionFn = async (game, data, _event, phase) => {
   data.extra = { ...data.extra, pool: revealed };
   console.log(`  ${data.player.name} 使用了 🌾五谷丰登！亮出 ${revealed.length} 张牌`);
   for (const c of revealed) {
-    console.log(`    ${cardEmoji(c.type)}(${cardFaceText(c)})`);
+    console.log(`    ${cardEmoji(game, c.type)}(${cardFaceText(c)})`);
   }
 };
 
@@ -148,7 +149,7 @@ const guoheContent: CardContentFn = async (game, data, _event) => {
     to: { zone: 'discardPile' }, cards: [card], reason: 'discard',
   });
   console.log(
-    `  弃置了 ${cardEmoji(card.type)} (${cardFaceText(card)})`,
+    `  弃置了 ${cardEmoji(game, card.type)} (${cardFaceText(card)})`,
   );
 };
 
@@ -166,7 +167,7 @@ const shunshouContent: CardContentFn = async (game, data, _event) => {
     to: { player: user, zone: 'hand' }, cards: [card], reason: 'give',
   });
   console.log(
-    `  获得了 ${cardEmoji(card.type)} (${cardFaceText(card)})`,
+    `  获得了 ${cardEmoji(game, card.type)} (${cardFaceText(card)})`,
   );
 };
 
@@ -184,7 +185,7 @@ const jiedaoContent: CardContentFn = async (game, data, _event) => {
   // 规则：目标（被借刀者）攻击范围内、杀对其合法（复用杀 targetFilter），
   // 且不含借刀使用者本人（维持现状的简化，规则文本待核）。
   // AI 决策点（真人/前端接入时在此注入）：默认取座次第一个合法角色。
-  const shaDef = cardRegistry.get(CardType.Sha)!;
+  const shaDef = game.ruleSet.cards.get(CardType.Sha)!;
   const candidates = shaDef.targetFilter(game, target, game.state.players)
     .filter((p) => p !== user);
   const picked = candidates.length > 0
@@ -223,7 +224,7 @@ const jiedaoContent: CardContentFn = async (game, data, _event) => {
     to: { player: user, zone: 'hand' }, cards: [weapon], reason: 'give',
   });
   console.log(
-    `  🗡️ ${target.name} 选择交出武器，${cardEmoji(weapon.type)} 到了 ${user.name} 手上`,
+    `  🗡️ ${target.name} 选择交出武器，${cardEmoji(game, weapon.type)} 到了 ${user.name} 手上`,
   );
 };
 
@@ -307,7 +308,7 @@ async function askWuxie(
 export function installWuxieTrigger(game: Game): void {
   game.triggerSystem.on(`${EventType.CardEffect}.before`, async (effectEvent) => {
     const effect = effectEvent.data as CardEffectEventData;
-    const def = cardRegistry.get(effect.card.type);
+    const def = game.ruleSet.cards.get(effect.card.type);
     if (!def?.tags.includes(CardTag.Trick)) return;
     if (effect.use.unoffsetable || effect.unoffsetable) return; // 不可被无懈响应
     if (effect.cancelled || effect.nullified) return;            // 已被抵消 / 已无效
@@ -319,7 +320,7 @@ export function installWuxieTrigger(game: Game): void {
   game.triggerSystem.on(`${EventType.Targeting}.before`, async (targetingEvent) => {
     const { user, card, target, judging } = targetingEvent.data as TargetingEventData;
     if (!judging) return;
-    const def = cardRegistry.get(card.type);
+    const def = game.ruleSet.cards.get(card.type);
     if (!def?.tags.includes(CardTag.Trick)) return;
 
     await askWuxie(targetingEvent.game, target, user, judging, undefined);
@@ -327,98 +328,9 @@ export function installWuxieTrigger(game: Game): void {
 }
 
 // ============================================================
-// 注册
+// 内容辅助（模块级：定义与装配共用）
 // ============================================================
 
-cardRegistry.register({
-  type: CardType.WuZhong,
-  name: '无中生有',
-  emoji: '📜',
-  content: wuzhongContent,
-  tags: [CardTag.Trick],
-  canUse: () => true,
-  targetFilter: (_game, user) => [user],
-  targetCount: 1,
-  ai: {
-    shouldUse: () => true,
-    usePriority: 80,
-    discardPriority: 2,
-  },
-});
-
-cardRegistry.register({
-  type: CardType.JueDou,
-  name: '决斗',
-  emoji: '⚔️',
-  content: juedouContent,
-  tags: [CardTag.Trick],
-  canUse: (game, player, allPlayers) =>
-    allPlayers.some((p) => p !== player && p.alive && !effectRegistry.has(game, p, 'immuneJueDou')),
-  targetFilter: (game, user, allPlayers) =>
-    allPlayers.filter((p) => p !== user && p.alive && !effectRegistry.has(game, p, 'immuneJueDou')),
-  targetCount: 1,
-  ai: {
-    shouldUse: (player) => player.hand.cards.some((c) => c.type === CardType.Sha), // AI：有杀垫底才决斗
-    usePriority: 70,
-    discardPriority: 0,
-  },
-});
-
-cardRegistry.register({
-  type: CardType.NanMan,
-  name: '南蛮入侵',
-  emoji: '🐘',
-  content: nanmanContent,
-  onAction: shoutNanman,
-  tags: [CardTag.Trick],
-  canUse: () => true,
-  targetFilter: otherAlive,
-  targetCount: 'all',
-  ai: {
-    shouldUse: () => true,
-    usePriority: 75,
-    discardPriority: 0,
-  },
-});
-
-cardRegistry.register({
-  type: CardType.WanJian,
-  name: '万箭齐发',
-  emoji: '🏹',
-  content: wanjianContent,
-  onAction: shoutWanjian,
-  tags: [CardTag.Trick],
-  canUse: () => true,
-  targetFilter: otherAlive,
-  targetCount: 'all',
-  ai: {
-    shouldUse: () => true,
-    usePriority: 75,
-    discardPriority: 0,
-  },
-});
-
-cardRegistry.register({
-  type: CardType.TaoYuan,
-  name: '桃园结义',
-  emoji: '🌸',
-  content: taoyuanContent,
-  onAction: shoutTaoyuan,
-  tags: [CardTag.Trick],
-  canUse: () => true,
-  targetFilter: allAlive,
-  targetCount: 'all',
-  ai: {
-    // AI：自己受伤才值得放（也会回敌人的血）
-    shouldUse: (player) => player.hp < player.maxHp,
-    usePriority: 85,
-    discardPriority: 3,
-  },
-});
-
-/**
- * 五谷丰登的目标：从使用者起按座次（行动顺序）——依次选牌的顺序即结算顺序。
- */
 function wuguOrder(_game: Game, user: Player, all: Player[]): Player[] {
   const start = all.indexOf(user);
   const out: Player[] = [];
@@ -429,97 +341,193 @@ function wuguOrder(_game: Game, user: Player, all: Player[]): Player[] {
   return out;
 }
 
-cardRegistry.register({
-  type: CardType.WuGu,
-  name: '五谷丰登',
-  emoji: '🌾',
-  content: wuguContent,
-  onAction: (game, data, event, phase) => (phase === 'before'
-    ? revealWugu(game, data, event, phase)
-    : settleWugu(game, data, event, phase)),
-  tags: [CardTag.Trick],
-  canUse: () => true,
-  targetFilter: wuguOrder,
-  targetCount: 'all',
-  ai: {
-    shouldUse: () => true,
-    usePriority: 75,
-    discardPriority: 2,
-  },
-});
+// ── 装配（显式注册进容器；参数 c = 装配期容器）──────────────────────
+export function installTrickCards(c: Container): void {
+  // 内容提供的开局钩子：无懈可击的响应窗口（引擎不认识无懈；内容挂上窗口）
+  c.addSetupHook(installWuxieTrigger);
 
-cardRegistry.register({
-  type: CardType.JieDao,
-  name: '借刀杀人',
-  emoji: '🗡️',
-  content: jiedaoContent,
-  tags: [CardTag.Trick],
-  canUse: (game, player, allPlayers) =>
-    allPlayers.some((p) => p !== player && p.alive && !!p.equipment.weapon),
-  targetFilter: (game, user, allPlayers) =>
-    allPlayers.filter((p) => p !== user && p.alive && !!p.equipment.weapon),
-  targetCount: 1,
-  ai: {
-    shouldUse: () => true,
-    usePriority: 55,
-    discardPriority: 2,
-  },
-});
+  c.cards.register({
+    type: CardType.WuZhong,
+    name: '无中生有',
+    emoji: '📜',
+    content: wuzhongContent,
+    tags: [CardTag.Trick],
+    canUse: () => true,
+    targetFilter: (_game, user) => [user],
+    targetCount: 1,
+    ai: {
+      shouldUse: () => true,
+      usePriority: 80,
+      discardPriority: 2,
+    },
+  });
 
-cardRegistry.register({
-  type: CardType.GuoHe,
-  name: '过河拆桥',
-  emoji: '🌉',
-  content: guoheContent,
-  tags: [CardTag.Trick],
-  canUse: (game, player, allPlayers) =>
-    // 规则：存在区域内有牌的目标（无距离限制）
-    allPlayers.some((p) => p !== player && p.alive && hasCardsInAreas(p)),
-  targetFilter: (game, user, allPlayers) =>
-    allPlayers.filter((p) => p !== user && p.alive && hasCardsInAreas(p)),
-  targetCount: 1,
-  ai: {
-    shouldUse: () => true,
-    usePriority: 65,
-    discardPriority: 2,
-  },
-});
+  c.cards.register({
+    type: CardType.JueDou,
+    name: '决斗',
+    emoji: '⚔️',
+    content: juedouContent,
+    tags: [CardTag.Trick],
+    canUse: (game, player, allPlayers) =>
+      allPlayers.some((p) => p !== player && p.alive && !effectRegistry.has(game, p, 'immuneJueDou')),
+    targetFilter: (game, user, allPlayers) =>
+      allPlayers.filter((p) => p !== user && p.alive && !effectRegistry.has(game, p, 'immuneJueDou')),
+    targetCount: 1,
+    ai: {
+      shouldUse: (player) => player.hand.cards.some((c) => c.type === CardType.Sha), // AI：有杀垫底才决斗
+      usePriority: 70,
+      discardPriority: 0,
+    },
+  });
 
-cardRegistry.register({
-  type: CardType.ShunShou,
-  name: '顺手牵羊',
-  emoji: '🐑',
-  content: shunshouContent,
-  tags: [CardTag.Trick],
-  canUse: (game, player, allPlayers) =>
-    // 规则：存在距离为 1（或奇才无视距离）且区域内有牌的目标
-    allPlayers.some((p) => p !== player && p.alive && hasCardsInAreas(p)
-      && (effectRegistry.has(game, player, 'noTrickDistance') || distanceTo(game, player, p) <= 1)
-      && !effectRegistry.has(game, p, 'immuneShunShou')),
-  targetFilter: (game, user, allPlayers) =>
-    allPlayers.filter((p) => p !== user && p.alive && hasCardsInAreas(p)
-      && (effectRegistry.has(game, user, 'noTrickDistance') || distanceTo(game, user, p) <= 1)
-      && !effectRegistry.has(game, p, 'immuneShunShou')),
-  targetCount: 1,
-  ai: {
-    shouldUse: () => true,
-    usePriority: 65,
-    discardPriority: 2,
-  },
-});
+  c.cards.register({
+    type: CardType.NanMan,
+    name: '南蛮入侵',
+    emoji: '🐘',
+    content: nanmanContent,
+    onAction: shoutNanman,
+    tags: [CardTag.Trick],
+    canUse: () => true,
+    targetFilter: otherAlive,
+    targetCount: 'all',
+    ai: {
+      shouldUse: () => true,
+      usePriority: 75,
+      discardPriority: 0,
+    },
+  });
 
-cardRegistry.register({
-  type: CardType.WuXie,
-  name: '无懈可击',
-  emoji: '🛡️',
-  content: wuxieContent,
-  tags: [CardTag.Trick],
-  canUse: () => false, // 规则：无懈不可在出牌阶段主动使用（由响应 trigger 调用）
-  targetFilter: () => [],
-  targetCount: 0,
-  ai: {
-    shouldUse: () => false,
-    usePriority: 0,
-    discardPriority: 100, // 尽量保留在手牌中
-  },
-});
+  c.cards.register({
+    type: CardType.WanJian,
+    name: '万箭齐发',
+    emoji: '🏹',
+    content: wanjianContent,
+    onAction: shoutWanjian,
+    tags: [CardTag.Trick],
+    canUse: () => true,
+    targetFilter: otherAlive,
+    targetCount: 'all',
+    ai: {
+      shouldUse: () => true,
+      usePriority: 75,
+      discardPriority: 0,
+    },
+  });
+
+  c.cards.register({
+    type: CardType.TaoYuan,
+    name: '桃园结义',
+    emoji: '🌸',
+    content: taoyuanContent,
+    onAction: shoutTaoyuan,
+    tags: [CardTag.Trick],
+    canUse: () => true,
+    targetFilter: allAlive,
+    targetCount: 'all',
+    ai: {
+      // AI：自己受伤才值得放（也会回敌人的血）
+      shouldUse: (player) => player.hp < player.maxHp,
+      usePriority: 85,
+      discardPriority: 3,
+    },
+  });
+
+  /**
+   * 五谷丰登的目标：从使用者起按座次（行动顺序）——依次选牌的顺序即结算顺序。
+   */
+
+  c.cards.register({
+    type: CardType.WuGu,
+    name: '五谷丰登',
+    emoji: '🌾',
+    content: wuguContent,
+    onAction: (game, data, event, phase) => (phase === 'before'
+      ? revealWugu(game, data, event, phase)
+      : settleWugu(game, data, event, phase)),
+    tags: [CardTag.Trick],
+    canUse: () => true,
+    targetFilter: wuguOrder,
+    targetCount: 'all',
+    ai: {
+      shouldUse: () => true,
+      usePriority: 75,
+      discardPriority: 2,
+    },
+  });
+
+  c.cards.register({
+    type: CardType.JieDao,
+    name: '借刀杀人',
+    emoji: '🗡️',
+    content: jiedaoContent,
+    tags: [CardTag.Trick],
+    canUse: (game, player, allPlayers) =>
+      allPlayers.some((p) => p !== player && p.alive && !!p.equipment.weapon),
+    targetFilter: (game, user, allPlayers) =>
+      allPlayers.filter((p) => p !== user && p.alive && !!p.equipment.weapon),
+    targetCount: 1,
+    ai: {
+      shouldUse: () => true,
+      usePriority: 55,
+      discardPriority: 2,
+    },
+  });
+
+  c.cards.register({
+    type: CardType.GuoHe,
+    name: '过河拆桥',
+    emoji: '🌉',
+    content: guoheContent,
+    tags: [CardTag.Trick],
+    canUse: (game, player, allPlayers) =>
+      // 规则：存在区域内有牌的目标（无距离限制）
+      allPlayers.some((p) => p !== player && p.alive && hasCardsInAreas(p)),
+    targetFilter: (game, user, allPlayers) =>
+      allPlayers.filter((p) => p !== user && p.alive && hasCardsInAreas(p)),
+    targetCount: 1,
+    ai: {
+      shouldUse: () => true,
+      usePriority: 65,
+      discardPriority: 2,
+    },
+  });
+
+  c.cards.register({
+    type: CardType.ShunShou,
+    name: '顺手牵羊',
+    emoji: '🐑',
+    content: shunshouContent,
+    tags: [CardTag.Trick],
+    canUse: (game, player, allPlayers) =>
+      // 规则：存在距离为 1（或奇才无视距离）且区域内有牌的目标
+      allPlayers.some((p) => p !== player && p.alive && hasCardsInAreas(p)
+        && (effectRegistry.has(game, player, 'noTrickDistance') || distanceTo(game, player, p) <= 1)
+        && !effectRegistry.has(game, p, 'immuneShunShou')),
+    targetFilter: (game, user, allPlayers) =>
+      allPlayers.filter((p) => p !== user && p.alive && hasCardsInAreas(p)
+        && (effectRegistry.has(game, user, 'noTrickDistance') || distanceTo(game, user, p) <= 1)
+        && !effectRegistry.has(game, p, 'immuneShunShou')),
+    targetCount: 1,
+    ai: {
+      shouldUse: () => true,
+      usePriority: 65,
+      discardPriority: 2,
+    },
+  });
+
+  c.cards.register({
+    type: CardType.WuXie,
+    name: '无懈可击',
+    emoji: '🛡️',
+    content: wuxieContent,
+    tags: [CardTag.Trick],
+    canUse: () => false, // 规则：无懈不可在出牌阶段主动使用（由响应 trigger 调用）
+    targetFilter: () => [],
+    targetCount: 0,
+    ai: {
+      shouldUse: () => false,
+      usePriority: 0,
+      discardPriority: 100, // 尽量保留在手牌中
+    },
+  });
+}

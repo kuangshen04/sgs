@@ -9,15 +9,15 @@ import { freshGame, giveHand, makeUniqueCard } from '../../test-utils.js';
 import { damage } from '../../flow/life.js';
 import { useCard } from '../../flow/useCard.js';
 
-import { skillRegistry } from '../../effects/effects.js';
 
 import { CardType } from '../../types.js';
+import { standardRuleSet } from '../../test-utils.js';
 
 const caocaoHeroes = ['刘备', '曹操', '孙权'];
 
 describe('奸雄（曹操技能）', () => {
-  it('skillRegistry 已注册奸雄', () => {
-    expect(skillRegistry.get('奸雄')).toBeDefined();
+  it('规则集已注册奸雄', () => {
+    expect(standardRuleSet().skills.get('奸雄')).toBeDefined();
   });
 
   it('受到杀造成的伤害 → 获得那张杀', async () => {

@@ -1,18 +1,17 @@
 // ============================================================
 // 响应窗口 — 动作候选与执行
 //
-// 响应规则自阶段 3 起是 effects.ts 里的 response 形态效果（归属技能或装备）；
+// 响应规则是规则集里的 response 形态效果（归属技能或装备，见 effects/effects.ts）；
 // 本模块只负责：按请求收集可用效果 + 真牌 + 放弃 → 构建动作候选 → 执行选中的动作。
 // ============================================================
 
 import type { Game } from '../game.js';
 import type { Card, Player } from '../types.js';
-import { cardRegistry } from '../content/cardRegistry.js';
 import {
   enterUsedCard, materializeUsedCard, playUsedCard, settleUsedCard,
 } from '../position/usedCardActions.js';
 import { useCard } from '../flow/useCard.js';
-import { effectLordGate, effectOwnedBy, responseEffectsFor } from '../effects/effects.js';
+import { effectLordGate, effectOwnedBy } from '../effects/effects.js';
 import type { ResponseEffect, ResponseOutcome, ResponseRequest } from '../effects/effects.js';
 import type { UseAction } from './useWindow.js';
 import type { SelectionAnswers } from './selection.js';
@@ -31,7 +30,7 @@ export function collectResponseEffects(
   request: ResponseRequest,
   used: ReadonlySet<ResponseEffect> = new Set(),
 ): ResponseEffect[] {
-  return responseEffectsFor(request.cardType).filter((e) =>
+  return game.ruleSet.skills.responsesFor(request.cardType).filter((e) =>
     !used.has(e)
     && effectOwnedBy(game, e, player)
     && effectLordGate(game, player, e)
@@ -111,7 +110,7 @@ export async function executeResponse(
       const uc = game.usedCards.create(
         {
           type: effect.virtualCard,
-          name: cardRegistry.get(effect.virtualCard)?.name ?? effect.virtualCard,
+          name: game.ruleSet.cards.get(effect.virtualCard)?.name ?? effect.virtualCard,
         },
         [],
       );

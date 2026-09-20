@@ -7,18 +7,16 @@ import type { Card, Player } from '../../types.js';
 import { discardCards } from '../../position/cardActions.js';
 import { equipmentCards } from '../../position/areas.js';
 import { effectRegistry } from '../../effects/persistentEffects.js';
-import { cardRegistry } from '../cardRegistry.js';
 import {
   cardsStep, selectedCards, selectedPlayers, targetsStep,
 } from '../../decision/choose.js';
 import { drawCards } from '../../position/cardActions.js';
 import { subjectIsOwner } from '../../effects/skills.js';
-import { defineSkill } from '../../effects/effects.js';
 import type { ActivatedEffect } from '../../effects/effects.js';
 import { useVirtualCard } from '../../flow/useCard.js';
 import type { GameEvent } from '../../events/index.js';
-import { heroRegistry } from '../heroRegistry.js';
 import type { Game } from '../../game.js';
+import type { Container } from '../../rules/ruleSet.js';
 
 // ============================================================
 // 离间（0 牌转化 + 视为他人使用 + 不可被无懈 + 出牌阶段限一次）
@@ -38,7 +36,7 @@ function maleOthers(game: Game, player: Player): Player[] {
 
 /** 决斗者 A 能对谁使用决斗（复用【决斗】的目标规则：排除空城等免疫） */
 function duelTargetsOf(game: Game, duelist: Player): Player[] {
-  const def = cardRegistry.get(CardType.JueDou)!;
+  const def = game.ruleSet.cards.get(CardType.JueDou)!;
   return def.targetFilter(game, duelist, game.state.players);
 }
 
@@ -57,7 +55,7 @@ function hasLijianPair(game: Game, player: Player): boolean {
  * - **不可被无懈可击响应**：`unoffsetable`（事件级，adr/0006）；
  * - **限一次**：`ctx.usedSkills`（playPhase 记名，越过则不可用）。
  */
-const lijianEffect: ActivatedEffect = {
+const lijianEffect = (c: Container): ActivatedEffect => ({
   form: 'activated',
   canUse: (game, player, ctx) =>
     !ctx.usedSkills.has('离间')
@@ -115,36 +113,39 @@ const lijianEffect: ActivatedEffect = {
   ai: {
     // AI 决策点（真人/前端接入时在此注入）：默认与【决斗】同优先级、有牌可弃即愿意发动
     shouldUse: (game, player) => hasLijianPair(game, player),
-    priority: cardRegistry.get(CardType.JueDou)!.ai.usePriority,
+    priority: c.cards.get(CardType.JueDou)!.ai.usePriority,
   },
-};
-
-defineSkill({ name: '离间', effects: [lijianEffect] });
-
-// ============================================================
-// 闭月
-// ============================================================
-
-/** 闭月：结束阶段摸一张牌 */
-const biyueContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
-  const before = owner.hand.cards.length;
-  await drawCards(game, { target: owner, count: 1 });
-  console.log(
-    `  ✨${owner.name} 发动【闭月】！回合结束摸了 1 张牌` +
-    `（${before} → ${owner.hand.cards.length}）`,
-  );
-};
-
-defineSkill({
-  name: '闭月',
-  effects: [{
-    form: 'triggered',
-    timing: 'endPhase.before',
-    condition: subjectIsOwner,
-    run: biyueContent,
-  }],
 });
 
-heroRegistry.register({
-  name: '貂蝉', maxHp: 3, sex: 'female', group: '群', skills: ['离间', '闭月'],
-});
+// ── 装配（显式注册进容器；参数 c = 装配期容器）──────────────────────
+export function installDiaochan(c: Container): void {
+  c.skills.define({ name: '离间', effects: [lijianEffect(c)] });
+
+  // ============================================================
+  // 闭月
+  // ============================================================
+
+  /** 闭月：结束阶段摸一张牌 */
+  const biyueContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
+    const before = owner.hand.cards.length;
+    await drawCards(game, { target: owner, count: 1 });
+    console.log(
+      `  ✨${owner.name} 发动【闭月】！回合结束摸了 1 张牌` +
+      `（${before} → ${owner.hand.cards.length}）`,
+    );
+  };
+
+  c.skills.define({
+    name: '闭月',
+    effects: [{
+      form: 'triggered',
+      timing: 'endPhase.before',
+      condition: subjectIsOwner,
+      run: biyueContent,
+    }],
+  });
+
+  c.heroes.register({
+    name: '貂蝉', maxHp: 3, sex: 'female', group: '群', skills: ['离间', '闭月'],
+  });
+}

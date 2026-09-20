@@ -12,7 +12,7 @@
 import type { Card, CardLocation, CardMoveReason, CardType, Player, UsedCard } from '../types.js';
 import type { Game } from '../game.js';
 import { CardTag } from '../types.js';
-import { cardRegistry, asUsedCard } from '../content/cardRegistry.js';
+import { asUsedCard } from '../rules/cardFace.js';
 import { movePhysical, sameCardLocation } from './move.js';
 import { moveCards } from './cardActions.js';
 import { EQUIP_SLOTS, physicalLocationOf } from './usedCards.js';
@@ -51,9 +51,9 @@ export function materializeUsedCard(game: Game, card: Card | UsedCard): UsedCard
   return game.usedCards.create(desc, desc.physicalCards);
 }
 
-/** 装备牌槽位（按 UC 的规则身份判定：转化装备按"视为的牌"落槽） */
-export function equipSlotOf(card: CardShape): EquipSlot {
-  const def = cardRegistry.get(card.type);
+/** 装备牌槽位（按 UC 的规则身份判定：转化装备按"视为的牌"落槽）——规则查询带 game */
+export function equipSlotOf(game: Game, card: CardShape): EquipSlot {
+  const def = game.ruleSet.cards.get(card.type);
   if (def?.tags.includes(CardTag.Weapon)) return 'weapon';
   if (def?.tags.includes(CardTag.Armor)) return 'armor';
   if (def?.tags.includes(CardTag.DefensiveHorse)) return 'defensiveHorse';
@@ -191,7 +191,7 @@ export async function equipCard(
   game: Game, player: Player, card: Card | UsedCard,
 ): Promise<Card | undefined> {
   const uc = materializeUsedCard(game, card);
-  const slot = equipSlotOf(uc);
+  const slot = equipSlotOf(game, uc);
   const old = player.equipment[slot];
   if (old) {
     await moveCards(game, { to: { zone: 'discardPile' }, cards: [old], reason: 'replace' });

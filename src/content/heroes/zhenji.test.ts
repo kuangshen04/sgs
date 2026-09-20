@@ -8,13 +8,13 @@ import { freshGame, makeUniqueCard } from '../../test-utils.js';
 
 import { preparePhase } from '../../flow/gameFlow.js';
 
-import { skillRegistry } from '../../effects/effects.js';
 
 import { CardType } from '../../types.js';
+import { standardRuleSet } from '../../test-utils.js';
 
 describe('洛神（甄宓技能）', () => {
-  it('skillRegistry 已注册洛神', () => {
-    expect(skillRegistry.get('洛神')).toBeDefined();
+  it('规则集已注册洛神', () => {
+    expect(standardRuleSet().skills.get('洛神')).toBeDefined();
   });
 
   it('连续判定黑色 → 获得判定牌，红色停止', async () => {

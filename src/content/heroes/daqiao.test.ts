@@ -12,15 +12,15 @@ import { choosePlayAction } from '../../decision/playChoices.js';
 import { moveCards } from '../../position/cardActions.js';
 import { verifyCardState } from '../../position/cardAreaCheck.js';
 
-import { skillRegistry } from '../../effects/effects.js';
 
 import { CardType } from '../../types.js';
+import { standardRuleSet } from '../../test-utils.js';
 
 const daqiaoHeroes = ['大乔', '刘备', '孙权'];
 
 describe('国色（大乔技能）', () => {
-  it('skillRegistry 已注册国色；大乔拥有国色', () => {
-    expect(skillRegistry.get('国色')).toBeDefined();
+  it('规则集已注册国色；大乔拥有国色', () => {
+    expect(standardRuleSet().skills.get('国色')).toBeDefined();
     expect(freshGame({}, daqiaoHeroes).state.players[0].skills.has('国色')).toBe(true);
   });
 
@@ -125,8 +125,8 @@ describe('国色（大乔技能）', () => {
 });
 
 describe('流离（大乔技能）', () => {
-  it('skillRegistry 已注册流离', () => {
-    expect(skillRegistry.get('流离')).toBeDefined();
+  it('规则集已注册流离', () => {
+    expect(standardRuleSet().skills.get('流离')).toBeDefined();
   });
 
   it('成为杀的目标 → 弃一张牌，将杀转移给攻击范围内其他角色', async () => {

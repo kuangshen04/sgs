@@ -10,11 +10,11 @@ import { freshGame, giveHand, makeUniqueCard, equipAt } from '../test-utils.js';
 
 import { useCard } from '../flow/useCard.js';
 
-import { cardRegistry } from './cardRegistry.js';
 import { EventType } from '../events/index.js';
 
 import { CardType } from '../types.js';
 import type { Card } from '../types.js';
+import { standardRuleSet } from '../test-utils.js';
 
 // ============================================================
 // useCard 集成测试
@@ -99,7 +99,7 @@ describe('借刀杀人', () => {
   it('规则层面：无人装备武器 → 不可使用', () => {
     const g = freshGame();
     const user = g.state.players[0];
-    const def = cardRegistry.get(CardType.JieDao)!;
+    const def = standardRuleSet().cards.get(CardType.JieDao)!;
 
     expect(def.canUse(g, user, g.state.players, false)).toBe(false);
   });

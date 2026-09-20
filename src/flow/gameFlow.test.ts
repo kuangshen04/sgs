@@ -9,10 +9,10 @@ import { freshGame, giveHand, makeUniqueCard, placeJudgment } from '../test-util
 
 import { judgePhase, playPhase } from './gameFlow.js';
 
-import { cardRegistry } from '../content/cardRegistry.js';
 import { moveCards } from '../position/cardActions.js';
 import { moveUsedCard } from '../position/usedCardActions.js';
 import { CardType } from '../types.js';
+import { standardRuleSet } from '../test-utils.js';
 
 // ============================================================
 // playPhase — 循环 choose + useCard（默认 AI，不注入 decider）
@@ -59,10 +59,13 @@ describe('playPhase', () => {
 });
 
 // ============================================================
-// judgePhase — 判定阶段（延时锦囊结算）
+// judgePhase × 标包延时牌 —— **集成**（内容 × 判定流程）
+//
+// 判定阶段作为**引擎机制**的覆盖在 `flow/judgePhase.test.ts`（只用测试内容）。
+// 这里测的是标包延时牌的规则文本：乐不思蜀跳过出牌阶段、闪电转移/无懈窗口。
 // ============================================================
 
-describe('judgePhase', () => {
+describe('judgePhase × 标包延时牌（集成）', () => {
   it('判定为红桃 → 乐不思蜀无事，进弃牌堆', async () => {
     const g = freshGame();
     const player = g.state.players[0];
@@ -191,7 +194,7 @@ describe('judgePhase', () => {
     await moveCards(g, { to: { zone: 'processing' }, cards: [shandian], reason: 'resolve' });
     const uc = g.usedCards.create(shandian, [shandian]);
     g.usedCards.bind(uc, { kind: 'processing' }); // 模拟判定阶段已把它移入处理区
-    const def = cardRegistry.get(CardType.ShanDian)!;
+    const def = standardRuleSet().cards.get(CardType.ShanDian)!;
 
     await def.delayContent!(g, p0, makeUniqueCard(CardType.Tao, '♥', 5), uc);
 

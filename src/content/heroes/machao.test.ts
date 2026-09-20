@@ -10,7 +10,6 @@ import { useCard } from '../../flow/useCard.js';
 
 import { effectRegistry } from '../../effects/persistentEffects.js';
 
-import { skillRegistry } from '../../effects/effects.js';
 
 import { CardType } from '../../types.js';
 

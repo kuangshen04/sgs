@@ -8,16 +8,13 @@
 
 import { describe, it, expect } from 'vitest';
 
-import './cards/index.js';       // 触发卡牌注册
-import './heroes/index.js';      // 触发武将/技能注册
-import { skillRegistry } from '../effects/effects.js';
-import { cardRegistry } from './cardRegistry.js';
 import { allCardInfos, allSkillInfos } from './info.js';
+import { standardRuleSet } from '../test-utils.js';
 
 describe('规则文本（info）', () => {
   it('每个已注册技能都有 info，且与数据源一致', () => {
     const missing: string[] = [];
-    for (const skill of skillRegistry.all()) {
+    for (const skill of standardRuleSet().skills.all()) {
       if (!skill.info) missing.push(skill.name);
       else expect(skill.info).toBe(allSkillInfos().get(skill.name));
     }
@@ -26,7 +23,7 @@ describe('规则文本（info）', () => {
 
   it('每种已注册卡牌都有 info，且与数据源一致', () => {
     const missing: string[] = [];
-    for (const def of cardRegistry.all()) {
+    for (const def of standardRuleSet().cards.all()) {
       if (!def.info) missing.push(def.name);
       else expect(def.info).toBe(allCardInfos().get(def.name));
     }
@@ -34,13 +31,13 @@ describe('规则文本（info）', () => {
   });
 
   it('技能/卡牌的 info 与 name 同级（不在 meta、不在 effect 上）', () => {
-    const skill = skillRegistry.get('奸雄')!;
+    const skill = standardRuleSet().skills.get('奸雄')!;
     expect(skill.info).toContain('造成伤害');
     expect((skill.meta as unknown as Record<string, unknown>).info).toBeUndefined(); // 不在 meta 里
     for (const effect of skill.effects) {
       expect((effect as unknown as Record<string, unknown>).info).toBeUndefined();   // effect 不带 info
     }
-    const card = cardRegistry.all().next().value!;
+    const card = standardRuleSet().cards.all().next().value!;
     expect(card.info?.length).toBeGreaterThan(0);
   });
 });

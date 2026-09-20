@@ -94,7 +94,7 @@ export interface UsedCard {
   physicalCards: Card[];
 }
 
-/** 武将定义（注册到 heroRegistry，createGame 通过名字引用，可重复） */
+/** 武将定义（内容包装配进容器；createGame 通过名字引用，可重复） */
 export interface HeroDef {
   name: string;
   maxHp: number;
@@ -102,7 +102,7 @@ export interface HeroDef {
   group: HeroGroup;
   /** 能否当主公（身份场用；标包主公候选 = 刘备/曹操/孙权） */
   isLord?: boolean;
-  /** 拥有的技能名列表（引用 skillRegistry 中的 SkillDef.name） */
+  /** 拥有的技能名列表（引用规则集里的 Skill.name） */
   skills?: string[];
 }
 

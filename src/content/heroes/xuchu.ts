@@ -3,14 +3,13 @@
 // ============================================================
 
 import { subjectIsOwner } from '../../effects/skills.js';
-import { defineSkill } from '../../effects/effects.js';
 import { EventType } from '../../events/index.js';
 import type { GameEvent } from '../../events/index.js';
 import type { DrawPhaseEventData } from '../../events/index.js';
 import { CardType } from '../../types.js';
-import { heroRegistry } from '../heroRegistry.js';
 import type { Game } from '../../game.js';
 import type { Player } from '../../types.js';
+import type { Container } from '../../rules/ruleSet.js';
 
 /**
  * 裸衣：摸牌阶段少摸一张牌；本回合内使用【杀】或【决斗】造成的伤害+1。
@@ -45,14 +44,17 @@ const luoyiContent = async (game: Game, event: GameEvent<any>, owner: Player): P
   console.log(`  ✨${owner.name} 发动【裸衣】！少摸 1 张牌，本回合杀/决斗伤害+1`);
 };
 
-defineSkill({
-  name: '裸衣',
-  effects: [{
-    form: 'triggered',
-    timing: 'drawPhase.before',
-    condition: subjectIsOwner,
-    run: luoyiContent,
-  }],
-});
+// ── 装配（显式注册进容器；参数 c = 装配期容器）──────────────────────
+export function installXuchu(c: Container): void {
+  c.skills.define({
+    name: '裸衣',
+    effects: [{
+      form: 'triggered',
+      timing: 'drawPhase.before',
+      condition: subjectIsOwner,
+      run: luoyiContent,
+    }],
+  });
 
-heroRegistry.register({ name: '许褚', maxHp: 4, sex: 'male', group: '魏', skills: ['裸衣'] });
+  c.heroes.register({ name: '许褚', maxHp: 4, sex: 'male', group: '魏', skills: ['裸衣'] });
+}

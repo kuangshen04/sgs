@@ -8,15 +8,15 @@ import { freshGame, giveHand, makeUniqueCard } from '../../test-utils.js';
 
 import { damage } from '../../flow/life.js';
 
-import { skillRegistry } from '../../effects/effects.js';
 
 import { CardType } from '../../types.js';
+import { standardRuleSet } from '../../test-utils.js';
 
 const xiahoudunHeroes = ['刘备', '夏侯惇', '孙权'];
 
 describe('刚烈（夏侯惇技能）', () => {
-  it('skillRegistry 已注册刚烈', () => {
-    expect(skillRegistry.get('刚烈')).toBeDefined();
+  it('规则集已注册刚烈', () => {
+    expect(standardRuleSet().skills.get('刚烈')).toBeDefined();
   });
 
   it('判定为红桃 → 无事发生，判定牌进弃牌堆', async () => {

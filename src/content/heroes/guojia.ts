@@ -3,17 +3,16 @@
 // ============================================================
 
 import { takeFromProcessing, takeTop, moveCards } from '../../position/cardActions.js';
-import { cardEmoji, displayNumber } from '../cardRegistry.js';
+import { cardEmoji, displayNumber } from '../../rules/cardFace.js';
 import { targetsStep, selectedPlayers } from '../../decision/choose.js';
 import { runSelection } from '../../decision/selection.js';
 import type { SelectionPlan } from '../../decision/selection.js';
 import { subjectIsOwner } from '../../effects/skills.js';
-import { defineSkill } from '../../effects/effects.js';
 import type { GameEvent } from '../../events/index.js';
 import type { DamageEventData, JudgeEventData } from '../../events/index.js';
-import { heroRegistry } from '../heroRegistry.js';
 import type { Game } from '../../game.js';
 import type { Player } from '../../types.js';
+import type { Container } from '../../rules/ruleSet.js';
 
 /** 遗计：受到伤害后，观看牌堆顶 2×伤害 张牌，按顺序分配任意角色 */
 const yijiContent = async (game: Game, event: GameEvent<any>, owner: Player): Promise<void> => {
@@ -61,29 +60,32 @@ const tianduContent = async (game: Game, event: GameEvent<any>, owner: Player): 
   const found = await takeFromProcessing(game, owner, card);
   if (!found) return;
   console.log(
-    `  ✨${owner.name} 发动【天妒】！获得判定牌 ${cardEmoji(found.type)} ` +
+    `  ✨${owner.name} 发动【天妒】！获得判定牌 ${cardEmoji(game, found.type)} ` +
     `(${found.suit}${displayNumber(found.number)})`,
   );
 };
 
-defineSkill({
-  name: '遗计',
-  effects: [{
-    form: 'triggered',
-    timing: 'damage.after',
-    condition: subjectIsOwner,
-    run: yijiContent,
-  }],
-});
+// ── 装配（显式注册进容器；参数 c = 装配期容器）──────────────────────
+export function installGuojia(c: Container): void {
+  c.skills.define({
+    name: '遗计',
+    effects: [{
+      form: 'triggered',
+      timing: 'damage.after',
+      condition: subjectIsOwner,
+      run: yijiContent,
+    }],
+  });
 
-defineSkill({
-  name: '天妒',
-  effects: [{
-    form: 'triggered',
-    timing: 'judge.after',
-    condition: subjectIsOwner,
-    run: tianduContent,
-  }],
-});
+  c.skills.define({
+    name: '天妒',
+    effects: [{
+      form: 'triggered',
+      timing: 'judge.after',
+      condition: subjectIsOwner,
+      run: tianduContent,
+    }],
+  });
 
-heroRegistry.register({ name: '郭嘉', maxHp: 3, sex: 'male', group: '魏', skills: ['遗计', '天妒'] });
+  c.heroes.register({ name: '郭嘉', maxHp: 3, sex: 'male', group: '魏', skills: ['遗计', '天妒'] });
+}

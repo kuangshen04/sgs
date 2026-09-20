@@ -11,12 +11,12 @@ import { useCard } from '../flow/useCard.js';
 import { playPhase } from '../flow/gameFlow.js';
 import { choosePlayAction } from '../decision/playChoices.js';
 
-import { cardRegistry } from './cardRegistry.js';
 import { CardTag, CardType } from '../types.js';
 import { EventType } from '../events/index.js';
 import type { UsedCardInstance } from '../position/usedCards.js';
 import { verifyCardState } from '../position/cardAreaCheck.js';
 import { cardsInAreas } from '../position/areas.js';
+import { standardRuleSet } from '../test-utils.js';
 
 describe('麒麟弓（装备触发）', () => {
   it('使用杀造成伤害后弃置目标一张坐骑牌', async () => {
@@ -325,7 +325,7 @@ describe('马匹（白板注册）', () => {
     [CardType.DaYuan, CardTag.OffensiveHorse],
     [CardType.ZiXin, CardTag.OffensiveHorse],
   ] as const)('%s 标签为 %s', (type, tag) => {
-    expect(cardRegistry.get(type)?.tags).toContain(tag);
+    expect(standardRuleSet().cards.get(type)?.tags).toContain(tag);
   });
 });
 
