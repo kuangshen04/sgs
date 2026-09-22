@@ -1,7 +1,10 @@
 // ============================================================
-// 三国杀最小原型 — 响应流程
-// 杀→闪、决斗、南蛮的“打出”响应都走同一响应窗口：
-// ResponseRequest(type: 'play') + buildResponseActions + executeResponse。
+// 三国杀最小原型 — 响应流程（窗口的执行侧）
+//
+// 响应窗口的**候选**在决策侧（`decision/responseChoices.ts` + `useWindow.chooseUseAction`），
+// **执行**在这里（`executeResponse`：useCard / playUsedCard / effect.resolve）——
+// 与出牌窗口同构：决策产意图、流程执行（ADR-0010 红线 3）。
+// 杀→闪、决斗、南蛮的"打出"响应都走同一窗口。
 // ============================================================
 
 import { CardType } from '../types.js';
@@ -10,11 +13,71 @@ import type { Game } from '../game.js';
 import { EventType, GameEvent } from '../events/index.js';
 import type { ShaCancelledEventData } from '../events/index.js';
 import { asUsedCard, cardEmoji } from '../rules/cardFace.js';
+import {
+  enterUsedCard, materializeUsedCard, playUsedCard, settleUsedCard,
+} from '../position/usedCardActions.js';
+import { useCard } from './useCard.js';
 import { chooseUseAction } from '../decision/useWindow.js';
-import { buildResponseActions, executeResponse } from '../decision/responses.js';
-import type { ResponseRequest } from '../decision/responses.js';
-import type { ResponseEffect } from '../effects/effects.js';
+import { buildResponseActions } from '../decision/responseChoices.js';
+import type { UseAction } from '../decision/useWindow.js';
+import type { SelectionAnswers } from '../decision/selection.js';
 import { effectRegistry } from '../effects/persistentEffects.js';
+import type {
+  ResponseEffect, ResponseOutcome, ResponseRequest,
+} from '../effects/effects.js';
+
+/**
+ * 执行选中的响应动作（响应窗口的**执行侧**），返回是否成功 / 是否重试。
+ * 决策侧只给"动作 + 答案"（`decision/responseChoices.buildResponseActions` + `chooseUseAction`），
+ * 使用与打出在这里发生——与出牌阶段（`gameFlow.playPhase` 拿 action 去 useCard）同一分工。
+ */
+export async function executeResponse(
+  game: Game,
+  player: Player,
+  request: ResponseRequest,
+  action: UseAction,
+  answers: SelectionAnswers,
+): Promise<ResponseOutcome> {
+  if (action.group === 'real') {
+    const physical = action.data as Card;
+    const uc = materializeUsedCard(game, physical);
+    // 响应关系记录：本次使用/打出响应了哪次生效（无懈/闪据此与"被响应者"挂钩）
+    const responded = request.respondTo;
+    if (responded) {
+      responded.cardsResponded = responded.cardsResponded ?? [];
+      responded.cardsResponded.push(uc);
+    }
+    if (request.type === 'use') {
+      await useCard(game, {
+        player,
+        card: uc,
+        targets: request.target ? [request.target] : [],
+        responseTo: responded,
+      });
+    } else {
+      await playUsedCard(game, player, uc);
+    }
+    return 'done';
+  }
+  if (action.group === 'rule') {
+    const effect = action.data as ResponseEffect;
+    const resolved = await effect.resolve(game, player, request, answers);
+    // 零牌虚拟牌（八卦阵视为闪）：同样按"打出 = UC 进处理区 → 收尾"结算
+    if (resolved === 'done' && effect.virtualCard) {
+      const uc = game.usedCards.create(
+        {
+          type: effect.virtualCard,
+          name: game.ruleSet.cards.get(effect.virtualCard)?.name ?? effect.virtualCard,
+        },
+        [],
+      );
+      await enterUsedCard(game, uc, { kind: 'processing' }, { reason: 'play' });
+      await settleUsedCard(game, uc, 'play');
+    }
+    return resolved;
+  }
+  return 'done'; // decline 由调用方在此之前处理
+}
 
 /**
  * 结算一张杀的闪响应，返回是否被抵消。
