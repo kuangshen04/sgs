@@ -8,7 +8,7 @@ import { freshGame, giveHand } from '../../test-utils.js';
 
 import { computeTargetOptions } from '../../decision/rules.js';
 import { useCard } from '../../flow/useCard.js';
-import { asUsedCard } from '../../rules/cardFace.js';
+import { asUsedCard } from '../../position/usedCards.js';
 
 import { effectRegistry } from '../../effects/persistentEffects.js';
 

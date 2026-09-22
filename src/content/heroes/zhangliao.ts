@@ -3,7 +3,7 @@
 // ============================================================
 
 import { giveCards } from '../../position/cardActions.js';
-import { shuffle } from '../../rules/random.js';
+import { shuffle } from '../../random.js';
 import { askForTargets } from '../../decision/ask.js';
 import type { GameEvent } from '../../events/index.js';
 import type { DrawPhaseEventData } from '../../events/index.js';

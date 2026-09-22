@@ -1,27 +1,20 @@
 // ============================================================
-// 牌面（身份与显示）— 叶子层助手：position / flow / decision / content 共用
+// 牌面显示 —— **临时住处**
 //
-// 这些助手原先住在 `content/cardRegistry.ts`，于是"引擎 import content"里
-// 大部分其实是这一类**引擎件**。搬到叶子层后，引擎侧对 `content/` 的引用只剩
-// 真正的规则依赖（现为 0：内容只通过规则集进入）。
+// 三个助手只做"把规则数据渲染成文本/emoji"，属于**前端/显示关注点**，却被
+// `position`（判定日志）、`flow`（流程日志）、`content`（卡牌日志）各层直接调用；
+// 其中 `cardEmoji` 还要读 `game.ruleSet`（未注册 → ❓）。
+//
+// 想与 `flow/display.ts` 归到一起，但 `position/cardActions.ts` 也用它们 →
+// 会形成 `position → flow` 的反向依赖。这说明**前端需要一个明确的渲染接口**
+// （引擎产出结构化数据、前端渲染，而不是各层直接打印）：见 `docs/TODO.md`
+// 的"前端/显示接口"讨论项。在此之前先留在 `rules/` 这个临时目录里。
+//
+// （`asUsedCard` 已归位到 `position/usedCards.ts`，与 `deriveCardFace` 同处。）
 // ============================================================
 
-import { colorOfSuit } from '../types.js';
-import type { Card, CardType, UsedCard } from '../types.js';
+import type { CardType } from '../types.js';
 import type { Game } from '../game.js';
-
-/** 把物理牌包装成 UsedCard（非转化牌：physicalCards = [card]，身份按实体牌推导）；已是 UsedCard 则原样返回 */
-export function asUsedCard(card: Card | UsedCard): UsedCard {
-  if ('physicalCards' in card) return card;
-  return {
-    type: card.type,
-    name: card.name,
-    suit: card.suit,
-    number: card.number,
-    color: colorOfSuit(card.suit),
-    physicalCards: [card],
-  };
-}
 
 /** 卡牌类型 → emoji（读本局规则集：未注册 → ❓） */
 export function cardEmoji(game: Game, type: CardType): string {

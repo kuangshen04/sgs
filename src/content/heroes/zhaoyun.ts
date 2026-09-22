@@ -2,7 +2,7 @@
 // 赵云 — 龙胆（① 出牌阶段：闪当杀；② 响应方向：闪当杀 / 杀当闪）
 // ============================================================
 
-import { asUsedCard } from '../../rules/cardFace.js';
+import { asUsedCard } from '../../position/usedCards.js';
 import { computeTargetOptions } from '../../decision/rules.js';
 import { handCardsStep, targetsStep, selectedCards, selectedPlayers } from '../../decision/ask.js';
 import { playUsedCard } from '../../position/usedCardActions.js';

@@ -16,7 +16,7 @@ import type { EventStack, GameEvent } from './events/index.js';
 import { createUsedCardStore } from './position/usedCards.js';
 import type { UsedCardHooks, UsedCardStore } from './position/usedCards.js';
 import { installUsedCardHooks } from './position/usedCardActions.js';
-import { shuffle } from './rules/random.js';
+import { shuffle } from './random.js';
 import type { RuleSet } from './rules/ruleSet.js';
 import { gainSkill } from './effects/effects.js';
 import { installEffects } from './effects/skills.js';

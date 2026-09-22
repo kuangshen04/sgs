@@ -35,15 +35,23 @@
 - 选择日志 + RNG 种子化 + **确定性重演**（回放，见 `经验与红线.md` 2.7）。
 - 内置编辑器（依赖全部前置；L0 载体 = 代码生成器还是运行时数据，届时讨论）。
 
-### 收口项（不属于阶段）：ADR-0010 的迁移（b 已落地，剩 a / c）
+### 收口项（不属于阶段）：ADR-0010 的迁移（b / a1 / a2 已落地）
 
-判据已经生效（新代码按它写）。**b 已落地**（见 `adr/0010`）：`decision/` 现为
-`selection`（自足）/ `ask`（不认识规则）/ `rules`（规则可选集）/ 窗口层（只产意图），
-响应窗口的执行段在 `flow/respond.ts` 的 `executeResponse`；`decision → flow` 已归零。
+判据已经生效（新代码按它写）。已落地：**b**（决策层三层 + 响应执行段归 flow）、
+**a1**（`shuffle` → `src/random.ts`）、**a2**（`asUsedCard` → `position/usedCards.ts`）。
 
-- **a 取消 `rules/` 这一层**（下一个做）：`ruleSet.ts`（容器 + 索引）归**装配面**（与 `game.ts`/入口同级）；
-  `cardDef.ts` 归卡牌规则查询簇；`cardFace.ts` 拆散（`asUsedCard`→UC 簇、
-  显示件→显示簇（带 game）、`shuffle`→随机源，将来由 rng 服务换掉）。
+剩下两项**不是搬家，是边界设计**，按顺序讨论后再动：
+
+- **a4 卡牌簇（先议）**：`CardDef` 的消费方跨 `decision`（规则可选集）/`flow`（用牌、距离/攻击范围）/
+  `content`（写定义）三簇——**卡牌是真实存在的簇**，要先定它包含什么（契约 + 卡牌定义索引？
+  + 距离/攻击范围？+ 用牌流程？）以及它与 UC 簇、装备槽的关系。
+  结论落地后：`rules/cardDef.ts` 与 `rules/ruleSet.ts`（容器/索引）按簇归位，`rules/` 目录消失。
+- **a3 前端/显示接口（后议）**：`cardEmoji`/`cardFaceText`/`displayNumber` 是显示关注点，
+  却要读 `game.ruleSet` 且被 `position`/`flow`/`content` 各层直接调用（与 `flow/display.ts`
+  合并会形成 `position → flow` 反向依赖）。这说明**前端需要一个明确的渲染接口**：
+  引擎产出结构化数据（事件/状态/日志记录），前端负责渲染，而不是各层直接 `console.log` + emoji。
+  现在它们暂留 `src/rules/cardFace.ts`（文件头已注明原因）。
+
 - **c `types.ts` 瘦身 + 事件字典标注**：`types.ts` 收缩成"底座"（标识 + 位置描述 + 枚举），
   其余词汇回各簇；`events/types.ts` 明确标注为**横切字典**（机制不得引用它）。
   择机：宽而机械、行为零收益，等阶段 5 重划模块边界时一起动。
@@ -113,7 +121,7 @@
 - **`CardType` 是闭合枚举**（`src/types.ts`）：测试内容只能借现有槽位承载自己的定义，
   内容包要**新增**卡牌身份（军争的属性杀/酒/铁索等）必须先扩展 CardType——
   阶段 4 第一件事就是定这个（扩枚举 or 改字符串键）。
-- **`shuffle` 仍是 `Math.random()`**：rng service 的注入点在 `src/rules/random.ts`（阶段 5/6 接）。
+- **`shuffle` 仍是 `Math.random()`**：rng service 的注入点在 `src/random.ts`（阶段 5/6 接）。
 - **i18n**：单语先行；真有需求时参考 FreeKill 的按包翻译表。
 - **L0 / 内置编辑器载体**（代码生成器 vs 运行时数据）：做编辑器时定。
 - 内容包与前端 UI 的边界（FreeKill `customPages` 让内容耦合前端的反面）：前端架构讨论时定。

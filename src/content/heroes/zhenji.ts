@@ -4,7 +4,8 @@
 
 import { judge, takeFromDiscard } from '../../position/cardActions.js';
 import { playUsedCard } from '../../position/usedCardActions.js';
-import { cardEmoji, displayNumber, asUsedCard } from '../../rules/cardFace.js';
+import { asUsedCard } from '../../position/usedCards.js';
+import { cardEmoji, displayNumber } from '../../rules/cardFace.js';
 import { askYesNo, handCardsStep, selectedCards } from '../../decision/ask.js';
 import { subjectIsOwner } from '../../effects/skills.js';
 import type { GameEvent } from '../../events/index.js';

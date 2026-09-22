@@ -12,7 +12,7 @@
 import type { Card, CardLocation, CardMoveReason, CardType, Player, UsedCard } from '../types.js';
 import type { Game } from '../game.js';
 import { CardTag } from '../types.js';
-import { asUsedCard } from '../rules/cardFace.js';
+import { asUsedCard } from './usedCards.js';
 import { movePhysical, sameCardLocation } from './move.js';
 import { moveCards } from './cardActions.js';
 import { EQUIP_SLOTS, physicalLocationOf } from './usedCards.js';

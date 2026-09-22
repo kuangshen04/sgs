@@ -20,10 +20,12 @@
 ## 东西在哪找
 
 - **代码**：`src/`（TypeScript ESM，相对导入带 `.js` 后缀）；按角色分目录：
-  `rules/`（**临时**住处：容器/契约/牌面助手，归位见 `docs/adr/0010` 迁移项 a）· `events/`（事件）·
-  `position/`（位置与移动）· `effects/`（效果与技能）· `decision/`（选择与窗口）· `flow/`（流程与结算）·
-  `content/`（卡牌/武将/牌堆与**显式装配**）；
-  根目录只留 `index.ts` / `game.ts` / `types.ts` / `test-utils.ts`。**导览见 `docs/代码结构.md`**
+  `events/`（事件）· `position/`（位置与移动 + UC）· `effects/`（效果与技能）· `decision/`（决策与窗口）·
+  `flow/`（流程与结算）· `content/`（卡牌/武将/牌堆与**显式装配**）；
+  根目录：`index.ts`（入口）/ `game.ts`（一局）/ `types.ts`（命名表）/ `random.ts`（随机源）/
+  `test-utils.ts`（测试辅助）；`rules/` 是**临时**住处（卡牌契约 / 显示三件 / 容器，
+  待"卡牌簇"与"前端接口"两次讨论后归位，见 `docs/adr/0010` 迁移项 a3/a4）。
+  **导览见 `docs/代码结构.md`**
 - **分层与依赖方向**：`docs/adr/0010`——接口随模块走（没有通用契约层）；`types.ts` 与
   `events/types.ts` 是**命名表**、机制不得依赖事件字典；**决策不得执行**；依赖边 = 接口边。
   改模块边界前先读它

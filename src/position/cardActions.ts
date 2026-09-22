@@ -14,7 +14,7 @@
 import { Card, Player } from '../types.js';
 import type { CardLocation, CardMoveReason } from '../types.js';
 import { cardEmoji, displayNumber } from '../rules/cardFace.js';
-import { shuffle } from '../rules/random.js';
+import { shuffle } from '../random.js';
 import { EventType, GameEvent } from '../events/index.js';
 import type { DrawEventData, JudgeEventData } from '../events/index.js';
 import { movePhysical } from './move.js';

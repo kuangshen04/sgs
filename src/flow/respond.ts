@@ -12,7 +12,8 @@ import type { Card, Player, UsedCard } from '../types.js';
 import type { Game } from '../game.js';
 import { EventType, GameEvent } from '../events/index.js';
 import type { ShaCancelledEventData } from '../events/index.js';
-import { asUsedCard, cardEmoji } from '../rules/cardFace.js';
+import { asUsedCard } from '../position/usedCards.js';
+import { cardEmoji } from '../rules/cardFace.js';
 import {
   enterUsedCard, materializeUsedCard, playUsedCard, settleUsedCard,
 } from '../position/usedCardActions.js';

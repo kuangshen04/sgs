@@ -1,13 +1,13 @@
 // ============================================================
-// 随机源：洗牌（当前 = Math.random，注入点见 rules/random.ts 头注释）
+// 随机源：洗牌（当前 = Math.random，注入点见 random.ts 头注释）
 // ============================================================
 
 import { describe, it, expect } from 'vitest';
 
 import { shuffle } from './random.js';
-import { makeCard } from '../test-utils.js';
-import { CardType } from '../types.js';
-import type { Card } from '../types.js';
+import { makeCard } from './test-utils.js';
+import { CardType } from './types.js';
+import type { Card } from './types.js';
 
 function cards(...ids: number[]): Card[] {
   return ids.map((id) => makeCard(id, CardType.Sha));

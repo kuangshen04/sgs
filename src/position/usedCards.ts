@@ -69,6 +69,23 @@ export function deriveCardFace(as: CardShape, physicalCards: Card[]): CardFace {
   return { suit: suit ?? null, number: number ?? null, color: color ?? null };
 }
 
+/**
+ * 把物理牌包装成 UsedCard 描述符（**非转化牌**：`physicalCards = [card]`，身份按实体牌推导）；
+ * 已是描述符（`physicalCards` 字段存在）则原样返回。
+ * 与 `deriveCardFace` 是一件事的两半：这里给"未转化"的身份，create 时按它推导。
+ */
+export function asUsedCard(card: Card | UsedCard): UsedCard {
+  if ('physicalCards' in card) return card;
+  return {
+    type: card.type,
+    name: card.name,
+    suit: card.suit,
+    number: card.number,
+    color: colorOfSuit(card.suit),
+    physicalCards: [card],
+  };
+}
+
 /** 需要 UC 承载的容器（装备槽 / 判定区）—— 公开 moveCards 对这些终点硬报错 */
 export type UsedCardZoneLocation =
   | { kind: 'equipment'; player: Player; slot: EquipSlot }

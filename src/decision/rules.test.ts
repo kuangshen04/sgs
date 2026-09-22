@@ -8,7 +8,7 @@ import { describe, it, expect } from 'vitest';
 
 import { freshGame, giveHand, makeUniqueCard, equipAt } from '../test-utils.js';
 
-import { asUsedCard } from '../rules/cardFace.js';
+import { asUsedCard } from '../position/usedCards.js';
 
 import {
   computeCardOptions,
