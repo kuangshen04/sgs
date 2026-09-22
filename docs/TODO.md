@@ -35,16 +35,13 @@
 - 选择日志 + RNG 种子化 + **确定性重演**（回放，见 `经验与红线.md` 2.7）。
 - 内置编辑器（依赖全部前置；L0 载体 = 代码生成器还是运行时数据，届时讨论）。
 
-### 收口项（不属于阶段）：ADR-0010 的三处迁移
+### 收口项（不属于阶段）：ADR-0010 的迁移（b 已落地，剩 a / c）
 
-判据已经生效（新代码按它写），三处目录/边界归位**还没做**；顺序 = b → a → c。
+判据已经生效（新代码按它写）。**b 已落地**（见 `adr/0010`）：`decision/` 现为
+`selection`（自足）/ `ask`（不认识规则）/ `rules`（规则可选集）/ 窗口层（只产意图），
+响应窗口的执行段在 `flow/respond.ts` 的 `executeResponse`；`decision → flow` 已归零。
 
-- **b（先做）决策层拆分**：`decision/` 拆成 `select`（选项/步骤/会话/答案，自足）/
-  `ask`（询问原语 + AI 注入点）/ `rules`（规则可选集、动作候选、选择计划）；
-  并把 `responses.ts` 里的执行段（`useCard` / `playUsedCard`）归 `flow` 侧，
-  消灭当前**唯一越界边** `decision → flow`（`decision/responses.ts:13`）。
-  做它的理由：既是前端真人决策（阶段 6）的前置，也是验证 ADR-0010 分层是否成立的第一处。
-- **a 取消 `rules/` 这一层**：`ruleSet.ts`（容器 + 索引）归**装配面**（与 `game.ts`/入口同级）；
+- **a 取消 `rules/` 这一层**（下一个做）：`ruleSet.ts`（容器 + 索引）归**装配面**（与 `game.ts`/入口同级）；
   `cardDef.ts` 归卡牌规则查询簇；`cardFace.ts` 拆散（`asUsedCard`→UC 簇、
   显示件→显示簇（带 game）、`shuffle`→随机源，将来由 rng 服务换掉）。
 - **c `types.ts` 瘦身 + 事件字典标注**：`types.ts` 收缩成"底座"（标识 + 位置描述 + 枚举），

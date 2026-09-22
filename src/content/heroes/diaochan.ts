@@ -9,7 +9,7 @@ import { equipmentCards } from '../../position/areas.js';
 import { effectRegistry } from '../../effects/persistentEffects.js';
 import {
   cardsStep, selectedCards, selectedPlayers, targetsStep,
-} from '../../decision/choose.js';
+} from '../../decision/ask.js';
 import { drawCards } from '../../position/cardActions.js';
 import { subjectIsOwner } from '../../effects/skills.js';
 import type { ActivatedEffect } from '../../effects/effects.js';

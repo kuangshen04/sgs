@@ -5,7 +5,7 @@
 import { judge, takeFromDiscard } from '../../position/cardActions.js';
 import { playUsedCard } from '../../position/usedCardActions.js';
 import { cardEmoji, displayNumber, asUsedCard } from '../../rules/cardFace.js';
-import { askYesNo, handCardsStep, selectedCards } from '../../decision/choose.js';
+import { askYesNo, handCardsStep, selectedCards } from '../../decision/ask.js';
 import { subjectIsOwner } from '../../effects/skills.js';
 import type { GameEvent } from '../../events/index.js';
 import type { Game } from '../../game.js';

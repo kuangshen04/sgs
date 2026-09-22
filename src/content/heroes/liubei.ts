@@ -6,8 +6,9 @@ import { giveCards } from '../../position/cardActions.js';
 import { useCard } from '../../flow/useCard.js';
 import { recover } from '../../flow/life.js';
 import {
-  cardsStep, handCardsStep, targetsStep, computeTargetOptions, selectedCards, selectedPlayers,
-} from '../../decision/choose.js';
+  cardsStep, handCardsStep, targetsStep, selectedCards, selectedPlayers,
+} from '../../decision/ask.js';
+import { computeTargetOptions } from '../../decision/rules.js';
 import { resolvePlayResponse } from '../../flow/respond.js';
 import type { Game } from '../../game.js';
 import { CardType } from '../../types.js';

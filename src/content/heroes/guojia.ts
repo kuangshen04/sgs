@@ -4,7 +4,7 @@
 
 import { takeFromProcessing, takeTop, moveCards } from '../../position/cardActions.js';
 import { cardEmoji, displayNumber } from '../../rules/cardFace.js';
-import { targetsStep, selectedPlayers } from '../../decision/choose.js';
+import { targetsStep, selectedPlayers } from '../../decision/ask.js';
 import { runSelection } from '../../decision/selection.js';
 import type { SelectionPlan } from '../../decision/selection.js';
 import { subjectIsOwner } from '../../effects/skills.js';

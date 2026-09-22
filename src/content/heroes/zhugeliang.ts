@@ -3,7 +3,7 @@
 // ============================================================
 
 import { takeTop, putTop, putBottom } from '../../position/cardActions.js';
-import { cardsStep, selectedCards } from '../../decision/choose.js';
+import { cardsStep, selectedCards } from '../../decision/ask.js';
 import { runSelection } from '../../decision/selection.js';
 import type { SelectionPlan } from '../../decision/selection.js';
 import { subjectIsOwner } from '../../effects/skills.js';

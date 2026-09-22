@@ -4,7 +4,8 @@
 // ============================================================
 
 import { asUsedCard } from '../../rules/cardFace.js';
-import { handCardsStep, targetsStep, computeTargetOptions, selectedCards, selectedPlayers } from '../../decision/choose.js';
+import { computeTargetOptions } from '../../decision/rules.js';
+import { handCardsStep, targetsStep, selectedCards, selectedPlayers } from '../../decision/ask.js';
 import { playUsedCard } from '../../position/usedCardActions.js';
 import { CardType } from '../../types.js';
 import type { Card, UsedCard } from '../../types.js';

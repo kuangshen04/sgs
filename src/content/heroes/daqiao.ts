@@ -4,9 +4,10 @@
 
 import { discardCards } from '../../position/cardActions.js';
 import {
-  askFromAreas, askForTargets, computeTargetOptions, handCardsStep, selectedCards,
+  askFromAreas, askForTargets, handCardsStep, selectedCards,
   selectedPlayers, targetsStep,
-} from '../../decision/choose.js';
+} from '../../decision/ask.js';
+import { computeTargetOptions } from '../../decision/rules.js';
 import type { GameEvent } from '../../events/index.js';
 import type { TargetingEventData } from '../../events/index.js';
 import { distanceTo, attackRange } from '../../flow/distance.js';

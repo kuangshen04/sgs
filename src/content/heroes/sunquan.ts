@@ -3,7 +3,7 @@
 // ============================================================
 
 import { moveCards, drawCards } from '../../position/cardActions.js';
-import { cardsStep, selectedCards } from '../../decision/choose.js';
+import { cardsStep, selectedCards } from '../../decision/ask.js';
 import { equipmentCards } from '../../position/areas.js';
 import { recover } from '../../flow/life.js';
 import { CardType } from '../../types.js';

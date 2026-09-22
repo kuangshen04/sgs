@@ -7,8 +7,8 @@
 import { describe, it, expect, vi } from 'vitest';
 
 // 默认走真实实现，个别用例用 mockResolvedValueOnce 覆盖（"选择放弃"）
-vi.mock('../decision/choose.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../decision/choose.js')>();
+vi.mock('../decision/ask.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../decision/ask.js')>();
   return { ...actual, askOption: vi.fn(actual.askOption) };
 });
 
@@ -16,7 +16,7 @@ import { standardGame } from '../test-utils.js';
 import { GameEvent } from '../events/index.js';
 import type { Game } from '../game.js';
 import { defineSkill } from './effects.js';
-import { askOption } from '../decision/choose.js';
+import { askOption } from '../decision/ask.js';
 
 const order: string[] = [];
 let flag = false;

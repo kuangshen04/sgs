@@ -7,7 +7,7 @@
 // 本模块 = 效果词汇（五种形态的类型）+ 技能定义构造 + 局内技能实例；
 // **不含**注册面与查询面（定义层的存放/查询在 `rules/ruleSet.ts` 的容器与规则集里，
 // 即 `game.ruleSet.skills`），也不含分发（分发在 skills.ts 的 installEffects）
-// 与窗口接线（响应/转化由 responses.ts / playChoices.ts 查询）。
+// 与窗口接线（响应/转化由 responseChoices.ts / playChoices.ts 查询）。
 // 五种形态保留各自调用协议，但共享同一份"归属"信息（skill / equipType）。
 // ============================================================
 

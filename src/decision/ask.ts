@@ -1,16 +1,20 @@
 // ============================================================
-// 三国杀最小原型 — 决策层
+// 决策层 · 询问原语（"怎么问"）
 //
-// 规则层（可选集/目标）+ 选择步骤工厂 + 选择原语（异步 ask 包装）。
-// 所有决策均为"规则算可选集 → AI 决策"，AI 决策点是函数内唯一决策处；
-// 真人/前端接入时在此注入。ask 只做决策不执行牌，打出/使用由调用方负责。
+// 三层，自上而下：
+//   ③ ask 通用封装：一次单步会话（askForCard / askFromAreas / askFromCards /
+//      askForTargets / askYesNo / askOption）
+//   ② 答案解码：从确认结果里取实体牌 / 目标玩家（selectedCards / selectedPlayers）
+//   ① 选择步骤工厂：产出注入 `selection` 框架的 SelectionStep（AI 默认作答随工厂注入）
+//
+// **不认识规则**：不读 `canUse`/`targetFilter`/规则集；候选由调用方给，
+// 或按类型/区域取（那是状态读取，不是规则判定）。规则可选集在 `rules.ts`。
+// **不执行任何动作**：ask 只产出答案（ADR-0010 红线 3/4）。
+// AI 决策点（真人/前端接入时在此注入）：即各处 `ai` 默认作答与 ask 的默认值。
 // ============================================================
 
-import type { Card, Player, UsedCard } from '../types.js';
-import { CardTag, CardType } from '../types.js';
-import { asUsedCard } from '../rules/cardFace.js';
-import type { CardDef } from '../rules/cardDef.js';
-import { canPlaceDelayOn } from '../position/usedCardActions.js';
+import type { Card, Player } from '../types.js';
+import type { CardType } from '../types.js';
 import type { Game } from '../game.js';
 import type { AreaName } from '../position/areas.js';
 import { equipmentCards } from '../position/areas.js';
@@ -24,55 +28,7 @@ import type {
 } from './selection.js';
 
 // ============================================================
-// 规则层 — 可选集计算（不含 AI 判断）
-// ============================================================
-
-/** 一张可选的卡牌 */
-export interface CardOption {
-  card: Card;
-  def: CardDef;
-}
-
-/** 一个可选的目标玩家 */
-export interface TargetOption {
-  player: Player;
-  index: number; // game.state.players 中的索引
-}
-
-/** 计算可用牌（规则：canUse；AI 的 shouldUse/优先级在出牌选择流程内） */
-export function computeCardOptions(
-  game: Game,
-  player: Player,
-  shaUsed: boolean,
-): CardOption[] {
-  const allPlayers = game.state.players;
-  return player.hand.cards
-    .map((card) => ({ card, def: game.ruleSet.cards.get(card.type) }))
-    .filter(({ def }) => def && def.canUse(game, player, allPlayers, shaUsed))
-    .map(({ card, def }) => ({ card, def: def! }));
-}
-
-/**
- * 计算某张效果牌（可能是虚拟牌）的合法目标（规则：targetFilter + 距离/免疫等）。
- * 延时锦囊另加一条通用限制：目标必须**可以放置该延时牌**（判定区同名 UC 只能存在 1 张；
- * 读规则读 UC，见adr/0003）。
- */
-export function computeTargetOptions(
-  game: Game,
-  card: UsedCard,
-  player: Player,
-): TargetOption[] {
-  const def = game.ruleSet.cards.get(card.type);
-  if (!def) return [];
-  let targets = def.targetFilter(game, player, game.state.players);
-  if (def.tags.includes(CardTag.Delay)) {
-    targets = targets.filter((t) => canPlaceDelayOn(game, card, t));
-  }
-  return targets.map((t) => ({ player: t, index: game.state.players.indexOf(t) }));
-}
-
-// ============================================================
-// 选择步骤工厂
+// ① 选择步骤工厂
 // 旧的"选牌/选目标/布尔/选项/动作"语义收敛到这些工厂里，
 // 产出统一的 SelectionStep；AI 默认行为也跟随工厂注入。
 // ============================================================
@@ -217,7 +173,7 @@ export function actionStep(
 }
 
 // ============================================================
-// 答案解码
+// ② 答案解码
 // ============================================================
 
 /** 从确认结果中解码某一步选中的实体卡牌 */
@@ -235,7 +191,7 @@ export function selectedPlayers(answers: SelectionAnswers, stepId: string): Play
 }
 
 // ============================================================
-// 选择原语（异步 ask 包装，基于 SelectionSession）
+// ③ ask 通用封装（单步会话，异步）
 // ============================================================
 
 /** 只跑一个选择步骤的会话，返回所选选项；无法回答返回 null */

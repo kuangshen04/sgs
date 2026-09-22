@@ -1,5 +1,5 @@
 // ============================================================
-// 三国杀最小原型 — choose.ts 单元测试
+// 三国杀最小原型 — rules.ts 单元测试（规则可选集）
 // 规则层可选集（computeCardOptions / computeTargetOptions）、
 // 出牌选择（chooseCardAndTargets 默认 AI）
 // ============================================================
@@ -13,7 +13,7 @@ import { asUsedCard } from '../rules/cardFace.js';
 import {
   computeCardOptions,
   computeTargetOptions,
-} from './choose.js';
+} from './rules.js';
 
 import { CardType } from '../types.js';
 import { standardRuleSet } from '../test-utils.js';

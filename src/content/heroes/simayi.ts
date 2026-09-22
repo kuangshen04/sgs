@@ -4,7 +4,7 @@
 
 import { moveCards } from '../../position/cardActions.js';
 import { cardEmoji, displayNumber } from '../../rules/cardFace.js';
-import { askForCard, askFromAreas } from '../../decision/choose.js';
+import { askForCard, askFromAreas } from '../../decision/ask.js';
 import { subjectIsOwner } from '../../effects/skills.js';
 import type { GameEvent } from '../../events/index.js';
 import type { DamageEventData, JudgeEventData } from '../../events/index.js';

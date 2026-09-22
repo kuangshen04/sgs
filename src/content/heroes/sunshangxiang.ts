@@ -4,7 +4,7 @@
 
 import { discardCards, drawCards } from '../../position/cardActions.js';
 import { recover } from '../../flow/life.js';
-import { handCardsStep, targetsStep, selectedCards, selectedPlayers } from '../../decision/choose.js';
+import { handCardsStep, targetsStep, selectedCards, selectedPlayers } from '../../decision/ask.js';
 import type { CardMoveEventData, GameEvent } from '../../events/index.js';
 import type { Game } from '../../game.js';
 import type { Player } from '../../types.js';

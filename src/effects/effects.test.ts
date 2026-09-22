@@ -10,8 +10,8 @@
 import { describe, it, expect, vi } from 'vitest';
 
 // askYesNo 打桩：只替换询问函数，其余导出原样保留（其他模块照常工作）
-vi.mock('../decision/choose.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../decision/choose.js')>();
+vi.mock('../decision/ask.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../decision/ask.js')>();
   return { ...actual, askYesNo: vi.fn(async () => true) };
 });
 
@@ -21,7 +21,7 @@ import type { Game } from '../game.js';
 import { GameEvent } from '../events/index.js';
 import { defineSkill } from './effects.js';
 import type { TriggeredEffect } from './effects.js';
-import { askYesNo } from '../decision/choose.js';
+import { askYesNo } from '../decision/ask.js';
 
 const asked: string[] = [];
 

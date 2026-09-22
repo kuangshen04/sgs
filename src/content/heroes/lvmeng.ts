@@ -2,7 +2,7 @@
 // 吕蒙 — 克己（本回合未使用杀，可跳过弃牌阶段）
 // ============================================================
 
-import { askYesNo } from '../../decision/choose.js';
+import { askYesNo } from '../../decision/ask.js';
 import { subjectIsOwner } from '../../effects/skills.js';
 import { findEventSince } from '../../events/index.js';
 import type { UseCardEventData } from '../../events/index.js';

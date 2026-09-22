@@ -4,7 +4,7 @@
 
 import { giveCards } from '../../position/cardActions.js';
 import { shuffle } from '../../rules/random.js';
-import { askForTargets } from '../../decision/choose.js';
+import { askForTargets } from '../../decision/ask.js';
 import type { GameEvent } from '../../events/index.js';
 import type { DrawPhaseEventData } from '../../events/index.js';
 import type { Game } from '../../game.js';

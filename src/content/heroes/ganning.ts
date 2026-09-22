@@ -2,7 +2,8 @@
 // 甘宁 — 奇袭（黑色牌当过河拆桥）
 // ============================================================
 
-import { handCardsStep, targetsStep, computeTargetOptions, selectedCards, selectedPlayers } from '../../decision/choose.js';
+import { computeTargetOptions } from '../../decision/rules.js';
+import { handCardsStep, targetsStep, selectedCards, selectedPlayers } from '../../decision/ask.js';
 import { CardType } from '../../types.js';
 import type { Card, UsedCard } from '../../types.js';
 import type { Container } from '../../rules/ruleSet.js';

@@ -24,10 +24,10 @@ import {
   askYesNo,
   handCardsStep,
   targetsStep,
-  computeTargetOptions,
   selectedCards,
   selectedPlayers,
-} from '../../decision/choose.js';
+} from '../../decision/ask.js';
+import { computeTargetOptions } from '../../decision/rules.js';
 import { disableUsedCard, restoreUsedCard } from '../../position/usedCardActions.js';
 import type { UsedCardInstance } from '../../position/usedCards.js';
 import { damage } from '../../flow/life.js';

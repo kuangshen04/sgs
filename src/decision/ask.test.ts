@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 
 import { freshGame, giveHand, makeUniqueCard, equipAt } from '../test-utils.js';
 
-import { askForCard, askFromAreas, askForTargets, askYesNo } from './choose.js';
+import { askForCard, askFromAreas, askForTargets, askYesNo } from './ask.js';
 
 import { CardType } from '../types.js';
 

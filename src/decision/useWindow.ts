@@ -9,7 +9,7 @@
 
 import type { Game } from '../game.js';
 import type { Player } from '../types.js';
-import { actionStep } from './choose.js';
+import { actionStep } from './ask.js';
 import { runSelection } from './selection.js';
 import type { SelectionAnswers, SelectionPlan } from './selection.js';
 

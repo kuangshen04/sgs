@@ -12,9 +12,9 @@ import type { Game } from '../game.js';
 import {
   computeCardOptions,
   computeTargetOptions,
-  targetsStep,
-} from './choose.js';
-import type { CardOption } from './choose.js';
+} from './rules.js';
+import type { CardOption } from './rules.js';
+import { targetsStep } from './ask.js';
 import { asUsedCard } from '../rules/cardFace.js';
 import { collectConversionEffects } from '../effects/conversions.js';
 import { collectActiveEffects } from '../effects/skills.js';

@@ -4,7 +4,7 @@
 
 import { drawCards, giveCards } from '../../position/cardActions.js';
 import { damage } from '../../flow/life.js';
-import { handCardsStep, targetsStep, selectedCards, selectedPlayers, askOption } from '../../decision/choose.js';
+import { handCardsStep, targetsStep, selectedCards, selectedPlayers, askOption } from '../../decision/ask.js';
 import { subjectIsOwner } from '../../effects/skills.js';
 import type { GameEvent } from '../../events/index.js';
 import type { DrawPhaseEventData } from '../../events/index.js';

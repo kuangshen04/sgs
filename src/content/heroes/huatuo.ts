@@ -5,7 +5,7 @@
 import { discardCards } from '../../position/cardActions.js';
 import { useCard } from '../../flow/useCard.js';
 import { recover } from '../../flow/life.js';
-import { handCardsStep, targetsStep, selectedCards, selectedPlayers } from '../../decision/choose.js';
+import { handCardsStep, targetsStep, selectedCards, selectedPlayers } from '../../decision/ask.js';
 import { CardType } from '../../types.js';
 import type { Game } from '../../game.js';
 import type { Player } from '../../types.js';

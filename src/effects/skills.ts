@@ -11,7 +11,7 @@
 import type { Player } from '../types.js';
 import type { Game } from '../game.js';
 import type { GameEvent } from '../events/index.js';
-import { askOption, askYesNo } from '../decision/choose.js';
+import { askOption, askYesNo } from '../decision/ask.js';
 import { effectLordGate, effectOwnedBy } from './effects.js';
 import type { ActiveContext, ActivatedEffect, TriggeredEffect } from './effects.js';
 

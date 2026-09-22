@@ -11,7 +11,7 @@ import { useCard } from '../../flow/useCard.js';
 import { damage, recover } from '../../flow/life.js';
 import { distanceTo, attackRange } from '../../flow/distance.js';
 import { hasCardsInAreas } from '../../position/areas.js';
-import { askForCard, askFromAreas, askFromCards, askForTargets, askOption } from '../../decision/choose.js';
+import { askForCard, askFromAreas, askFromCards, askForTargets, askOption } from '../../decision/ask.js';
 import type { CardEffectEventData, TargetingEventData } from '../../events/index.js';
 import { EventType } from '../../events/index.js';
 import { effectRegistry } from '../../effects/persistentEffects.js';
