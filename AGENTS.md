@@ -20,9 +20,13 @@
 ## 东西在哪找
 
 - **代码**：`src/`（TypeScript ESM，相对导入带 `.js` 后缀）；按角色分目录：
-  `rules/`（规则集与叶子层助手）· `events/`（事件）· `position/`（位置与移动）· `effects/`（效果与技能）·
-  `decision/`（选择与窗口）· `flow/`（流程与结算）· `content/`（卡牌/武将/牌堆与**显式装配**）；
+  `rules/`（**临时**住处：容器/契约/牌面助手，归位见 `docs/adr/0010` 迁移项 a）· `events/`（事件）·
+  `position/`（位置与移动）· `effects/`（效果与技能）· `decision/`（选择与窗口）· `flow/`（流程与结算）·
+  `content/`（卡牌/武将/牌堆与**显式装配**）；
   根目录只留 `index.ts` / `game.ts` / `types.ts` / `test-utils.ts`。**导览见 `docs/代码结构.md`**
+- **分层与依赖方向**：`docs/adr/0010`——接口随模块走（没有通用契约层）；`types.ts` 与
+  `events/types.ts` 是**命名表**、机制不得依赖事件字典；**决策不得执行**；依赖边 = 接口边。
+  改模块边界前先读它
 - **内容装配**：`content/standardPack.ts` → `installStandardPack` / `createStandardContainer`；
   注册只在装配期（容器），运行期只经 `game.ruleSet`——没有 import 副作用、没有隐式默认装配
   （`createGame` 的 `ruleSet` 必填）
