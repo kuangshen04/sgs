@@ -42,10 +42,13 @@
 
 剩下两项**不是搬家，是边界设计**，按顺序讨论后再动：
 
-- **a4 卡牌簇（先议）**：`CardDef` 的消费方跨 `decision`（规则可选集）/`flow`（用牌、距离/攻击范围）/
-  `content`（写定义）三簇——**卡牌是真实存在的簇**，要先定它包含什么（契约 + 卡牌定义索引？
-  + 距离/攻击范围？+ 用牌流程？）以及它与 UC 簇、装备槽的关系。
-  结论落地后：`rules/cardDef.ts` 与 `rules/ruleSet.ts`（容器/索引）按簇归位，`rules/` 目录消失。
+- **a4 UC 规则簇（已定语义边界，待落地）**：ADR-0003 已明确 `CardDef` 不是实体牌定义，而是
+  **UC 的构造蓝图与规则定义**；实体牌只提供牌面数据、位置、实体材料与“正常使用时默认构造成哪种 UC”。
+  按此边界收口：① UC 构造、规则定义/索引、合法性查询与用牌流程归位；② `decision/rules.ts` 中纯规则
+  查询移出 decision；③ UC 构造完成后再做合法性与执行，避免调用方绕过统一入口直接查 `targetFilter`；
+  ④ position/UC 底层不再通过 `CardDef.tags` 决定装备槽，由 UC 规则侧解析后把明确槽位交给位置原语。
+  尚待本项继续确定：距离/攻击范围是独立规则能力还是并入 UC 规则簇，以及最终目录与命名。
+  落地后：`rules/cardDef.ts` 与 `rules/ruleSet.ts`（容器/索引）按所有权拆分归位，`rules/` 目录消失。
 - **a3 前端/显示接口（后议）**：`cardEmoji`/`cardFaceText`/`displayNumber` 是显示关注点，
   却要读 `game.ruleSet` 且被 `position`/`flow`/`content` 各层直接调用（与 `flow/display.ts`
   合并会形成 `position → flow` 反向依赖）。这说明**前端需要一个明确的渲染接口**：

@@ -10,7 +10,7 @@
 |---|---|---|---|
 | [ADR-0001](0001-事件系统.md) | 事件系统：生命周期 / 栈 / 历史 / 因果 / 收尾 | 已落地 | `src/events/` |
 | [ADR-0002](0002-位置与移动.md) | 位置与移动：CardArea / 集中索引 / 移动原语 / 对账 | 已落地 | `src/position/` |
-| [ADR-0003](0003-UsedCard系统.md) | UsedCard（UC）系统：两层边界 / 身份 / 容器 / 生灭 | 已落地 | `src/position/usedCards.ts`、`usedCardActions.ts` |
+| [ADR-0003](0003-UsedCard系统.md) | UsedCard（UC）系统：两层边界 / 身份 / 规则定义 / 容器 / 生灭 | 已落地（a4 边界迁移待做） | `src/position/usedCards.ts`、`usedCardActions.ts`、`src/rules/cardDef.ts` |
 | [ADR-0004](0004-技能与效果系统.md) | 技能与效果：五形态 / 注册面 / 局内实例 / 归属与失效 | 已落地 | `src/effects/` |
 | [ADR-0005](0005-触发分发与排序.md) | 触发分发与排序：座次主排序 / 强制先行 / 同角色选择 | 已落地 | `src/effects/skills.ts` |
 | [ADR-0006](0006-用牌流程.md) | 用牌流程：目标阶段 + 单目标生效事件 | 已落地 | `src/flow/useCard.ts` |
