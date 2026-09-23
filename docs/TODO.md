@@ -47,7 +47,14 @@
   按此边界收口：① UC 构造、规则定义/索引、合法性查询与用牌流程归位；② `decision/rules.ts` 中纯规则
   查询移出 decision；③ UC 构造完成后再做合法性与执行，避免调用方绕过统一入口直接查 `targetFilter`；
   ④ position/UC 底层不再通过 `CardDef.tags` 决定装备槽，由 UC 规则侧解析后把明确槽位交给位置原语。
-  尚待本项继续确定：距离/攻击范围是独立规则能力还是并入 UC 规则簇，以及最终目录与命名。
+  已定构造边界：保留现有 `UsedCard` 作为无副作用的“已构造、未提交 UC”（不另增 `UsedCardSpec`）；
+  确认执行后才 materialize 为 `UsedCardInstance`、分配 id/序号，候选计算与回退不得产生局内实例。
+  已定合法性边界：`CardDef.canUse/targetFilter` 是定义侧局部钩子；新增 `canUseCard` / `legalTargets` /
+  `validateCardUse` 作为完整规则入口，decision/flow/技能/内容不得绕过。迁移时消除【杀】等 `canUse`
+  对目标存在性的重复扫描，并让普通牌、转化牌、虚拟牌共享同一校验路径；执行前必须最终复核。
+  Range 边界已由 ADR-0011 定下：距离/攻击范围独立成 `src/range/`，武器、马匹、马术统一注册
+  PersistentEffect；删除 `CardDef.range`，UC core/定义协议/通用合法性不依赖 Range。
+  尚待本项继续确定：UC 规则簇最终目录与命名。
   落地后：`rules/cardDef.ts` 与 `rules/ruleSet.ts`（容器/索引）按所有权拆分归位，`rules/` 目录消失。
 - **a3 前端/显示接口（后议）**：`cardEmoji`/`cardFaceText`/`displayNumber` 是显示关注点，
   却要读 `game.ruleSet` 且被 `position`/`flow`/`content` 各层直接调用（与 `flow/display.ts`
