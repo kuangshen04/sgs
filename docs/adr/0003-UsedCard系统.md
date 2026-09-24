@@ -28,24 +28,25 @@
 | 对象 | 拥有什么 | 不拥有什么 |
 |---|---|---|
 | 实体牌 `Card` | 实体 id、花色、点数、位置；正常使用时的**默认 UC 身份映射** | `canUse` / 目标规则 / 结算内容等执行语义 |
-| UC 规则定义（当前名 `CardDef`） | 某种 UC 身份的名称、标签、合法性、目标规则、结算回调及 AI 元数据 | 实体牌的位置与生命周期 |
-| 未提交 UC `UsedCard` | 已构造完成的规则身份、实体组成与推导后的牌面；供合法性、候选计算与回退使用 | `ucId`、容器位置等局内状态；构造它不得修改游戏 |
+| UC 规则定义（当前名 `CardDef`） | 某种 UC 身份的名称、结算回调，以及可选的场景规则（当前首例为出牌阶段） | 实体牌的位置与生命周期 |
+| 未提交 UC `UsedCard` | 已构造完成的规则身份、实体组成与推导后的牌面；供场景规则、候选计算与回退使用 | `ucId`、容器位置等局内状态；构造它不得修改游戏 |
 | UC 实例 `UsedCardInstance` | `UsedCard` 的全部规则信息，以及 id、容器位置、顺序、失效位等局内状态 | 内容定义本身；实例只以稳定身份查规则定义 |
 
 `CardDef` 因而不是“某张实体牌的定义”，而是**UC 的构造蓝图与规则定义**。当前实现复用
 `Card.type` 作为实体牌正常使用时的默认 UC 身份键，复用 `UC.type` 查询 `CardDef`；这是键的复用，
 不是把行为挂在实体牌上。a4 收口时可以据此改名和归位，但不得倒回“实体牌拥有执行语义”的模型。
 
-UC 的构造分两阶段：规则定义 + 实体材料先纯构造出 `UsedCard`；玩家确认执行后才将其
-`materialize` 为 `UsedCardInstance`、分配 `ucId` 并进入局内生命周期。候选枚举、AI 评估、选择回退
-不得创建临时实例或消耗局内序号。当前 `UsedCard` 已能承担这一中间值，不再新增 `UsedCardSpec`。
+UC 的构造分两阶段：规则定义 + 实体材料先纯构造出 `UsedCard`；确认执行后由 Runtime 将“分配
+`ucId` + 登记 Store + 首次进入容器”作为一次原子 commit，产出 `UsedCardInstance`。候选枚举、AI
+评估、选择回退不得创建临时实例或消耗局内序号；不存在已 commit 却尚未进入初始容器的悬空 Instance。
+当前 `UsedCard` 已能承担这一中间值，不再新增 `UsedCardSpec`。
 
 **两层职责**
 
 | | 实体牌层 | UsedCard 层 |
 |---|---|---|
 | 实体 / 定义 | `Card` + `CardArea`（ADR-0002） | `UsedCard` + `UsedCardInstance` + UC 规则定义 + UC 容器（装备槽/判定区/处理区） |
-| 业务 | 选择实体牌 + `moveCards` + 提供默认 UC 身份 | 纯构造、合法性、提交为实例、使用/打出 + 长时 UC 的进入/移动/退出 |
+| 业务 | 选择实体牌 + `moveCards` + 提供默认 UC 身份 | 纯构造、场景规则、原子提交为实例、使用/打出 + 长时 UC 的进入/移动/退出 |
 | 不含 | 任何 UC 执行语义（只发"离开驻留区"钩子） | 不直接做物理写（经实体牌层内部通道） |
 
 **关键点**
@@ -54,7 +55,7 @@ UC 的构造分两阶段：规则定义 + 实体材料先纯构造出 `UsedCard`
    `{ id, disabled, loc, seq }` 才成为局内实体。两者的 `type/name/suit/number/color/physicalCards`
    都描述同一条 UC 的规则身份；`loc` 与 `seq` 是**状态**（早期"从首张实体牌派生位置"已废弃）。
 2. **先构造 UC，再按 UC 读规则**：普通使用由实体牌的默认映射构造同身份 UC；转化技能显式给出
-   另一种 UC 身份与实体组成；八卦阵/离间可以构造 0 牌 UC。三条路径构造后完全同形，后续合法性、
+   另一种 UC 身份与实体组成；八卦阵/离间可以构造 0 牌 UC。三条路径构造后完全同形，后续场景规则、
    目标与结算只读 UC 及其规则定义，不回到实体牌类型决定行为。
 3. **规则身份推导**（`deriveCardFace`，唯一实现）：单牌转化继承该实体牌的花色点数、颜色随花色；
    无牌转化三项皆无；多牌转化无花色点数、全同色才有颜色；**特殊声明逐字段优先**。
@@ -73,23 +74,25 @@ UC 的构造分两阶段：规则定义 + 实体材料先纯构造出 `UsedCard`
    装备效果"实例"就是这条 UC（不另建技能实例），归属每次查询重算 ⇒ 进出/失效/复原即时生效、
    无需 grant/revoke 同步。
 9. **0 牌 UC 合法**（八卦阵的虚拟闪、离间的决斗）⇒ 存储主键必须是 `ucId`（不是实体牌 id）。
-10. **UC 合法性拥有最终裁决权**：`UsedCardDef.canUse` / `targetFilter` 是内容定义提供的**局部规则钩子**，
-    不是业务调用方的查询 API。决策窗口、流程、技能与其它内容要判断完整规则时，统一调用 UC 规则簇的
-    `canUseCard` / `legalTargets` / `validateCardUse`；不得把直接调用 Def 回调的结果当作最终合法性。
-11. **三层合法性分工**：
-    - `def.canUse`：这种 UC 对使用者/使用上下文的自身限制（阶段、次数、状态等）；
-    - `def.targetFilter`：这种 UC 的单目标规则；
-    - 公共入口：叠加通用禁止、延时牌放置等横切规则，并检查是否有足够合法目标、目标去重与
-      `targetCount`。执行前由 `validateCardUse` 按当前状态最终复核。
-    因而 `def.canUse` 不再重复扫描目标；“是否存在足够目标”由 `canUseCard` 基于 `legalTargets` 判断。
+10. **不存在脱离调用场景的“全局 UC 合法性”**：出牌阶段、响应窗口、技能强制使用可以采用不同规则。
+    `useCard` 是底层执行器，不调用出牌阶段的 `canUse` / `targetFilter` / `targetCount`，也不检查距离或
+    使用次数；技能可以对任意数量目标直接使用一条 UC，但仍经过 targeting、抵消/无效、content 与收尾。
+11. **场景规则显式包装执行器**：首个规则集是 `UsedCardDef.playPhase?`，由
+    `canUseInPlayPhase` / `legalPlayPhaseTargets` / `validatePlayPhaseUse` 查询；正常出牌经
+    `useCardInPlayPhase` 校验后委托 `useCard`。不能在出牌阶段主动使用的 UC 不提供 `playPhase`，无需
+    填写永远返回 false 的占位回调。技能可选择复用这套规则，也可直接调用 `useCard` 绕过。
+12. **执行器只守定义域不变量并显式报错**：Def 缺失、使用者或初始目标不属于本局/发起时已死亡、
+    UC 重复提交、实体材料冲突等属于未定义调用，直接抛错并向上传播。初始目标存活但在多目标结算中途
+    死亡，则按 ADR-0006 跳过其后续生效，属于已定义流程。规则不允许的正常出牌由 play-phase policy
+    在调用执行器前拒绝。
 
-直接读取 Def 的定义元数据或执行回调不受这条限制：执行器仍调用 `content` / `onAction` /
-`delayContent`，显示与AI 可读取各自字段。限制仅针对“完整规则是否合法”的查询；Range模块不再
-读取 Def 专属字段，见 ADR-0011。
+执行器仍按 `UC.type` 查 Def 并调用 `content` / `onAction`；显示与 AI 可读取各自元数据。调用方若要
+遵守正常出牌规则，必须经 play-phase policy，直接 `useCard` 则是显式绕过。Range 不读取 Def 专属字段，
+见 ADR-0011；Equipment / Delay 的额外定义也不进入 a4-core。
 
-> **现状差距**：`CardDef` 的名称/目录、`UsedCard` 牌面字段尚未在纯构造阶段全部收紧、
-> `decision/rules.ts` 与多处内容仍直接调用 Def 回调、`useVirtualCard` 与普通候选走不同合法性路径、
-> `useCard` 对 `Card | UsedCard` 的兜底物化仍保留旧边界。它们不改变上述语义决定，统一列入
+> **现状差距**：`CardDef` 的名称/目录、`UsedCard` 牌面字段尚未在纯构造阶段全部收紧；当前
+> `decision/rules.ts`、`useVirtualCard` 和 `useCard(Card | UsedCard)` 仍把出牌阶段规则与底层执行混在一起，
+> Runtime 也允许先物化出 `loc = null` 的 Instance。它们不改变上述目标决定，统一列入
 > `../TODO.md` 的 a4 迁移；完成前不得继续扩散“实体牌拥有执行语义”的调用方式。
 
 ## 影响与后果
@@ -100,8 +103,8 @@ UC 的构造分两阶段：规则定义 + 实体材料先纯构造出 `UsedCard`
   `UC.type → UC 规则定义` 执行。实体牌定义/牌堆数据不保管执行回调。
 - 装备的进出与失效统一由归属判定表达；青釭剑 = `targeting.after` 失效目标防具 UC +
   `event.onClear` 复原（ADR-0001/0006）。
-- 代价：归属查询需要 `game`（UC 表在 `game.usedCards`），由此**规则层查询统一带 `game`**
-  （`CardDef.canUse/targetFilter`、`distanceTo/attackRange`、`effectRegistry`）。
+- 代价：归属与场景规则查询需要 `game`（UC 表在 `game.usedCards`），由此相关查询统一带 `game`
+  （play-phase policy、`distanceTo/attackRange`、`effectRegistry`）。
 - 已声明的行为变化：延时锦囊使用时可被无懈；打出的牌经处理区；多牌源杀被奸雄整条获得；
   仁王盾改为生效阶段无效；闪电转移按规则集（可绕回自己、被抵消仍流向合法下家）。
 

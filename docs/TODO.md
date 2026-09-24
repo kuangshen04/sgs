@@ -42,20 +42,23 @@
 
 剩下两项**不是搬家，是边界设计**，按顺序讨论后再动：
 
-- **a4 UC 规则簇（已定语义边界，待落地）**：ADR-0003 已明确 `CardDef` 不是实体牌定义，而是
-  **UC 的构造蓝图与规则定义**；实体牌只提供牌面数据、位置、实体材料与“正常使用时默认构造成哪种 UC”。
-  按此边界收口：① UC 构造、规则定义/索引、合法性查询与用牌流程归位；② `decision/rules.ts` 中纯规则
-  查询移出 decision；③ UC 构造完成后再做合法性与执行，避免调用方绕过统一入口直接查 `targetFilter`；
-  ④ position/UC 底层不再通过 `CardDef.tags` 决定装备槽，由 UC 规则侧解析后把明确槽位交给位置原语。
-  已定构造边界：保留现有 `UsedCard` 作为无副作用的“已构造、未提交 UC”（不另增 `UsedCardSpec`）；
-  确认执行后才 materialize 为 `UsedCardInstance`、分配 id/序号，候选计算与回退不得产生局内实例。
-  已定合法性边界：`CardDef.canUse/targetFilter` 是定义侧局部钩子；新增 `canUseCard` / `legalTargets` /
-  `validateCardUse` 作为完整规则入口，decision/flow/技能/内容不得绕过。迁移时消除【杀】等 `canUse`
-  对目标存在性的重复扫描，并让普通牌、转化牌、虚拟牌共享同一校验路径；执行前必须最终复核。
-  Range 边界已由 ADR-0011 定下：距离/攻击范围独立成 `src/range/`，武器、马匹、马术统一注册
-  PersistentEffect；删除 `CardDef.range`，UC core/定义协议/通用合法性不依赖 Range。
-  尚待本项继续确定：UC 规则簇最终目录与命名。
-  落地后：`rules/cardDef.ts` 与 `rules/ruleSet.ts`（容器/索引）按所有权拆分归位，`rules/` 目录消失。
+- **a4 UC 簇（核心边界已定，分阶段落地）**：ADR-0003 已明确 `CardDef` 是 UC 构造蓝图/规则定义，
+  实体牌只提供牌面数据、位置、材料与默认 UC 身份。一级边界按可摘除语义分为 Definition / Runtime /
+  Use；目录与命名定为 `src/uc/`、`UsedCardDef`、`ruleSet.usedCardDefs`，本阶段继续使用 `CardType`。
+  - **a4-core**：只实现不依赖 Equipment / Delay / Range 的基础 UC。`UsedCard` 是已完成牌面推导的
+    无副作用值；Runtime 将“分配 id + 登记 Store + 首次进入 processing”原子 commit 为
+    `UsedCardInstance`，不存在未入容器的悬空 Instance。`useCard` 只执行 targeting / 抵消与无效 /
+    content / settle，并守 Def、使用者、初始目标、材料和 Store 的定义域不变量；未定义调用直接抛错。
+  - **出牌阶段策略**：不存在全局 `validateCardUse`。`UsedCardDef.playPhase?` 提供 `canUse` /
+    `targetFilter` / `targetCount` / 出牌 AI；`canUseInPlayPhase` / `legalPlayPhaseTargets` /
+    `validatePlayPhaseUse` / `useCardInPlayPhase` 校验正常出牌后委托 `useCard`。技能、响应或模式可以按
+    自己的规则直接 `useCard`，从而显式绕过距离、次数、目标数量等正常出牌限制。
+  - **后续接入**：按 a4-equip → a4-delay → a4-range → a4-final 接回上层规则；Range 边界见 ADR-0011。
+    中间阶段用合成内容和相关模块测试验收，不要求标包全量兼容；a4-final 删除旧实现与临时并行路径后，
+    再恢复 `tsc` + 全量测试 + 整局冒烟质量闸。
+  - **明确排除**：a4-core 不设计通用 DI/模块生命周期、动态 Player/GameState 扩展、通用 phase processor、
+    开放式 `CardType` 或显示接口。`rules/cardDef.ts` 与 `rules/ruleSet.ts` 最终按所有权归位；`rules/`
+    在 a3 处理显示三件后消失。
 - **a3 前端/显示接口（后议）**：`cardEmoji`/`cardFaceText`/`displayNumber` 是显示关注点，
   却要读 `game.ruleSet` 且被 `position`/`flow`/`content` 各层直接调用（与 `flow/display.ts`
   合并会形成 `position → flow` 反向依赖）。这说明**前端需要一个明确的渲染接口**：
