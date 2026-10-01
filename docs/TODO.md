@@ -4,19 +4,60 @@
 > - 参照项目的经验与红线 → `经验与红线.md`
 > - 代码导览、内容与数据约定、测试与质量闸 → `代码结构.md`
 >
-> 标包（32 张牌 / 25 位武将，含 4 件套用牌流程语义）已全部落地，因此这里不再列已完成项。
+> 重构前实现的标包（32 张牌 / 25 位武将）与 488 个测试是旧基线，不是 ADR-0012 迁移期的兼容目标。
+> 新实现只以本文件列出的 MVP 单测与 E2E 为质量闸。
 
 ## 一、实施路线（剩余阶段）
 
+### 当前 · ADR-0012 MVP 粗模块不兼容重构
+
+本阶段优先级高于原阶段 4～6。采用“隔离重建 → MVP 纵向跑通 → 切换入口”，不在旧 `Game`
+容器和全局类型表上继续建设兼容层。
+
+1. **迁移隔离与质量闸**
+   - 建临时 `src/mvp/`，增加独立 `tsconfig.mvp.json`、`test:mvp`、`check:mvp`、`start:mvp`；
+   - 新实现禁止 import 旧 `game.ts`、`types.ts`、`rules/`、content 与旧 `test-utils.ts`；
+   - 旧测试可保留为只读参考，但不进入 MVP 默认发现范围。
+2. **地基**
+   - Event：scope / 父子栈 / 历史 / hook；去掉对 `Game` 和业务事件字典的依赖；
+   - Selection：step / plan / answer + scripted frontend；不认识任何业务词汇。
+3. **基础载体**
+   - Player：只保留局内身份与最小生命周期；
+   - Card/CardArea：实体牌、区域、索引和 `moveCard`；移动事件词汇归 Card；
+   - UsedCard/UsedCardArea：enter / move / exit / settle，并向实体移动注入 UC 完整性反作用。
+4. **规则能力**
+   - HP / Life：状态随 Player 生命周期【里】，行为【外】；只实现本轮明确的死亡语义；
+   - Effect：主动 / 触发 / 持续三种协议；Skill 控制 Effect 生命周期与 storage；
+   - UC—Effect 由具体联结模块同时依赖两边，移除 Effect 内的 UC 反查职责。
+5. **流程骨架与用牌**
+   - GameFlow → Round → Turn 除彼此的流程组合关系外只依赖 Event；参与者、终止条件、显式
+     phase plan 从外部给入；
+   - PlayPhase / DiscardPhase 注册到 Turn 的命名槽位【里】，顺序不得依赖注册顺序；
+   - UseCard 在 UC 外组织流程，只依赖 UC、目标 Player 与 Event，不依赖 Selection / Effect / 显示 / RuleSet。
+6. **MVP 纵向验收**
+   - scripted Selection 选择牌与目标 → PlayPhase → UseCard → UC 处理区生命周期 → HP / Life →
+     终止判断结束 GameFlow → 实体牌进入弃牌区；同时验证事件父子关系；
+   - 主动/触发/持续效果、Skill storage、UC—Effect 联结、阶段显式顺序分别有模块单测；
+   - 响应、判定、距离、完整装备内容、标包武将、完整 AI、回放与插件 DI 不在本轮验收范围。
+7. **切换与清理**
+   - MVP 编译、模块单测与 E2E 全绿后，将 `src/mvp/*` 提升到 `src/*`；
+   - 删除或归档未迁移旧实现，删除临时迁移根，不保留 v1/v2 重导出或兼容入口；
+   - 默认 `test` / `start` / 编译命令切到新实现，再同步 `代码结构.md` 与相关 ADR 状态。
+
+实现时每完成一个编号就审一次公开接口和 import 方向，再进入下一编号；不一次性生成全部目录与协议。
+
+### MVP 重构后的后续阶段
+
 ### 阶段 4 · 内容包雏形（军争 / 神话再临）
 
-- 内容包 = manifest（id / version / 依赖）+ TS 内容 + **装配函数**（`installXxxPack(container)`，
-  形状已由 ADR-0009 定下：内容侧只多一个 manifest 与包依赖检查；模块替换语义等第二个用例，见阶段 5）。
-- **先决条件**：`CardType` 闭合枚举要先扩展（新增卡牌身份），见"内容与数据"一节。
+- 内容包 = manifest（id / version / 依赖）+ TS 内容 + **显式装配函数**；具体容器形状等 ADR-0012
+  MVP 切换后按新模块公开接口决定，不照搬旧 ADR-0009 容器。
+- **先决条件**：新 Card 模块先决定新增卡牌身份的键形态，不继承旧 `CardType` 闭合枚举。
 - **军争**（`docs/军争篇卡牌.json`、`docs/军争篇牌堆.json`）：属性伤害（火/雷）、酒、铁索连环、
   兵粮寸断、火攻、重铸；**神话再临**（`docs/神话再临武将.json`）作为第二批。
   牌堆纯数据随包（沿用 `standardDeck.json` 模式）。
-- **身份场**作为第一个模式用例：`lord` 底座已实现（主公技门槛），差身份分配 + 身份胜负。
+- **身份场**作为第一个模式用例：旧实现的 `lord` 只作规则参考；新骨架重新接入身份分配、主公技门槛
+  与身份胜负。
 - 新机制用例（属性伤害、横置/重置、标记）先记入本文件"写死清单"，按"有例子再抽象"提炼。
 
 ### 阶段 5 · DI 插件机制（第一个"模块替换"用例出现时）
@@ -25,8 +66,8 @@
   可逆注册（disposer 齐全）+ 配置清单（可序列化、可溯源、fail-loud 装载报告）。
 - 触发候选：decision（前端接入）/ rng（种子回放）/ victory（新模式替换）。
 - 同批收口：公共 API 冻结/版本化策略（semver？弃用期？）+ 容器粒度（应用级容器 + 每局实例）。
-- **前半已就位**（ADR-0009）：定义层的容器 / 规则集 / 显式装配已落地，`game` 只持规则集**引用**；
-  服务注入沿用同一形状（装配期解析 → 交给 game），届时再定 `game` 还持不持规则集引用。
+- ADR-0012 重构期只用显式参数、hook 注册与具体联结模块，不提前建设 DI 框架；待边界稳定后，
+  DI 只装配已经存在的替换接缝。ADR-0009 的旧容器可作经验参考，但不预设为新 DI 的最终形状。
 
 ### 阶段 6 · 前端接入 → 回放 → 编辑器（长线）
 
@@ -35,39 +76,11 @@
 - 选择日志 + RNG 种子化 + **确定性重演**（回放，见 `经验与红线.md` 2.7）。
 - 内置编辑器（依赖全部前置；L0 载体 = 代码生成器还是运行时数据，届时讨论）。
 
-### 收口项（不属于阶段）：ADR-0010 的迁移（b / a1 / a2 已落地）
+### 原 ADR-0010 收口项
 
-判据已经生效（新代码按它写）。已落地：**b**（决策层三层 + 响应执行段归 flow）、
-**a1**（`shuffle` → `src/random.ts`）、**a2**（`asUsedCard` → `position/usedCards.ts`）。
-
-剩下两项**不是搬家，是边界设计**，按顺序讨论后再动：
-
-- **a4 UC 簇（核心边界已定，分阶段落地）**：ADR-0003 已明确 `CardDef` 是 UC 构造蓝图/规则定义，
-  实体牌只提供牌面数据、位置、材料与默认 UC 身份。一级边界按可摘除语义分为 Definition / Runtime /
-  Use；目录与命名定为 `src/uc/`、`UsedCardDef`、`ruleSet.usedCardDefs`，本阶段继续使用 `CardType`。
-  - **a4-core**：只实现不依赖 Equipment / Delay / Range 的基础 UC。`UsedCard` 是已完成牌面推导的
-    无副作用值；Runtime 将“分配 id + 登记 Store + 首次进入 processing”原子 commit 为
-    `UsedCardInstance`，不存在未入容器的悬空 Instance。`useCard` 只执行 targeting / 抵消与无效 /
-    content / settle，并守 Def、使用者、初始目标、材料和 Store 的定义域不变量；未定义调用直接抛错。
-  - **出牌阶段策略**：不存在全局 `validateCardUse`。`UsedCardDef.playPhase?` 提供 `canUse` /
-    `targetFilter` / `targetCount` / 出牌 AI；`canUseInPlayPhase` / `legalPlayPhaseTargets` /
-    `validatePlayPhaseUse` / `useCardInPlayPhase` 校验正常出牌后委托 `useCard`。技能、响应或模式可以按
-    自己的规则直接 `useCard`，从而显式绕过距离、次数、目标数量等正常出牌限制。
-  - **后续接入**：按 a4-equip → a4-delay → a4-range → a4-final 接回上层规则；Range 边界见 ADR-0011。
-    中间阶段用合成内容和相关模块测试验收，不要求标包全量兼容；a4-final 删除旧实现与临时并行路径后，
-    再恢复 `tsc` + 全量测试 + 整局冒烟质量闸。
-  - **明确排除**：a4-core 不设计通用 DI/模块生命周期、动态 Player/GameState 扩展、通用 phase processor、
-    开放式 `CardType` 或显示接口。`rules/cardDef.ts` 与 `rules/ruleSet.ts` 最终按所有权归位；`rules/`
-    在 a3 处理显示三件后消失。
-- **a3 前端/显示接口（后议）**：`cardEmoji`/`cardFaceText`/`displayNumber` 是显示关注点，
-  却要读 `game.ruleSet` 且被 `position`/`flow`/`content` 各层直接调用（与 `flow/display.ts`
-  合并会形成 `position → flow` 反向依赖）。这说明**前端需要一个明确的渲染接口**：
-  引擎产出结构化数据（事件/状态/日志记录），前端负责渲染，而不是各层直接 `console.log` + emoji。
-  现在它们暂留 `src/rules/cardFace.ts`（文件头已注明原因）。
-
-- **c `types.ts` 瘦身 + 事件字典标注**：`types.ts` 收缩成"底座"（标识 + 位置描述 + 枚举），
-  其余词汇回各簇；`events/types.ts` 明确标注为**横切字典**（机制不得引用它）。
-  择机：宽而机械、行为零收益，等阶段 5 重划模块边界时一起动。
+原 a3（显示）、a4（UC 簇）和 c（`types.ts`）不再作为旧树上的独立搬家任务执行，已经并入
+ADR-0012 的不兼容重构。原 a4 对 Definition / Runtime / Use 的预拆方案不构成本轮目标；待新粗模块
+出现足够真实用例后再决定是否细分。Range 边界仍按 ADR-0011 保留，但延期到 MVP 骨架完成后。
 
 ## 二、未落地的机制（按主题，含"何时做"的判据）
 
@@ -102,7 +115,8 @@
 - **技能次数机制**：目前只有出牌阶段的 `ctx.usedSkills`（按技能名、本回合一次）与常驻查询；
   通用"每阶段 / 每轮 / 每局限 N 次"未做（FreeKill 的 `max_use_time` 四层时间范围可作为元数据候选）。
 - **`compulsory` 抗性的消费者**："令其他武将技能失效"类效果出现时接（当前只有青釭剑的 UC 失效）。
-- onGain / onLose 生命周期钩子；技能临时数据（`storage`）的通用承载。
+- MVP 先落 Skill storage 与 Effect 生灭所需的最小生命周期；通用 onGain / onLose 钩子等第二、三个
+  真实消费者再设计。
 - **裸触发效果的所有者语义**：当前每个存活玩家都算归属（会重复执行 N 次，今天无此内容）。
 - **SkillUse 锚点事件**（触发技/主动技统一发动时点、打断语义、次数与日志挂点）。
 - 可组合谓词层（现在是 `subjectIsOwner` 这类组件 + 各效果自写条件）。
@@ -119,14 +133,16 @@
 
 ### 决策与 AI
 
-- **真人/前端接入**（`DecisionRequest` 形态与注入点）+ 决策日志（"谁发动了什么"）。
+- MVP Selection 先提供最小前端交互接口与 scripted frontend；可序列化 `DecisionRequest`、真人 UI、
+  决策日志（“谁发动了什么”）留到阶段 6。
 - **AI 策略增强**：无懈（保护他人 / 反无懈）、突袭/洛神/遗计等写死策略改为可注入。
 - 烧绳/托管（timeout + default_reply + 托管 AI）语义。
 - `askTo*` 工厂膨胀的防线：新业务优先组合既有 `SelectionPlan` 步骤，禁止单技能专属引擎原语。
 
 ### 游戏流程
 
-- 模式 / 身份场（身份分配 + 身份胜负）；胜利条件可配置（`victoryCheck` 注入点已有）。
+- 模式 / 身份场（身份分配 + 身份胜负）；MVP GameFlow 只接显式终止判断，完整胜负模块在真实模式
+  用例出现后设计。
 - 回合外计时类概念（若有需要）：目前没有"计时"用例。
 
 ### 内容与数据
@@ -140,14 +156,11 @@
 - 内容包与前端 UI 的边界（FreeKill `customPages` 让内容耦合前端的反面）：前端架构讨论时定。
 - 军争 / 神话再临以 TS 内容包接入时的具体组织（与阶段 4 联动）。
 
-### 测试债（ADR-0009 的分层约定只对新测试生效）
+### 旧实现测试（迁移期不作为质量闸）
 
-- **存量测试未做分层迁移**：约 16 个文件、380 处仍在 `freshGame()` 里借标包造场景。
-  其中大部分是"要一副牌和一个局"的凑数依赖（`cardArea/life/skills` 等），
-  真语义耦合的只有少数（`distance` 借武器范围、`respond` 借杀/闪、`useCard.test` 的五谷）。
-  **按痛点逐个改**：碰到哪个改哪个，禁止一次性机械迁移（会把语义断言改松）。
-  已改的样本：`flow/judgePhase.test.ts`（引擎机制用测试内容）、
-  `position/cardActions.test.ts` 的 UC 迁移用例、`flow/gameFlow.test.ts` 的判定段标注为集成。
+- 重构前基线为 54 files / 488 tests 全绿；它们只记录旧实现行为，不要求迁移期继续编译或通过。
+- 新模块只移植与 ADR-0012 MVP 边界直接相关的规则断言，不机械搬运依赖标包的旧 fixture。
+- MVP 切换时，未被新设计接纳的测试随旧模块删除或归档；默认测试命令只发现新模块测试与 MVP E2E。
 
 ## 三、写死 / 单例特判清单（剩余未收口）
 
@@ -192,10 +205,9 @@
 - **多人 / 回放**：重演的版本管理（内容版本锁定、apiVersion）；引擎确定性的验证手段（双跑一致性）；
   玩家/角色分离（旁观、切换控制、一控多）；存局快照形态；记牌器。
 - **数据**：L0 载体；内容包与前端 UI 的边界。
-- **模块分层**（ADR-0010）：`EffectCommon.skill`/`equipType` 这两个倒查字段是否改成
-  "注册时带归属谓词"（代价 = 归属规则从引擎挪到装配点；按 ADR-0010 技能定义与实现不可分，
-  这个需求可能根本不存在）；依赖边界的**强制闸**（eslint import 边界 / dependency-cruiser）
-  何时加——现在靠人工核对，等出现第二次越界再说。
+- **模块分层**（ADR-0012）：生命周期同步型状态最终采用实例字段还是 manager + map，按各模块实现时的
+  生命周期需求决定；UC—Effect 联结的最小协议由首个 MVP 用例确定。迁移期先用独立编译根保证新代码
+  不引用旧树；切换后若再次出现越界，再评估 eslint import 边界 / dependency-cruiser。
 - **测试**：重演一致性测试形态；e2e 框架选型（webworker 落地后）；dev 模式调试面。
 
 ## 五、已知问题
