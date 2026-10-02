@@ -13,7 +13,7 @@
 - **规则层与 AI 层语义分离**：`canUse` / `targetFilter` / 常驻效果是规则；`ai.shouldUse`、选牌/选目标/发动与否是 AI。
 - **决策与执行分离**：ask/choose 只做决策不执行牌；打出/使用由调用方（`playFromHand` / `useCard`）负责。
 - **AI 决策点隔离**：当前 AI 全部写死为默认行为，决策点用注释标明"真人/前端接入时在此注入"；不提前设计注入接口。
-- **避免全局状态**：旧实现以 `game` 第一参数和 `game.ruleSet` 隔离每局状态；ADR-0012 新实现改为
+- **避免全局状态**：旧实现以 `game` 第一参数和 `game.ruleSet` 隔离每局状态；R000 新实现改为
   显式模块参数、hook 注册与具体联结模块，同样要求状态随局隔离，禁止模块级注册表、万能 `Game`
   容器和 Service Locator。
 
@@ -24,11 +24,12 @@
   `flow/`（流程与结算）· `content/`（卡牌/武将/牌堆与**显式装配**）；
   根目录：`index.ts`（入口）/ `game.ts`（一局）/ `types.ts`（命名表）/ `random.ts`（随机源）/
   `test-utils.ts`（测试辅助）；`rules/` 是旧实现的临时住处（卡牌契约 / 显示三件 / 容器），
-  不再单独搬家，随 ADR-0012 粗模块重构退出。
+  不再单独搬家，随 R000 粗模块重构退出。
   **导览见 `docs/代码结构.md`**
-- **分层与依赖方向**：先读 `docs/adr/0010` 与 `docs/adr/0012`。0010 保留“接口随模块走、
-  没有通用契约层、机制不得依赖业务事件字典、决策不得执行、依赖边 = 接口边”的判据；0012
-  取代其目标分层，按【外】/【里】和联结模块做 MVP 粗模块不兼容重构。迁移批次见 `docs/TODO.md`
+- **分层与依赖方向**：先读 `docs/adr/0010` 与 `docs/adr/refactor/`。0010 保留“接口随模块走、
+  没有通用契约层、机制不得依赖业务事件字典、决策不得执行、依赖边 = 接口边”的判据；进行中的
+  重构决策在 `refactor/`，R000 取代旧目标分层，按【外】/【里】和联结模块做 MVP 粗模块不兼容重构。
+  迁移批次见 `docs/TODO.md`
 - **内容装配**：`content/standardPack.ts` → `installStandardPack` / `createStandardContainer`；
   注册只在装配期（容器），运行期只经 `game.ruleSet`——没有 import 副作用、没有隐式默认装配
   （`createGame` 的 `ruleSet` 必填）
