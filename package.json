@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "start": "pnpm exec tsx src/index.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:mvp": "vitest run src/mvp",
+    "check:mvp": "tsc --noEmit -p tsconfig.mvp.json"
   },
   "keywords": [],
   "author": "",

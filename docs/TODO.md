@@ -14,12 +14,11 @@
 本阶段优先级高于原阶段 4～6。采用“隔离重建 → MVP 纵向跑通 → 切换入口”，不在旧 `Game`
 容器和全局类型表上继续建设兼容层。
 
-1. **迁移隔离与质量闸**
-   - 建临时 `src/mvp/`，增加独立 `tsconfig.mvp.json`、`test:mvp`、`check:mvp`、`start:mvp`；
+1. **迁移隔离与质量闸（剩余）**
+   - MVP 可运行入口出现时增加 `start:mvp`；
    - 新实现禁止 import 旧 `game.ts`、`types.ts`、`rules/`、content 与旧 `test-utils.ts`；
    - 旧测试可保留为只读参考，但不进入 MVP 默认发现范围。
-2. **地基**
-   - Event：scope / 父子栈 / 历史 / hook；去掉对 `Game` 和业务事件字典的依赖，按 R001 实现；
+2. **地基（剩余）**
    - Selection：step / plan / answer + scripted frontend；不认识任何业务词汇。
 3. **基础载体**
    - Player：只保留局内身份与最小生命周期；

@@ -49,6 +49,8 @@
 
 ## 常用命令
 
+- MVP 编译检查：`pnpm run check:mvp`
+- MVP 测试：`pnpm run test:mvp`
 - 编译检查：`pnpm exec tsc --noEmit`
 - 全量测试：`pnpm exec vitest run`
 - 运行：`pnpm exec tsx src/index.ts`

@@ -1,6 +1,6 @@
 # R001 Event 模块：Kind / HookPoint / scope / 历史 / 所有者执行权
 
-- **状态**：设计已定；实现待做
+- **状态**：MVP 已落地
 - **目标落地位置**：`src/mvp/event/`
 - **旧语义来源**：`../0001-事件系统.md`
 
@@ -11,7 +11,7 @@ ADR-0001 已验证 before/content/after、严格栈、父子因果、历史时�
 所有业务事件集中在 `events/types.ts`，而公开 `new GameEvent(...).execute(...)` 允许先构造后执行，只能靠
 运行时检查阻止错误因果。
 
-新 Event 模块保留已验证的规则语义，但改成一个每局创建的粗模块实例 `Events`。它统一拥有 scope、
+新 Event 模块保留已验证的规则语义，但改成一个每局创建的粗模块实例 `EventRuntime`。它统一拥有 scope、
 hook 注册、事件栈与历史；不认识 Player、Card、UC、Effect 或任何业务事件字典。
 
 ## 决策
@@ -60,18 +60,18 @@ export const CardMove = CardMoveEvent.kind;
 
 export async function moveCards(cards: Cards, input: MoveCardsInput) {
   const data = prepareMove(cards, input);
-  return CardMoveEvent.run(cards.events, data, async event => {
+  return CardMoveEvent.run(cards.eventRuntime, data, async event => {
     validateMove(cards, event.data);
     commitMove(cards, event.data);
   });
 }
 ```
 
-外部可以订阅 `CardMove` 或查询历史，但不能执行 `events.run(CardMove, data, arbitraryContent)` 伪造一次
+外部可以订阅 `CardMove` 或查询历史，但不能执行 `eventRuntime.run(CardMove, data, arbitraryContent)` 伪造一次
 没有移动牌的 CardMove。Kind 与行为是语义上一一对应，不要求把单个闭包静态存进 Kind；Turn 的
 phase plan、UseCard 的具体 UC 内容等变化必须由行为所有者定义的输入协议承载。
 
-底层压栈执行能力不出现在 `Events` 的普通消费接口中；`OwnedEvent.run` 通过 Event 模块内部能力调用它。
+底层压栈执行能力不出现在 `EventRuntime` 的普通消费接口中；`OwnedEvent.run` 通过 Event 模块内部能力调用它。
 这只区分观察权与发起权，不引入 definition/runtime/manager 三层模块。
 
 ### 3. HookPoint 是 Kind 上的派生地址
@@ -93,11 +93,11 @@ type EventHandler<K extends AnyEventKind> =
   (event: Event<K>) => void | Promise<void>;
 ```
 
-`CardMove.before` / `CardMove.after` 是 `defineEvent` 创建的冻结地址。订阅存在每局 `Events` 实例中，
+`CardMove.before` / `CardMove.after` 是 `defineEvent` 创建的冻结地址。订阅存在每局 `EventRuntime` 实例中，
 内部按 Kind 和 timing 找 handler 列表；HookPoint 自身不保存 handler 或局内状态。
 
 ```ts
-interface Events {
+interface EventRuntime {
   on<K extends AnyEventKind, T extends EventTiming>(
     point: EventHookPoint<K, T>,
     handler: EventHandler<K>,
@@ -108,19 +108,19 @@ interface Events {
 `on` 返回精确 disposer，供 Effect / Skill / 联结模块同步生命周期。Event 只按低层注册顺序串行 await
 handler；触发效果的座次、强制先行与同角色选择由 Effect dispatcher 负责，Event 不认识这些规则。
 
-### 4. Events 是随局的粗模块实例
+### 4. EventRuntime 是随局的粗模块实例
 
 ```ts
-const events = createEvents();
+const eventRuntime = createEventRuntime();
 ```
 
 它内部持有 stack、append-only history 与 hook subscriptions；不存在模块级可变注册表。上层模块显式
-取得同一个 `events` 实例，handler 需要其它模块时由注册处闭包捕获，不再通过 `event.game` 动态查找。
+取得同一个 `eventRuntime` 实例，handler 需要其它模块时由注册处闭包捕获，不再通过 `event.game` 动态查找。
 
 公开观察面至少包括：
 
 ```ts
-interface Events {
+interface EventRuntime {
   readonly current: AnyEvent | null;
   readonly history: readonly AnyEvent[];
   on(/* EventHookPoint + handler */): () => void;
@@ -162,7 +162,7 @@ history 下标，`endId` 在 clear 后定稿为子树最后一个事件的 id。
 ```ts
 event.getParent(UseCard);      // Event<typeof UseCard> | null
 event.kind === CardMove;       // Kind 对象身份
-events.findSince(boundary, predicate);
+eventRuntime.findSince(boundary, predicate);
 ```
 
 Event 模块不接受业务字符串字典；具体事件数据、Kind 常量和行为入口都随所属业务模块走。
@@ -175,7 +175,7 @@ Event 模块不接受业务字符串字典；具体事件数据、Kind 常量和
 4. content 或 clear 抛错后栈、历史和完成态仍正确；
 5. 所有者 clear 与动态 `onClear` 的顺序及异常路径；
 6. hook disposer 精确注销；
-7. 两个 `createEvents()` 的历史与订阅完全隔离；
+7. 两个 `createEventRuntime()` 的历史与订阅完全隔离；
 8. `findSince` 的边界查询；
 9. 不 import 旧 `Game`、业务模块或业务事件字典；
 10. 外部只有 Kind 观察权，不能为已有 Kind 替换 content。
@@ -192,3 +192,8 @@ Event 模块不接受业务字符串字典；具体事件数据、Kind 常量和
 
 这些能力等对应业务模块出现真实用例后，再补充本目录中的后续决策。
 
+## 落地
+
+- 实现：`src/mvp/event/event.ts`
+- 单测：`src/mvp/event/event.test.ts`
+- 独立质量闸：`pnpm run check:mvp`、`pnpm run test:mvp`

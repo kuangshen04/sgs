@@ -15,4 +15,4 @@
 | 编号 | 标题 | 状态 | 目标位置 |
 |---|---|---|---|
 | [R000](R000-重构总纲.md) | MVP 粗模块：外/里交互、联结模块与不兼容重构 | 边界已定，迁移待做 | 迁移期 `src/mvp/`；完成后 `src/` |
-| [R001](R001-Event模块.md) | Event：Kind / HookPoint / scope / 历史 / 所有者执行权 | 设计已定，实现待做 | `src/mvp/event/` |
+| [R001](R001-Event模块.md) | Event：Kind / HookPoint / scope / 历史 / 所有者执行权 | MVP 已落地 | `src/mvp/event/` |
