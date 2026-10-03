@@ -19,7 +19,8 @@
    - 新实现禁止 import 旧 `game.ts`、`types.ts`、`rules/`、content 与旧 `test-utils.ts`；
    - 旧测试可保留为只读参考，但不进入 MVP 默认发现范围。
 2. **地基（剩余）**
-   - Selection：step / plan / answer + scripted frontend；不认识任何业务词汇。
+   - Selection：frame / answerKey / plan / session + scripted controller；不认识任何业务词汇；具体边界见
+     `adr/refactor/R003`。
 3. **基础载体**
    - Player：只保留局内身份与最小生命周期；
    - Card/CardArea：实体牌、区域、索引和 `moveCard`；移动事件词汇归 Card；
@@ -132,11 +133,12 @@ R000 的不兼容重构。原 a4 对 Definition / Runtime / Use 的预拆方案�
 
 ### 决策与 AI
 
-- MVP Selection 先提供最小前端交互接口与 scripted frontend；可序列化 `DecisionRequest`、真人 UI、
+- MVP Selection 先提供最小 Controller 接口与 scripted controller；可序列化 `DecisionRequest`、真人 UI、
   决策日志（“谁发动了什么”）留到阶段 6。
 - **AI 策略增强**：无懈（保护他人 / 反无懈）、突袭/洛神/遗计等写死策略改为可注入。
 - 烧绳/托管（timeout + default_reply + 托管 AI）语义。
-- `askTo*` 工厂膨胀的防线：新业务优先组合既有 `SelectionPlan` 步骤，禁止单技能专属引擎原语。
+- `askTo*` 工厂膨胀的防线：业务约束由所属模块的选择工厂转换成 `SelectionPlan` / Frame，禁止单技能
+  专属引擎原语。
 
 ### 游戏流程
 
