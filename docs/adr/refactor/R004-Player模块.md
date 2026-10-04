@@ -28,15 +28,15 @@ interface Player {
 
 ### 2. 座次不属于 Player
 
-座次只影响结算顺序和距离，未来由独立 Seating 模块拥有：
+座次只影响结算顺序和距离，由独立 Seating 模块拥有（已落地，见 R005）：
 
 ```text
 Seating → Player
 Range → Seating
 ```
 
-Seating 可以提供环形顺序、从指定玩家开始的顺序和原始座次距离；它不把死亡或临时移除状态写进
-Player。R000 MVP 的 GameFlow 仍可直接接收显式参与者顺序，完整 Seating / Range 延后到对应真实用例。
+Seating 提供 1-based 座位号和从指定玩家开始的逆时针顺序；它不把死亡或临时移除状态写进 Player。
+排除死亡玩家后的座次差与完整 Range 仍延后到对应真实用例。
 
 ### 3. 死亡和临时移除是外部状态
 
@@ -78,4 +78,4 @@ MVP 大致完成后再设计 PlayerInspector：它在装配侧显式读取 Playe
 
 - 服从 R000 的“Player 不吸收 HP、技能、区域等行为”；
 - 状态【里】通过所属模块的逐局外置表实现，行为仍在所属模块【外】组织；
-- Seating、Range 和 PlayerInspector 都不属于本次 Player MVP。
+- Seating 独立落地于 R005；Range 和 PlayerInspector 不属于本次 Player MVP。
