@@ -1,6 +1,6 @@
 # R003 Selection 模块：Frame、answerKey 与可回溯 Plan
 
-- **状态**：核心边界已定；具体接口待实现验证
+- **状态**：MVP 已落地
 - **目标落地位置**：`src/mvp/selection/`
 - **取代**：[R002](R002-Selection模块.md) 的静态 Step 模型
 - **旧语义来源**：`../0007-决策与AI分层.md` 及其此前的《选择系统设计（choose）》
@@ -92,15 +92,26 @@ type SelectionAnswers = Readonly<
 
 ### 4. Plan 是逐次可选项的唯一计算者
 
-Plan 读取当前答案和 Session 的活动边界，返回下一个 Frame；会话完成时返回空。概念形态为：
+Plan 读取已经完成的前缀答案和当前 draft，返回下一个 Frame；会话完成时返回空：
 
 ```ts
+interface SelectionDraft {
+  readonly answerKey: string;
+  readonly selected: readonly SelectionOption[];
+}
+
+interface SelectionPlanState {
+  readonly answers: SelectionAnswers;
+  readonly draft: SelectionDraft | null;
+}
+
 interface SelectionPlan {
-  next(state: ReadonlySelectionState): SelectionFrame | null;
+  getFrame(state: SelectionPlanState): SelectionFrame | null;
 }
 ```
 
-具体输入字段和结束当前边界的命令形态在实现中验证，但必须满足以下约束：
+`answers` 只含当前活动边界之前已经 finish 的答案；`draft` 是当前边界尚未完成的选择。`draft === null`
+表示请求开始下一个边界，Plan 返回 `null` 表示整个会话完成。实现满足以下约束：
 
 - 每次选择、取消或结束边界后都可以重新计算 Frame；
 - Frame 只给出当前合法交互，不把约束函数交给前端执行；
@@ -133,6 +144,19 @@ Selection 不内置 AI。真人前端、AI 与 scripted 实现同一个 Controll
 Controller 只能读取 Session 的只读状态，包括当前 Frame、此前 `SelectionAnswers` 和能否回溯；它返回
 当前交互或 `back`，不能直接修改 Session，也看不到 Plan 的内部实现。答案更新、后续失效和 Plan 重算
 全部由 Session 完成。
+
+MVP 的交互命令为：
+
+```ts
+type SelectionCommand =
+  | { readonly type: 'select'; readonly optionId: string }
+  | { readonly type: 'unselect'; readonly optionId: string }
+  | { readonly type: 'finish' }
+  | { readonly type: 'back' };
+```
+
+`select` 只能使用当前 `options` 中的 ID，`unselect` 只能使用当前 `selected` 中的 ID，`finish` 要求
+`canFinish === true`；任一非法命令都不改变 Session。
 
 Frontend Controller 逐 Frame 与用户交互。scripted Controller 用预设交互驱动单测和 MVP E2E。
 超时、断线和托管不进入 Selection 核心，由 Controller adapter 组合：
@@ -198,17 +222,17 @@ Option ID 不编码已经由前序答案确定的业务语义。完整含义来�
 | 流离 | `action → cards → targets` 三个 answerKey | 修改代价牌后新目标失效，但 cards 内部编辑自行处理 |
 | 过河拆桥 | 执行前 `action → targets`；content 中另开选择 Session | content 选区域牌不能回溯到是否使用过河拆桥 |
 
-## 第一版实现范围
+## MVP 落地
 
-- `SelectionOption / SelectionFrame / SelectionAnswers / SelectionPlan`；
-- Session 的活动 answerKey、答案记录、边界级回溯和后缀失效；
-- 只读 Controller 状态与运行器；
-- scripted Controller；
-- 业炎式“一个 answerKey、多个 Frame”和“修改前序 key 清除后续答案”的机制单测。
+- **位置**：`src/mvp/selection/selection.ts`
+- **测试**：`src/mvp/selection/selection.test.ts`
+- 已实现 `SelectionOption / SelectionFrame / SelectionAnswers / SelectionPlan / SelectionSession`；
+- 已实现只读 Controller 状态、`select / unselect / finish / back`、`runSelection` 与 scripted Controller；
+- 回溯编辑时暂存原后缀：答案未变则恢复，答案变化则清除并让 Plan 按新前缀重算；
+- 单测覆盖业炎式“一个 answerKey、多个 Frame”、稳定 Option ID、后缀恢复/失效、非法命令和空 Plan。
 
-第一版不提供业务 step / ask 工厂，不实现具体 AI 策略、真人网络协议、超时、断线续答、录像、并行询问
-或强类型答案 DSL。结束边界、选择/取消等命令的最小形态以实现和测试验证为准，但不得重新合并 Frame
-与 answerKey。
+MVP 不提供业务选择工厂，不实现具体 AI 策略、真人网络协议、超时、断线续答、录像、并行询问或强类型
+答案 DSL；这些后续能力不得重新合并 Frame 与 answerKey。
 
 ## 与既有文档的关系
 
