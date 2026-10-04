@@ -18,3 +18,4 @@
 | [R001](R001-Event模块.md) | Event：Kind / HookPoint / scope / 历史 / 所有者执行权 | MVP 已落地 | `src/mvp/event/` |
 | [R002](R002-Selection模块.md) | Selection：静态选择步骤、可回溯会话与 Controller | 已由 R003 取代，未落地 | — |
 | [R003](R003-Selection模块-Frame与回溯边界.md) | Selection：Frame、answerKey、Plan 与 Controller | MVP 已落地 | `src/mvp/selection/` |
+| [R004](R004-Player模块.md) | Player：nominal ID、最小身份与外置状态 | MVP 已落地 | `src/mvp/player/` |

@@ -19,7 +19,6 @@
    - 新实现禁止 import 旧 `game.ts`、`types.ts`、`rules/`、content 与旧 `test-utils.ts`；
    - 旧测试可保留为只读参考，但不进入 MVP 默认发现范围。
 2. **基础载体**
-   - Player：只保留局内身份与最小生命周期；
    - Card/CardArea：实体牌、区域、索引和 `moveCard`；移动事件词汇归 Card；
    - UsedCard/UsedCardArea：enter / move / exit / settle，并向实体移动注入 UC 完整性反作用。
 3. **规则能力**
@@ -77,7 +76,8 @@
 
 原 a3（显示）、a4（UC 簇）和 c（`types.ts`）不再作为旧树上的独立搬家任务执行，已经并入
 R000 的不兼容重构。原 a4 对 Definition / Runtime / Use 的预拆方案不构成本轮目标；待新粗模块
-出现足够真实用例后再决定是否细分。Range 边界仍按 ADR-0011 保留，但延期到 MVP 骨架完成后。
+出现足够真实用例后再决定是否细分。Range 边界仍按 ADR-0011 保留，但延期到 MVP 骨架完成后；座次
+不进入 Player，届时由独立 Seating 模块提供结算顺序和原始座次距离。
 
 ## 二、未落地的机制（按主题，含"何时做"的判据）
 
@@ -207,6 +207,8 @@ R000 的不兼容重构。原 a4 对 Definition / Runtime / Use 的预拆方案�
   生命周期需求决定；UC—Effect 联结的最小协议由首个 MVP 用例确定。迁移期先用独立编译根保证新代码
   不引用旧树；切换后若再次出现越界，再评估 eslint import 边界 / dependency-cruiser。
 - **测试**：重演一致性测试形态；e2e 框架选型（webworker 落地后）；dev 模式调试面。
+- **PlayerInspector**：等 MVP 粗模块大致完成后，由只读联结模块汇总 Player / Seating / HP / Life /
+  CardArea / Skill 的调试快照；不得挂载服务、参与规则判断或代替按观察者过滤的前端 View。
 
 ## 五、已知问题
 
