@@ -21,21 +21,33 @@
 2. **基础载体**
    - Card/CardArea：实体牌、区域、索引和 `moveCard`；移动事件词汇归 Card；
    - UsedCard/UsedCardArea：enter / move / exit / settle，并向实体移动注入 UC 完整性反作用。
-3. **规则能力**
+3. **首批外置状态**
    - HP / Life：状态随 Player 生命周期【里】，行为【外】；只实现本轮明确的死亡语义；
+4. **DI 与 Match Assembly 强制检查点**
+   - 时机：Card/CardArea、UC、HP/Life 形成第一张真实逐局依赖图以后，GameFlow / UseCard 纵向装配以前；
+   - 设计并落地最小的 RuleSet/root（只放不可变定义与工厂）和 Match（逐局可变 Runtime）两级装配；
+     Event 以内的短生命周期继续由 Event scope / `onClear` 管理，不建立 Turn / Phase / Selection 子 scope；
+   - 确定 Provider 的依赖声明、逐局单例、两局隔离、测试 override、装配失败回滚、逆序 cleanup、循环
+     依赖报错，以及随局 hook / 联结模块的安装方式；
+   - DI 只能由 composition root 解析并把明确依赖传给模块工厂；模块不得接收 Injector / Container /
+     MatchScope，不得在运行时 `resolve()` 服务，也不得把 Match 变成 Service Locator；
+   - 在检查点之前所有可变模块继续使用 `createXxx({ explicitDeps })`，禁止模块级可变单例和隐式
+     `currentMatch`，确保以后接入 DI 只替换装配代码、不修改业务模块公开接口；
+   - 动态插件扫描、字符串查服务、反射/装饰器注入、热重载与插件 DI 不属于本轮最小实现。
+5. **其余规则能力**
    - Effect：主动 / 触发 / 持续三种协议；Skill 控制 Effect 生命周期与 storage；
    - UC—Effect 由具体联结模块同时依赖两边，移除 Effect 内的 UC 反查职责。
-4. **流程骨架与用牌**
+6. **流程骨架与用牌**
    - GameFlow → Round → Turn 除彼此的流程组合关系外只依赖 Event；参与者、终止条件、显式
      phase plan 从外部给入；
    - PlayPhase / DiscardPhase 注册到 Turn 的命名槽位【里】，顺序不得依赖注册顺序；
    - UseCard 在 UC 外组织流程，只依赖 UC、目标 Player 与 Event，不依赖 Selection / Effect / 显示 / RuleSet。
-5. **MVP 纵向验收**
+7. **MVP 纵向验收**
    - scripted Selection 选择牌与目标 → PlayPhase → UseCard → UC 处理区生命周期 → HP / Life →
      终止判断结束 GameFlow → 实体牌进入弃牌区；同时验证事件父子关系；
    - 主动/触发/持续效果、Skill storage、UC—Effect 联结、阶段显式顺序分别有模块单测；
    - 响应、判定、距离、完整装备内容、标包武将、完整 AI、回放与插件 DI 不在本轮验收范围。
-6. **切换与清理**
+8. **切换与清理**
    - MVP 编译、模块单测与 E2E 全绿后，将 `src/mvp/*` 提升到 `src/*`；
    - 删除或归档未迁移旧实现，删除临时迁移根，不保留 v1/v2 重导出或兼容入口；
    - 默认 `test` / `start` / 编译命令切到新实现，再同步 `代码结构.md` 与相关 ADR 状态。
@@ -56,14 +68,15 @@
   与身份胜负。
 - 新机制用例（属性伤害、横置/重置、标记）先记入本文件"写死清单"，按"有例子再抽象"提炼。
 
-### 阶段 5 · DI 插件机制（第一个"模块替换"用例出现时）
+### 阶段 5 · DI 插件扩展（第一个动态模块替换用例出现时）
 
 - 服务契约（TS 类型即接口）+ inject 声明依赖 + **整体替换**（不做字段级 merge）+
   可逆注册（disposer 齐全）+ 配置清单（可序列化、可溯源、fail-loud 装载报告）。
 - 触发候选：decision（前端接入）/ rng（种子回放）/ victory（新模式替换）。
 - 同批收口：公共 API 冻结/版本化策略（semver？弃用期？）+ 容器粒度（应用级容器 + 每局实例）。
-- R000 重构期只用显式参数、hook 注册与具体联结模块，不提前建设 DI 框架；待边界稳定后，
-  DI 只装配已经存在的替换接缝。ADR-0009 的旧容器可作经验参考，但不预设为新 DI 的最终形状。
+- R000 会在 Card/UC/HP/Life 后先落地最小 RuleSet/root + Match 装配，只解决显式依赖图、逐局作用域、
+  测试替换与清理。本阶段在出现真实动态替换用例后再增加插件发现、版本化和可扩展注册；ADR-0009 的
+  旧容器只作经验参考，不预设为新 DI 的最终形状。
 
 ### 阶段 6 · 前端接入 → 回放 → 编辑器（长线）
 
