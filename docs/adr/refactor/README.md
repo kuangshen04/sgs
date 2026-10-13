@@ -20,3 +20,4 @@
 | [R003](R003-Selection模块-Frame与回溯边界.md) | Selection：Frame、answerKey、Plan 与 Controller | MVP 已落地 | `src/mvp/selection/` |
 | [R004](R004-Player模块.md) | Player：nominal ID、最小身份与外置状态 | MVP 已落地 | `src/mvp/player/` |
 | [R005](R005-Seating模块.md) | Seating：可变座次数组、1-based 座位号与逆时针快照 | MVP 已落地 | `src/mvp/seating/` |
+| [R006](R006-Card模块.md) | Card：CardArea 位置、严格单牌原子移动与批量事件 | 边界已定，待实现 | `src/mvp/card/` |
