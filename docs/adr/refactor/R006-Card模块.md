@@ -1,7 +1,7 @@
 # R006 Card 模块：CardArea 位置、单牌原子移动与批量移动事件
 
-- **状态**：边界已定；待实现
-- **目标落地位置**：`src/mvp/card/`
+- **状态**：MVP 已落地
+- **落地位置**：`src/mvp/card/`
 - **旧语义来源**：`../0002-位置与移动.md`、`../0003-UsedCard系统.md`
 
 ## 背景
@@ -223,6 +223,17 @@ CardRuntime 逐局拥有规范 Card、已登记 Area 和 `CardId → CardArea` �
 - 改写目标、取消部分移动等 CardMove 修改协议；
 - CardMoveReason token 系统；第一版 reason 使用稳定字符串；
 - 序列化与回放协议。
+
+## MVP 落地
+
+- **实现**：`src/mvp/card/card.ts`
+- **测试**：`src/mvp/card/card.test.ts`
+- 已实现 nominal `CardId / CardFaceId / CardAreaId`、可空花色/点数、颜色派生与冻结 Card；
+- 已实现逐局规范 Card / Area 登记、`CardId → CardArea` 索引、通用严格 leave 与自定义 enter 闭包；
+- 已实现严格 `atomicCardMove`，覆盖初始化、普通移动、同 Area 重排和 leave hook 异常后的目标进入；
+- 已实现 CardMove Kind、部分成功的批量 `moveCards`、目标自定义物理顺序和逻辑 moved 顺序；
+- 已实现普通列表 Area 工厂、Area hook 注册/注销及 Card 自身对账；
+- 单测覆盖特殊 Area 注册、伪规范对象、来源变化跳过、空移动不发事件和批量失败不回滚。
 
 ## 实现约束
 
