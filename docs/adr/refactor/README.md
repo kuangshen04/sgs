@@ -21,3 +21,4 @@
 | [R004](R004-Player模块.md) | Player：nominal ID、最小身份与外置状态 | MVP 已落地 | `src/mvp/player/` |
 | [R005](R005-Seating模块.md) | Seating：可变座次数组、1-based 座位号与逆时针快照 | MVP 已落地 | `src/mvp/seating/` |
 | [R006](R006-Card模块.md) | Card：CardArea 位置、严格单牌原子移动与批量事件 | MVP 已落地 | `src/mvp/card/` |
+| [R007](R007-错误语义与故障终止.md) | 错误语义：正常规则结果显式、内部故障终止本局 | 边界已定，横切执行 | 所有 MVP 模块 / Match Assembly |
