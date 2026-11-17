@@ -50,6 +50,7 @@ interface CardArea {
   readonly id: CardAreaId;
   readonly cards: readonly Card[];
   leave(card: Card): void | Promise<void>;
+  // R008 落地时把 onLeave / onEnter 从注册 handle 提升到 Area 实例。
 }
 ```
 
@@ -234,6 +235,10 @@ CardRuntime 逐局拥有规范 Card、已登记 Area 和 `CardId → CardArea` �
 - 已实现 CardMove Kind、部分成功的批量 `moveCards`、目标自定义物理顺序和逻辑 moved 顺序；
 - 已实现普通列表 Area 工厂、Area hook 注册/注销及 Card 自身对账；
 - 单测覆盖特殊 Area 注册、伪规范对象、来源变化跳过、空移动不发事件和批量失败不回滚。
+
+> **R008 后续窄调整**：当前源码的 `onLeave / onEnter` 由 `registerArea()` 返回的技术 handle 暴露；
+> UsedCardArea 初始化需要仅凭对应 CardArea 注册完整性 hook，因此随 R008 实现把两个注册入口提升到
+> CardArea 实例。底层 hook 存储、顺序、disposer 和移动语义不变，不属于 R006 边界重做。
 
 ## 实现约束
 

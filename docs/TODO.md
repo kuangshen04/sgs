@@ -19,7 +19,8 @@
    - 新实现禁止 import 旧 `game.ts`、`types.ts`、`rules/`、content 与旧 `test-utils.ts`；
    - 旧测试可保留为只读参考，但不进入 MVP 默认发现范围。
 2. **基础载体**
-   - UsedCard/UsedCardArea：enter / move / exit / settle，并向实体移动注入 UC 完整性反作用。
+   - UsedCard/UsedCardArea：按 `adr/refactor/R008` 实现纯 UC、逐局 Instance、Area 生命周期、显式
+     Card.moveCards、意外离区 break 与 processing 收口；同步完成 R006 的 CardArea hook 注册面窄调整。
 3. **首批外置状态**
    - HP / Life：状态随 Player 生命周期【里】，行为【外】；只实现本轮明确的死亡语义；
 4. **DI 与 Match Assembly 强制检查点**
