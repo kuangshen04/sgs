@@ -30,6 +30,8 @@ export interface CardArea {
   readonly cards: readonly Card[];
   /** 严格离开：先同步修改结构与位置索引，再按注册顺序运行 hooks。 */
   leave(card: Card): void | Promise<void>;
+  onLeave(hook: CardAreaHook): () => void;
+  onEnter(hook: CardAreaHook): () => void;
 }
 
 export type CardAreaHook = (
@@ -101,8 +103,6 @@ export interface CardRuntime {
   }): {
     readonly area: CardArea;
     readonly enter: (insert: (card: Card) => void) => EnterCard;
-    readonly onLeave: (hook: CardAreaHook) => () => void;
-    readonly onEnter: (hook: CardAreaHook) => () => void;
   };
 
   moveCards(input: MoveCardsInput): Promise<readonly Card[]>;
@@ -315,6 +315,8 @@ export function createCardRuntime(events: EventRuntime): {
           locations.delete(canonical.id);
           await dispatchHooks(record.leaveHooks, canonical, area);
         },
+        onLeave: (hook: CardAreaHook) => registerHook(leaveHooks, hook),
+        onEnter: (hook: CardAreaHook) => registerHook(enterHooks, hook),
       });
 
       record = {
@@ -350,8 +352,6 @@ export function createCardRuntime(events: EventRuntime): {
           enterAreas.set(enter, area);
           return enter;
         },
-        onLeave: (hook: CardAreaHook) => registerHook(leaveHooks, hook),
-        onEnter: (hook: CardAreaHook) => registerHook(enterHooks, hook),
       });
     },
 

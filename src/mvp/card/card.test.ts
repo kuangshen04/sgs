@@ -105,12 +105,12 @@ describe('CardArea 与 atomicCardMove', () => {
     const observations: string[] = [];
     await atomicCardMove(card, null, hand.append);
 
-    hand.onLeave((leaving) => {
+    hand.area.onLeave((leaving) => {
       expect(hand.area.cards).not.toContain(leaving);
       expect(cards.areaOf(leaving)).toBeNull();
       observations.push('leave');
     });
-    deck.onEnter((entering) => {
+    deck.area.onEnter((entering) => {
       expect(deck.area.cards).toContain(entering);
       expect(cards.areaOf(entering)).toBe(deck.area);
       observations.push('enter');
@@ -124,7 +124,7 @@ describe('CardArea 与 atomicCardMove', () => {
     const { cards, atomicCardMove, hand, deck, makeCard } = setup();
     const card = makeCard();
     await atomicCardMove(card, null, hand.append);
-    hand.onLeave(() => { throw new Error('leave failed'); });
+    hand.area.onLeave(() => { throw new Error('leave failed'); });
 
     await expect(atomicCardMove(card, hand.area, deck.append))
       .rejects.toThrow('leave failed');

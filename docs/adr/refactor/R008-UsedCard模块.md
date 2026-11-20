@@ -1,7 +1,7 @@
 # R008 UsedCard 模块：规则牌载体、Area 生命周期与实体材料完整性
 
-- **状态**：边界已定；待实现
-- **目标落地位置**：`src/mvp/used-card/`
+- **状态**：MVP 已落地
+- **落地位置**：`src/mvp/used-card/`
 - **旧语义来源**：`../0003-UsedCard系统.md` 及旧 a4 讨论；具体依赖形态按 R000–R007 重建
 
 ## 背景
@@ -220,9 +220,12 @@ UsedCard 可以依赖 Event，但目前没有 enter / move / exit / break Event 
 先作为严格命令实现，实体材料变化自然产生 CardMove Event。等 Effect、装备或延时牌出现真实观察需求时，
 由 UsedCard 模块拥有相应 EventKind；UseCard 以后拥有自己的业务事件，不能用 UC 生命周期事件代替。
 
-## MVP 实现与验收范围
+## MVP 落地
 
-第一版只实现：
+- **实现**：`src/mvp/used-card/used-card.ts`
+- **测试**：`src/mvp/used-card/used-card.test.ts`
+
+已实现：
 
 - UsedCard 纯构造及 0 / 1 / 多材料牌面推导；
 - UsedCardInstance、Runtime、ID、活跃 Store、Area 与实体材料反查；
@@ -234,7 +237,7 @@ UsedCard 可以依赖 Event，但目前没有 enter / move / exit / break Event 
 - Runtime 自身对账及 UC—Card 联结测试；
 - R006 CardArea `onLeave/onEnter` 公共注册面的窄调整。
 
-不实现：
+本轮未实现：
 
 - UsedCardDef、规则内容、目标合法性和 UseCard；
 - 装备槽、判定阶段、同名延时牌限制；
