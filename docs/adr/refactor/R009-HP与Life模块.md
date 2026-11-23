@@ -1,7 +1,7 @@
 # R009 HP 与 Life 模块：外置体力、生存状态与直接死亡
 
-- **状态**：边界已定，MVP 待落地
-- **目标落地位置**：`src/mvp/hp/`、`src/mvp/life/`
+- **状态**：MVP 已落地
+- **落地位置**：`src/mvp/hp/`、`src/mvp/life/`
 - **旧语义来源**：`../0008-游戏流程与胜负.md`、旧 `src/flow/life.ts`；具体依赖形态按 R000–R007 重建
 
 ## 背景
@@ -77,6 +77,9 @@ life.die.before
 对已死亡 Player 再次调用 `die` 是已定义的竞争结果：返回 `already-dead`，不产生第二个 LifeDie 事件。
 这不是内部故障，也不重复执行死亡清理。LifeDie 的 content 或 hook 抛错时按 R007 向 Match 传播；已经
 完成的状态变化不回滚。
+
+同一 Player 的 LifeDie 尚在执行时再次重入 `die` 不等同于“已经死亡”，而是未定义的结算环，必须抛错
+并按 R007 解卷当前事件栈，避免递归创建死亡事件或提前报告虚假的 `already-dead`。
 
 Life 不负责：
 
@@ -239,6 +242,7 @@ Life 单测至少覆盖：
 - 所有登记 Player 初始存活；
 - 首次 die 的 before / 状态转换 / after 顺序；
 - 重复 die 返回 `already-dead` 且不重复事件；
+- 同一 Player 的 LifeDie 重入严格报错并正确解卷；
 - 外局 Player 查询和命令报错；
 - 两个 LifeRuntime 状态隔离。
 
@@ -252,6 +256,16 @@ HP 单测至少覆盖：
 - Event 父子关系为 Damage / LoseHp → LifeDie；
 - 对死亡目标和外局 Player 的严格错误；
 - hook 异常向上传播且不做通用回滚。
+
+## MVP 落地
+
+- **Life 实现**：`src/mvp/life/life.ts`
+- **Life 测试**：`src/mvp/life/life.test.ts`
+- **HP 实现**：`src/mvp/hp/hp.ts`
+- **HP 测试**：`src/mvp/hp/hp.test.ts`
+
+已实现逐局状态隔离、规范 Player 校验、LifeDie、Damage / LoseHp / Recover、体力归零直接死亡、事件
+父子关系、显式取消结果、只读状态快照和 R007 fail-stop 语义。Dying 及其它延期项仍按下节处理。
 
 ## 本轮明确不做
 

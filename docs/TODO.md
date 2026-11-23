@@ -18,10 +18,7 @@
    - MVP 可运行入口出现时增加 `start:mvp`；
    - 新实现禁止 import 旧 `game.ts`、`types.ts`、`rules/`、content 与旧 `test-utils.ts`；
    - 旧测试可保留为只读参考，但不进入 MVP 默认发现范围。
-2. **首批外置状态**
-   - 按 R009 落地 HP / Life：状态随 Player 生命周期【里】，行为【外】；区分 damage / lose / recover，
-     HP 小于等于零时直接调用 LifeDie，本轮不实现 Dying / 求桃；
-3. **DI 与 Match Assembly 强制检查点**
+2. **DI 与 Match Assembly 强制检查点**
    - 时机：Card/CardArea、UC、HP/Life 形成第一张真实逐局依赖图以后，GameFlow / UseCard 纵向装配以前；
    - 设计并落地最小的 RuleSet/root（只放不可变定义与工厂）和 Match（逐局可变 Runtime）两级装配；
      Event 以内的短生命周期继续由 Event scope / `onClear` 管理，不建立 Turn / Phase / Selection 子 scope；
@@ -32,20 +29,20 @@
    - 在检查点之前所有可变模块继续使用 `createXxx({ explicitDeps })`，禁止模块级可变单例和隐式
      `currentMatch`，确保以后接入 DI 只替换装配代码、不修改业务模块公开接口；
    - 动态插件扫描、字符串查服务、反射/装饰器注入、热重载与插件 DI 不属于本轮最小实现。
-4. **其余规则能力**
+3. **其余规则能力**
    - Effect：主动 / 触发 / 持续三种协议；Skill 控制 Effect 生命周期与 storage；
    - UC—Effect 由具体联结模块同时依赖两边，移除 Effect 内的 UC 反查职责。
-5. **流程骨架与用牌**
+4. **流程骨架与用牌**
    - GameFlow → Round → Turn 除彼此的流程组合关系外只依赖 Event；参与者、终止条件、显式
      phase plan 从外部给入；
    - PlayPhase / DiscardPhase 注册到 Turn 的命名槽位【里】，顺序不得依赖注册顺序；
    - UseCard 在 UC 外组织流程，只依赖 UC、目标 Player 与 Event，不依赖 Selection / Effect / 显示 / RuleSet。
-6. **MVP 纵向验收**
+5. **MVP 纵向验收**
    - scripted Selection 选择牌与目标 → PlayPhase → UseCard → UC 处理区生命周期 → HP / Life →
      终止判断结束 GameFlow → 实体牌进入弃牌区；同时验证事件父子关系；
    - 主动/触发/持续效果、Skill storage、UC—Effect 联结、阶段显式顺序分别有模块单测；
    - 响应、判定、距离、完整装备内容、标包武将、完整 AI、回放与插件 DI 不在本轮验收范围。
-7. **切换与清理**
+6. **切换与清理**
    - MVP 编译、模块单测与 E2E 全绿后，将 `src/mvp/*` 提升到 `src/*`；
    - 删除或归档未迁移旧实现，删除临时迁移根，不保留 v1/v2 重导出或兼容入口；
    - 默认 `test` / `start` / 编译命令切到新实现，再同步 `代码结构.md` 与相关 ADR 状态。
