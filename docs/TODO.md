@@ -19,7 +19,8 @@
    - 新实现禁止 import 旧 `game.ts`、`types.ts`、`rules/`、content 与旧 `test-utils.ts`；
    - 旧测试可保留为只读参考，但不进入 MVP 默认发现范围。
 2. **首批外置状态**
-   - HP / Life：状态随 Player 生命周期【里】，行为【外】；只实现本轮明确的死亡语义；
+   - 按 R009 落地 HP / Life：状态随 Player 生命周期【里】，行为【外】；区分 damage / lose / recover，
+     HP 小于等于零时直接调用 LifeDie，本轮不实现 Dying / 求桃；
 3. **DI 与 Match Assembly 强制检查点**
    - 时机：Card/CardArea、UC、HP/Life 形成第一张真实逐局依赖图以后，GameFlow / UseCard 纵向装配以前；
    - 设计并落地最小的 RuleSet/root（只放不可变定义与工厂）和 Match（逐局可变 Runtime）两级装配；
